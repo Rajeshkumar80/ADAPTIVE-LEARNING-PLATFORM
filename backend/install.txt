@@ -1,0 +1,17 @@
+# Backend Installation Instructions
+
+# 1. Make sure you're in the backend folder and venv is activated
+cd backend
+venv\Scripts\activate
+
+# 2. Upgrade pip first
+python -m pip install --upgrade pip
+
+# 3. Install packages with pre-built wheels only (no compilation)
+pip install --only-binary :all: psycopg2-binary
+pip install fastapi uvicorn[standard] python-multipart python-jose[cryptography] passlib[bcrypt] python-dotenv
+pip install sqlalchemy alembic pydantic pydantic-settings httpx python-dateutil
+pip install pytest pytest-asyncio black
+
+# Done! Now you can run the backend with:
+# uvicorn app.main:app --reload

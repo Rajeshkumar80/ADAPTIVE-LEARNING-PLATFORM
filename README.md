@@ -23,7 +23,9 @@ psql -U postgres -d adaptive_learning -f database/schema.sql
 cd backend
 python -m venv venv
 venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+pip install --only-binary :all: psycopg2-binary
+pip install fastapi uvicorn[standard] python-multipart python-jose[cryptography] passlib[bcrypt] python-dotenv sqlalchemy alembic pydantic pydantic-settings httpx python-dateutil pytest pytest-asyncio black
 copy .env.example .env
 uvicorn app.main:app --reload
 ```

@@ -1,34 +1,34 @@
 # FastAPI Backend Dependencies - Minimal Setup for Local Development
 
 # Core Framework
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-python-multipart==0.0.20
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-dotenv==1.0.1
+fastapi
+uvicorn[standard]
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
 
 # Database
-sqlalchemy==2.0.36
-alembic==1.14.0
-psycopg2-binary==2.9.10
+sqlalchemy
+alembic
+psycopg2-binary
 
 # Validation & Serialization
-pydantic==2.10.5
-pydantic-settings==2.7.1
+pydantic
+pydantic-settings
 
 # HTTP Client
-httpx==0.28.1
+httpx
 
 # Utilities
-python-dateutil==2.9.0.post0
+python-dateutil
 
 # Testing
-pytest==8.3.4
-pytest-asyncio==0.24.0
+pytest
+pytest-asyncio
 
 # Development
-black==24.10.0
+black
 
 # Optional (Install later when needed):
 # redis==5.2.1
