@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
     
-    # Redis
+    # Redis (Optional - not needed for basic local dev)
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # JWT
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     FROM_EMAIL: str = "noreply@adaptivelearning.com"
     
-    # Celery
+    # Celery (Optional - not needed for basic local dev)
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
     
