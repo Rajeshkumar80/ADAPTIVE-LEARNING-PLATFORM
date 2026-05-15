@@ -1,5 +1,6 @@
 /**
- * API Client for Backend Communication
+ * API Client — communicates with FastAPI backend
+ * Falls back to localStorage mock if backend is unavailable
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -10,23 +11,22 @@ class APIClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    // Load token from localStorage if available
     if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('token');
+      this.token = localStorage.getItem('adaptlearn_token');
     }
   }
 
   setToken(token: string) {
     this.token = token;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token);
+      localStorage.setItem('adaptlearn_token', token);
     }
   }
 
   clearToken() {
     this.token = null;
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+      localStorage.removeItem('adaptlearn_token');
     }
   }
 
@@ -37,24 +37,29 @@ class APIClient {
     };
 
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(`${this.baseURL}${endpoint}`, { ...options, headers });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-      throw new Error(error.detail || 'Request failed');
+      const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
     }
 
     return response.json();
   }
 
-  // ============= Auth APIs =============
-  async register(data: { email: string; username: string; password: string; full_name?: string }) {
+  // ============= Auth =============
+  async register(data: {
+    email: string;
+    username: string;
+    password: string;
+    full_name?: string;
+    role: 'student' | 'admin';
+    usn?: string;
+    employee_id?: string;
+  }) {
     const response = await this.request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -64,18 +69,19 @@ class APIClient {
   }
 
   async login(username: string, password: string) {
-    const formData = new FormData();
+    const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
 
     const response = await fetch(`${this.baseURL}/api/auth/login`, {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString(),
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Login failed' }));
-      throw new Error(error.detail || 'Login failed');
+      const err = await response.json().catch(() => ({ detail: 'Login failed' }));
+      throw new Error(err.detail || 'Login failed');
     }
 
     const data = await response.json();
@@ -84,7 +90,9 @@ class APIClient {
   }
 
   async logout() {
-    await this.request('/api/auth/logout', { method: 'POST' });
+    try {
+      await this.request('/api/auth/logout', { method: 'POST' });
+    } catch {}
     this.clearToken();
   }
 
@@ -92,83 +100,113 @@ class APIClient {
     return this.request('/api/auth/me');
   }
 
-  // ============= Student APIs =============
-  async getStudentProfile() {
-    return this.request('/api/student/profile');
-  }
-
-  async updateStudentProfile(data: any) {
-    return this.request('/api/student/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async getDashboard() {
+  // ============= Student =============
+  async getStudentDashboard() {
     return this.request('/api/student/dashboard');
   }
 
-  async getProgress() {
+  async getStudentSubjects() {
+    return this.request('/api/student/subjects');
+  }
+
+  async getStudentCertificates() {
+    return this.request('/api/student/certificates');
+  }
+
+  async getStudentAchievements() {
+    return this.request('/api/student/achievements');
+  }
+
+  async getStudentProgress() {
     return this.request('/api/student/progress');
   }
 
-  // ============= Journal APIs =============
-  async getJournalEntries() {
-    return this.request('/api/journal/entries');
+  // ============= Admin =============
+  async getAdminDashboard() {
+    return this.request('/api/admin/dashboard');
   }
 
-  async createJournalEntry(data: any) {
-    return this.request('/api/journal/entries', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async getAdminStudents(filters?: { section?: string; semester?: number }) {
+    const params = new URLSearchParams();
+    if (filters?.section) params.append('section', filters.section);
+    if (filters?.semester) params.append('semester', String(filters.semester));
+    const qs = params.toString();
+    return this.request(`/api/admin/students${qs ? `?${qs}` : ''}`);
   }
 
-  async getJournalEntry(id: number) {
-    return this.request(`/api/journal/entries/${id}`);
+  async getAdminSubjects() {
+    return this.request('/api/admin/subjects');
   }
 
-  async updateJournalEntry(id: number, data: any) {
-    return this.request(`/api/journal/entries/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  async getAntiCheatFlags() {
+    return this.request('/api/admin/anti-cheat-flags');
   }
 
-  async deleteJournalEntry(id: number) {
-    return this.request(`/api/journal/entries/${id}`, {
-      method: 'DELETE',
-    });
+  async getClassAnalytics() {
+    return this.request('/api/admin/analytics');
   }
 
-  // ============= Test APIs =============
-  async getTests() {
-    return this.request('/api/tests');
+  // ============= Tests =============
+  async listTests() {
+    return this.request('/api/tests/');
   }
 
   async getTest(id: number) {
     return this.request(`/api/tests/${id}`);
   }
 
+  async createTest(data: any) {
+    return this.request('/api/tests/', { method: 'POST', body: JSON.stringify(data) });
+  }
+
   async startTest(testId: number) {
-    return this.request('/api/tests/start', {
+    return this.request(`/api/tests/${testId}/start`, { method: 'POST' });
+  }
+
+  async submitTest(attemptId: number, answers: Record<string, string>, antiCheatFlags?: any) {
+    return this.request(`/api/tests/${attemptId}/submit`, {
       method: 'POST',
-      body: JSON.stringify({ test_id: testId }),
+      body: JSON.stringify({ answers, anti_cheat_flags: antiCheatFlags }),
     });
   }
 
-  async submitTest(attemptId: number, answers: any) {
-    return this.request(`/api/tests/submit/${attemptId}`, {
+  async reportViolation(attemptId: number, severity: string, violation: string) {
+    return this.request(`/api/tests/${attemptId}/violation`, {
       method: 'POST',
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ severity, violation }),
     });
   }
 
-  async getTestResults(attemptId: number) {
-    return this.request(`/api/tests/results/${attemptId}`);
+  // ============= Journal =============
+  async listJournalEntries(filters?: { q?: string; starred?: boolean }) {
+    const params = new URLSearchParams();
+    if (filters?.q) params.append('q', filters.q);
+    if (filters?.starred !== undefined) params.append('starred', String(filters.starred));
+    const qs = params.toString();
+    return this.request(`/api/journal/${qs ? `?${qs}` : ''}`);
   }
 
-  // ============= AI Assistant APIs =============
+  async createJournalEntry(data: any) {
+    return this.request('/api/journal/', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async getJournalEntry(id: number) {
+    return this.request(`/api/journal/${id}`);
+  }
+
+  async updateJournalEntry(id: number, data: any) {
+    return this.request(`/api/journal/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async deleteJournalEntry(id: number) {
+    return this.request(`/api/journal/${id}`, { method: 'DELETE' });
+  }
+
+  async getJournalStats() {
+    return this.request('/api/journal/stats/summary');
+  }
+
+  // ============= AI =============
   async askAI(query: string, context?: string) {
     return this.request('/api/ai/ask', {
       method: 'POST',
@@ -176,81 +214,30 @@ class APIClient {
     });
   }
 
-  async getAITutor(topic: string) {
-    return this.request('/api/ai/tutor', {
-      method: 'POST',
-      body: JSON.stringify({ topic }),
-    });
+  // ============= Planner =============
+  async getTodayPlan() {
+    return this.request('/api/planner/today');
   }
 
-  // ============= Study Planner APIs =============
-  async getStudyPlan() {
-    return this.request('/api/planner/plan');
+  async getGoals() {
+    return this.request('/api/planner/goals');
   }
 
-  async createStudyPlan(data: any) {
-    return this.request('/api/planner/plan', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async getMastery() {
+    return this.request('/api/planner/mastery');
   }
 
-  async getStudySessions() {
-    return this.request('/api/planner/sessions');
-  }
-
-  async startStudySession(data: any) {
-    return this.request('/api/planner/sessions/start', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async endStudySession(sessionId: number, data: any) {
-    return this.request(`/api/planner/sessions/${sessionId}/end`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  // ============= Notification APIs =============
+  // ============= Notifications =============
   async getNotifications() {
-    return this.request('/api/notifications');
+    return this.request('/api/notifications/');
   }
 
   async markNotificationRead(id: number) {
-    return this.request(`/api/notifications/${id}/read`, {
-      method: 'PUT',
-    });
+    return this.request(`/api/notifications/${id}/read`, { method: 'PUT' });
   }
 
-  async markAllNotificationsRead() {
-    return this.request('/api/notifications/read-all', {
-      method: 'PUT',
-    });
-  }
-
-  // ============= Admin APIs =============
-  async getSubjects() {
-    return this.request('/api/admin/subjects');
-  }
-
-  async createSubject(data: any) {
-    return this.request('/api/admin/subjects', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async getStudents() {
-    return this.request('/api/admin/students');
-  }
-
-  async createTest(data: any) {
-    return this.request('/api/admin/tests', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async markAllRead() {
+    return this.request('/api/notifications/read-all', { method: 'PUT' });
   }
 }
 

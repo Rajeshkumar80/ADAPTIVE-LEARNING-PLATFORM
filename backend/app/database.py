@@ -3,30 +3,26 @@ Database Configuration and Session Management
 """
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
 
-# Create database engine
+# Use SQLite by default — works without any setup
+connect_args = {}
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    echo=settings.DEBUG
+    connect_args=connect_args,
+    echo=False,
 )
 
-# Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Create base class for models
 Base = declarative_base()
 
-# Dependency for getting database session
+
 def get_db():
-    """
-    Dependency function to get database session
-    Usage: db: Session = Depends(get_db)
-    """
+    """Yield a database session and ensure it gets closed."""
     db = SessionLocal()
     try:
         yield db

@@ -1,45 +1,123 @@
 """
-Code Journal Router
-Handles code journal entries, CRUD operations
+Code Journal endpoints — full CRUD on student's entries.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+
+from app.auth import get_current_user, require_student
 from app.database import get_db
+from app.models import JournalEntry, User
+from app.schemas import JournalEntryCreate, JournalEntryResponse, JournalEntryUpdate
 
 router = APIRouter()
 
-@router.get("/entries")
-async def get_entries(db: Session = Depends(get_db)):
-    """List all journal entries"""
-    return {"entries": []}
 
-@router.post("/entries")
-async def create_entry(db: Session = Depends(get_db)):
-    """Create new journal entry"""
-    return {"message": "Entry created", "entry_id": "uuid"}
+@router.get("/", response_model=list[JournalEntryResponse])
+def list_entries(
+    q: str | None = None,
+    starred: bool | None = None,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    query = db.query(JournalEntry).filter(JournalEntry.user_id == current_user.id)
+    if q:
+        query = query.filter(or_(
+            JournalEntry.title.contains(q),
+            JournalEntry.description.contains(q),
+        ))
+    if starred is not None:
+        query = query.filter(JournalEntry.is_starred == starred)
+    return query.order_by(JournalEntry.created_at.desc()).all()
 
-@router.put("/entries/{entry_id}")
-async def update_entry(entry_id: str, db: Session = Depends(get_db)):
-    """Update journal entry"""
-    return {"message": "Entry updated"}
 
-@router.delete("/entries/{entry_id}")
-async def delete_entry(entry_id: str, db: Session = Depends(get_db)):
-    """Delete journal entry"""
+@router.post("/", response_model=JournalEntryResponse)
+def create_entry(
+    payload: JournalEntryCreate,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    entry = JournalEntry(
+        user_id=current_user.id,
+        title=payload.title,
+        code=payload.code or "",
+        language=payload.language,
+        description=payload.description or "",
+        tags=payload.tags or [],
+        is_starred=payload.is_starred,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.get("/{entry_id}", response_model=JournalEntryResponse)
+def get_entry(
+    entry_id: int,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    entry = db.query(JournalEntry).filter(
+        JournalEntry.id == entry_id,
+        JournalEntry.user_id == current_user.id,
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return entry
+
+
+@router.put("/{entry_id}", response_model=JournalEntryResponse)
+def update_entry(
+    entry_id: int,
+    payload: JournalEntryUpdate,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    entry = db.query(JournalEntry).filter(
+        JournalEntry.id == entry_id,
+        JournalEntry.user_id == current_user.id,
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(entry, field, value)
+
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.delete("/{entry_id}")
+def delete_entry(
+    entry_id: int,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    entry = db.query(JournalEntry).filter(
+        JournalEntry.id == entry_id,
+        JournalEntry.user_id == current_user.id,
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    db.delete(entry)
+    db.commit()
     return {"message": "Entry deleted"}
 
-@router.get("/stats")
-async def get_stats(db: Session = Depends(get_db)):
-    """Get journal statistics (streak, count, etc.)"""
-    return {
-        "total_entries": 45,
-        "current_streak": 7,
-        "longest_streak": 15,
-        "languages_used": ["Python", "JavaScript", "Java"]
-    }
 
-@router.get("/search")
-async def search_entries(q: str, db: Session = Depends(get_db)):
-    """Search journal entries"""
-    return {"results": []}
+@router.get("/stats/summary")
+def get_stats(
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    entries = db.query(JournalEntry).filter(JournalEntry.user_id == current_user.id).all()
+    languages = {e.language for e in entries}
+    return {
+        "total_entries": len(entries),
+        "starred_count": sum(1 for e in entries if e.is_starred),
+        "languages": list(languages),
+        "languages_count": len(languages),
+    }

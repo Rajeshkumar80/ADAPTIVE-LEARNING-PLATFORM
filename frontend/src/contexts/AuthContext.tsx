@@ -1,12 +1,30 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockDB, User } from '@/lib/mockdb';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
+import { mockDB, User as MockUser } from '@/lib/mockdb';
+
+export interface User {
+  id: number | string;
+  email: string;
+  username: string;
+  full_name: string;
+  role: 'student' | 'admin';
+  is_active?: boolean;
+  usn?: string;
+  semester?: number;
+  branch?: string;
+  section?: string;
+  cgpa?: number;
+  employee_id?: string;
+  department?: string;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isOnline: boolean;
   login: (username: string, password: string, role: 'student' | 'admin') => Promise<User>;
   register: (data: any, role: 'student' | 'admin') => Promise<User>;
   logout: () => void;
@@ -18,49 +36,76 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    mockDB.init();
-    const currentUser = mockDB.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
+    checkAuth();
   }, []);
 
+  const checkAuth = async () => {
+    try {
+      // Try backend first
+      const me = await api.getMe();
+      setUser(me);
+      setIsOnline(true);
+    } catch {
+      // Fall back to mockDB
+      mockDB.init();
+      const cached = mockDB.getCurrentUser();
+      if (cached) setUser(cached as User);
+      setIsOnline(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const login = async (username: string, password: string, role: 'student' | 'admin'): Promise<User> => {
-    const loggedInUser = mockDB.login(username, password, role);
-    if (!loggedInUser) {
-      throw new Error('Invalid credentials or wrong role');
+    try {
+      // Try backend
+      const data = await api.login(username, password);
+      if (data.user.role !== role) {
+        throw new Error(`This account is registered as ${data.user.role}, not ${role}`);
+      }
+      setUser(data.user);
+      setIsOnline(true);
+      router.push(data.user.role === 'admin' ? '/admin' : '/dashboard');
+      return data.user;
+    } catch (err: any) {
+      // Fall back to mockDB
+      const cached = mockDB.login(username, password, role);
+      if (cached) {
+        setUser(cached as User);
+        setIsOnline(false);
+        router.push(cached.role === 'admin' ? '/admin' : '/dashboard');
+        return cached as User;
+      }
+      throw err;
     }
-    setUser(loggedInUser);
-    
-    // Redirect based on role
-    if (loggedInUser.role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/dashboard');
-    }
-    
-    return loggedInUser;
   };
 
   const register = async (data: any, role: 'student' | 'admin'): Promise<User> => {
-    const newUser = mockDB.register(data, role);
-    if (!newUser) {
-      throw new Error('User already exists');
+    try {
+      const response = await api.register({ ...data, role });
+      setUser(response.user);
+      setIsOnline(true);
+      router.push(response.user.role === 'admin' ? '/admin' : '/dashboard');
+      return response.user;
+    } catch (err: any) {
+      // Fall back to mockDB
+      const newUser = mockDB.register(data, role);
+      if (newUser) {
+        setUser(newUser as User);
+        setIsOnline(false);
+        router.push(newUser.role === 'admin' ? '/admin' : '/dashboard');
+        return newUser as User;
+      }
+      throw err;
     }
-    setUser(newUser);
-    
-    if (newUser.role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/dashboard');
-    }
-    
-    return newUser;
   };
 
   const logout = () => {
+    api.logout().catch(() => {});
     mockDB.logout();
     setUser(null);
     router.push('/');
@@ -71,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         loading,
+        isOnline,
         login,
         register,
         logout,
@@ -84,8 +130,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

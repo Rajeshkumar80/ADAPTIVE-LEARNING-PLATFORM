@@ -1,31 +1,18 @@
 """
-Database Models for Adaptive Learning Platform
+Database Models
+Aligned with the frontend mockdb structure for a smooth transition.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON, Enum
+from datetime import datetime
+from sqlalchemy import (
+    Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
-import enum
 
 
-class UserRole(str, enum.Enum):
-    STUDENT = "student"
-    ADMIN = "admin"
-
-
-class TestType(str, enum.Enum):
-    QUIZ = "quiz"
-    ASSIGNMENT = "assignment"
-    EXAM = "exam"
-
-
-class DifficultyLevel(str, enum.Enum):
-    EASY = "easy"
-    MEDIUM = "medium"
-    HARD = "hard"
-
-
+# ============= User =============
 class User(Base):
     __tablename__ = "users"
 
@@ -33,53 +20,46 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    full_name = Column(String)
-    role = Column(Enum(UserRole), default=UserRole.STUDENT)
+    full_name = Column(String, default="")
+    role = Column(String, default="student")  # student | admin
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationships
-    student_profile = relationship("StudentProfile", back_populates="user", uselist=False)
-    journal_entries = relationship("JournalEntry", back_populates="user")
-    test_attempts = relationship("TestAttempt", back_populates="user")
-    study_sessions = relationship("StudySession", back_populates="user")
-    notifications = relationship("Notification", back_populates="user")
-
-
-class StudentProfile(Base):
-    __tablename__ = "student_profiles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    usn = Column(String, unique=True, index=True)
-    semester = Column(Integer)
-    branch = Column(String)
+    # Student fields
+    usn = Column(String, unique=True, nullable=True)
+    semester = Column(Integer, nullable=True)
+    branch = Column(String, nullable=True)
+    section = Column(String, nullable=True)
     cgpa = Column(Float, default=0.0)
-    learning_style = Column(String)  # visual, auditory, kinesthetic
-    preferred_study_time = Column(String)  # morning, afternoon, evening, night
-    study_hours_per_day = Column(Float, default=0.0)
+
+    # Admin fields
+    employee_id = Column(String, unique=True, nullable=True)
+    department = Column(String, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationships
-    user = relationship("User", back_populates="student_profile")
+    journal_entries = relationship("JournalEntry", back_populates="user", cascade="all, delete-orphan")
+    test_attempts = relationship("TestAttempt", back_populates="user", cascade="all, delete-orphan")
+    certificates = relationship("Certificate", back_populates="user", cascade="all, delete-orphan")
+    achievements = relationship("Achievement", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    study_sessions = relationship("StudySession", back_populates="user", cascade="all, delete-orphan")
 
 
+# ============= Subject =============
 class Subject(Base):
     __tablename__ = "subjects"
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, index=True)
     name = Column(String, nullable=False)
-    semester = Column(Integer)
-    credits = Column(Integer)
-    description = Column(Text)
+    semester = Column(Integer, default=6)
+    credits = Column(Integer, default=4)
+    description = Column(Text, default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
-    topics = relationship("Topic", back_populates="subject")
-    tests = relationship("Test", back_populates="subject")
+    topics = relationship("Topic", back_populates="subject", cascade="all, delete-orphan")
+    tests = relationship("Test", back_populates="subject", cascade="all, delete-orphan")
 
 
 class Topic(Base):
@@ -88,71 +68,36 @@ class Topic(Base):
     id = Column(Integer, primary_key=True, index=True)
     subject_id = Column(Integer, ForeignKey("subjects.id"))
     name = Column(String, nullable=False)
-    description = Column(Text)
-    difficulty = Column(Enum(DifficultyLevel), default=DifficultyLevel.MEDIUM)
-    estimated_hours = Column(Float)
-    order = Column(Integer)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    description = Column(Text, default="")
+    difficulty = Column(String, default="medium")  # easy | medium | hard
+    estimated_hours = Column(Float, default=2.0)
+    order_index = Column(Integer, default=0)
 
-    # Relationships
     subject = relationship("Subject", back_populates="topics")
-    resources = relationship("Resource", back_populates="topic")
 
 
-class Resource(Base):
-    __tablename__ = "resources"
-
-    id = Column(Integer, primary_key=True, index=True)
-    topic_id = Column(Integer, ForeignKey("topics.id"))
-    title = Column(String, nullable=False)
-    type = Column(String)  # pdf, video, article, code
-    url = Column(String)
-    content = Column(Text)
-    difficulty = Column(Enum(DifficultyLevel))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationships
-    topic = relationship("Topic", back_populates="resources")
-
-
-class JournalEntry(Base):
-    __tablename__ = "journal_entries"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    title = Column(String, nullable=False)
-    code = Column(Text)
-    language = Column(String, default="python")
-    description = Column(Text)
-    tags = Column(JSON)
-    is_public = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Relationships
-    user = relationship("User", back_populates="journal_entries")
-
-
+# ============= Tests =============
 class Test(Base):
     __tablename__ = "tests"
 
     id = Column(Integer, primary_key=True, index=True)
     subject_id = Column(Integer, ForeignKey("subjects.id"))
     title = Column(String, nullable=False)
-    description = Column(Text)
-    type = Column(Enum(TestType))
-    difficulty = Column(Enum(DifficultyLevel))
-    duration_minutes = Column(Integer)
-    total_marks = Column(Integer)
-    passing_marks = Column(Integer)
+    description = Column(Text, default="")
+    type = Column(String, default="quiz")  # quiz | midterm | final | assignment
+    difficulty = Column(String, default="medium")
+    duration_minutes = Column(Integer, default=60)
+    total_marks = Column(Integer, default=100)
+    passing_marks = Column(Integer, default=40)
     is_active = Column(Boolean, default=True)
     anti_cheat_enabled = Column(Boolean, default=True)
+    starts_at = Column(DateTime(timezone=True), nullable=True)
+    ends_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
     subject = relationship("Subject", back_populates="tests")
-    questions = relationship("Question", back_populates="test")
-    attempts = relationship("TestAttempt", back_populates="test")
+    questions = relationship("Question", back_populates="test", cascade="all, delete-orphan")
+    attempts = relationship("TestAttempt", back_populates="test", cascade="all, delete-orphan")
 
 
 class Question(Base):
@@ -161,14 +106,12 @@ class Question(Base):
     id = Column(Integer, primary_key=True, index=True)
     test_id = Column(Integer, ForeignKey("tests.id"))
     question_text = Column(Text, nullable=False)
-    question_type = Column(String)  # mcq, coding, descriptive
-    options = Column(JSON)  # For MCQ
-    correct_answer = Column(Text)
-    marks = Column(Integer)
-    difficulty = Column(Enum(DifficultyLevel))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    question_type = Column(String, default="mcq")  # mcq | coding | descriptive
+    options = Column(JSON, nullable=True)
+    correct_answer = Column(Text, nullable=False)
+    marks = Column(Integer, default=1)
+    difficulty = Column(String, default="medium")
 
-    # Relationships
     test = relationship("Test", back_populates="questions")
 
 
@@ -179,59 +122,115 @@ class TestAttempt(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     test_id = Column(Integer, ForeignKey("tests.id"))
     started_at = Column(DateTime(timezone=True), server_default=func.now())
-    submitted_at = Column(DateTime(timezone=True))
-    score = Column(Float)
-    answers = Column(JSON)
-    anti_cheat_flags = Column(JSON)
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    score = Column(Float, default=0)
+    answers = Column(JSON, nullable=True)
+    anti_cheat_flags = Column(JSON, nullable=True)
     is_completed = Column(Boolean, default=False)
 
-    # Relationships
     user = relationship("User", back_populates="test_attempts")
     test = relationship("Test", back_populates="attempts")
 
 
+# ============= Journal =============
+class JournalEntry(Base):
+    __tablename__ = "journal_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    code = Column(Text, default="")
+    language = Column(String, default="python")
+    description = Column(Text, default="")
+    tags = Column(JSON, default=list)
+    is_starred = Column(Boolean, default=False)
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="journal_entries")
+
+
+# ============= Achievements & Certificates =============
+class Certificate(Base):
+    __tablename__ = "certificates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    type = Column(String, default="completion")  # completion | achievement | excellence
+    score = Column(Float, default=0)
+    issued_date = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="certificates")
+
+
+class Achievement(Base):
+    __tablename__ = "achievements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    icon = Column(String, default="🏆")
+    rarity = Column(String, default="common")  # common | rare | epic | legendary
+    earned_date = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="achievements")
+
+
+# ============= Study =============
 class StudySession(Base):
     __tablename__ = "study_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    subject_id = Column(Integer, ForeignKey("subjects.id"))
-    topic_id = Column(Integer, ForeignKey("topics.id"))
+    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=True)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
-    ended_at = Column(DateTime(timezone=True))
-    duration_minutes = Column(Integer)
-    focus_score = Column(Float)  # 0-100
-    notes = Column(Text)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    duration_minutes = Column(Integer, default=0)
+    focus_score = Column(Float, default=0)
+    notes = Column(Text, default="")
 
-    # Relationships
     user = relationship("User", back_populates="study_sessions")
 
 
+class TopicMastery(Base):
+    __tablename__ = "topic_mastery"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    topic_id = Column(Integer, ForeignKey("topics.id"))
+    mastery = Column(Float, default=0)  # 0-100
+    forgetting_risk = Column(String, default="low")  # low | medium | high
+    last_reviewed = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ============= Notifications =============
 class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String, nullable=False)
-    message = Column(Text)
-    type = Column(String)  # info, warning, success, error
+    message = Column(Text, default="")
+    type = Column(String, default="info")  # info | success | warning | error
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="notifications")
 
 
-class StudyPlan(Base):
-    __tablename__ = "study_plans"
+# ============= Anti-Cheat =============
+class AntiCheatFlag(Base):
+    __tablename__ = "anti_cheat_flags"
 
     id = Column(Integer, primary_key=True, index=True)
+    test_attempt_id = Column(Integer, ForeignKey("test_attempts.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
-    subject_id = Column(Integer, ForeignKey("subjects.id"))
-    start_date = Column(DateTime(timezone=True))
-    end_date = Column(DateTime(timezone=True))
-    daily_hours = Column(Float)
-    schedule = Column(JSON)  # RL-generated schedule
-    is_active = Column(Boolean, default=True)
+    severity = Column(String, default="info")  # critical | warning | info
+    violation = Column(String, nullable=False)
+    count = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

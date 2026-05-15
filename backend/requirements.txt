@@ -1,42 +1,23 @@
-# FastAPI Backend Dependencies - Minimal Setup for Local Development
-
-# Core Framework
+# Core
 fastapi
 uvicorn[standard]
 python-multipart
-python-jose[cryptography]
-passlib[bcrypt]
 python-dotenv
 
-# Database
+# Database (SQLite is built-in to Python — no setup needed)
 sqlalchemy
-alembic
-psycopg2-binary
 
-# Validation & Serialization
+# Auth
+python-jose[cryptography]
+bcrypt
+
+# Validation
 pydantic
 pydantic-settings
+email-validator
 
-# HTTP Client
+# HTTP
 httpx
 
-# Utilities
-python-dateutil
-
-# Testing
-pytest
-pytest-asyncio
-
-# Development
-black
-
-# Optional (Install later when needed):
-# redis==5.2.1
-# celery==5.4.0
-# torch==2.5.1
-# langchain==0.3.14
-# spacy==3.8.3
-# sentence-transformers==3.3.1
-# nltk==3.9.1
-# pymupdf==1.25.2
-# resend==2.6.0
+# Optional AI (only loaded if API key is set)
+# openai

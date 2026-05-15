@@ -1,40 +1,109 @@
 """
-AI Assistant Router
-Handles AI tutor chat, quiz generation, explanations
+AI Tutor endpoints — chat, explain, generate quiz.
+Uses OpenAI if API key is set, otherwise falls back to canned responses.
 """
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from app.auth import get_current_user
+from app.config import settings
 from app.database import get_db
+from app.models import User
+from app.schemas import AIQueryRequest, AIQueryResponse
 
 router = APIRouter()
 
-@router.post("/ask")
-async def ask_question(db: Session = Depends(get_db)):
-    """Ask question to AI tutor"""
+
+def _fallback_response(query: str) -> str:
+    """Smart canned responses when OpenAI isn't configured."""
+    q = query.lower()
+    if "binary search" in q:
+        return (
+            "Binary Search is an efficient algorithm for finding a target value in a sorted array.\n\n"
+            "How it works:\n"
+            "1. Compare target with middle element\n"
+            "2. If equal, found it\n"
+            "3. If smaller, search left half\n"
+            "4. If larger, search right half\n"
+            "5. Repeat until found\n\n"
+            "Time Complexity: O(log n)"
+        )
+    if "sort" in q:
+        return (
+            "Sorting algorithms organize data in a specific order. Common ones:\n\n"
+            "• Bubble Sort — O(n²), simple but slow\n"
+            "• Quick Sort — O(n log n) avg, divide and conquer\n"
+            "• Merge Sort — O(n log n), stable\n"
+            "• Heap Sort — O(n log n), in-place"
+        )
+    if "normal" in q and "form" in q:
+        return (
+            "Database normalization reduces redundancy.\n\n"
+            "Normal Forms:\n"
+            "• 1NF — atomic values, no repeating groups\n"
+            "• 2NF — 1NF + no partial dependencies\n"
+            "• 3NF — 2NF + no transitive dependencies\n"
+            "• BCNF — stricter 3NF"
+        )
+    return (
+        f"That's a great question about: \"{query}\"\n\n"
+        "I'm running in offline mode. To enable full AI responses, "
+        "set OPENAI_API_KEY in the backend .env file. "
+        "I can still help with common topics like algorithms, databases, and OS concepts."
+    )
+
+
+@router.post("/ask", response_model=AIQueryResponse)
+def ask_ai(
+    payload: AIQueryRequest,
+    _user: User = Depends(get_current_user),
+):
+    if settings.OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            completion = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a helpful tutor for VTU CS students. Be concise and educational."},
+                    {"role": "user", "content": payload.query},
+                ],
+                max_tokens=500,
+            )
+            answer = completion.choices[0].message.content
+            return {"response": answer, "sources": []}
+        except Exception as e:
+            return {"response": f"AI service error: {str(e)}\n\n{_fallback_response(payload.query)}", "sources": []}
+
+    return {"response": _fallback_response(payload.query), "sources": []}
+
+
+@router.post("/explain", response_model=AIQueryResponse)
+def explain_topic(
+    payload: AIQueryRequest,
+    _user: User = Depends(get_current_user),
+):
     return {
-        "answer": "AI response here",
-        "sources": []
+        "response": _fallback_response(payload.query),
+        "sources": [],
     }
 
-@router.post("/explain-topic")
-async def explain_topic(db: Session = Depends(get_db)):
-    """Get topic explanation"""
-    return {
-        "explanation": "Detailed explanation",
-        "examples": [],
-        "related_topics": []
-    }
 
 @router.post("/generate-quiz")
-async def generate_quiz(db: Session = Depends(get_db)):
-    """Generate practice quiz"""
+def generate_quiz(
+    topic: str,
+    difficulty: str = "medium",
+    _user: User = Depends(get_current_user),
+):
     return {
-        "questions": [],
-        "difficulty": "medium"
+        "topic": topic,
+        "difficulty": difficulty,
+        "questions": [
+            {
+                "question": f"Sample question about {topic}",
+                "options": {"a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D"},
+                "correct_answer": "a",
+            }
+        ],
     }
-
-@router.post("/generate-flashcards")
-async def generate_flashcards(db: Session = Depends(get_db)):
-    """Generate flashcards for a topic"""
-    return {"flashcards": []}

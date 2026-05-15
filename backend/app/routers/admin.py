@@ -1,62 +1,99 @@
 """
-Admin/Teacher Router
-Handles admin dashboard, student management, analytics
+Admin endpoints — students management, analytics, anti-cheat.
 """
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from app.database import get_db
 from typing import Optional
+
+from app.auth import require_admin
+from app.database import get_db
+from app.models import User, Test, AntiCheatFlag, Subject
+from app.schemas import AdminDashboard, UserResponse, SubjectResponse
 
 router = APIRouter()
 
-@router.get("/dashboard")
-async def get_admin_dashboard(db: Session = Depends(get_db)):
-    """Get admin dashboard overview"""
+
+@router.get("/dashboard", response_model=AdminDashboard)
+def get_dashboard(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    total_students = db.query(User).filter(User.role == "student").count()
+    active_tests = db.query(Test).filter(Test.is_active == True).count()
+    flags_count = db.query(AntiCheatFlag).count()
+
     return {
-        "total_students": 150,
-        "active_tests": 5,
-        "pending_reviews": 12,
-        "class_average": 75.5
+        "total_students": total_students,
+        "active_tests": active_tests,
+        "flags_count": flags_count,
+        "avg_performance": 78.5,  # TODO: compute
     }
 
-@router.get("/students")
-async def get_students(
-    branch: Optional[str] = Query(None),
+
+@router.get("/students", response_model=list[UserResponse])
+def list_students(
     section: Optional[str] = Query(None),
     semester: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
 ):
-    """Get filtered list of students"""
-    return {"students": []}
+    query = db.query(User).filter(User.role == "student")
+    if section:
+        query = query.filter(User.section == section)
+    if semester:
+        query = query.filter(User.semester == semester)
+    return query.all()
 
-@router.get("/students/{usn}")
-async def get_student_profile(usn: str, db: Session = Depends(get_db)):
-    """Get individual student full profile"""
-    return {
-        "usn": usn,
-        "name": "Student Name",
-        "branch": "CSE",
-        "section": "A",
-        "overall_mastery": 0.72,
-        "tests_completed": 10
-    }
 
-@router.get("/students/{usn}/performance")
-async def get_student_performance(usn: str, db: Session = Depends(get_db)):
-    """Get student performance data"""
-    return {
-        "test_scores": [],
-        "mastery_progression": [],
-        "weak_topics": []
-    }
+@router.get("/students/{usn}", response_model=UserResponse)
+def get_student(
+    usn: str,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    student = db.query(User).filter(User.usn == usn, User.role == "student").first()
+    if not student:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Student not found")
+    return student
 
-@router.get("/analytics/class")
-async def get_class_analytics(db: Session = Depends(get_db)):
-    """Get class-wide analytics"""
+
+@router.get("/subjects", response_model=list[SubjectResponse])
+def list_subjects(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return db.query(Subject).all()
+
+
+@router.get("/anti-cheat-flags")
+def list_flags(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    flags = db.query(AntiCheatFlag).order_by(AntiCheatFlag.created_at.desc()).limit(50).all()
+    return [
+        {
+            "id": f.id,
+            "user_id": f.user_id,
+            "severity": f.severity,
+            "violation": f.violation,
+            "count": f.count,
+            "created_at": f.created_at,
+        }
+        for f in flags
+    ]
+
+
+@router.get("/analytics")
+def class_analytics(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     return {
-        "average_score": 75.5,
+        "total_students": db.query(User).filter(User.role == "student").count(),
+        "total_tests": db.query(Test).count(),
+        "avg_score": 78.5,
         "top_performers": [],
-        "weak_topics": [],
-        "attendance_rate": 0.85
     }

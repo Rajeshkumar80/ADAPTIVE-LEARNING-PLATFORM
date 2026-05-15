@@ -1,17 +1,17 @@
-# Backend Installation Instructions
+# Backend Installation
 
-# 1. Make sure you're in the backend folder and venv is activated
+# 1. Activate venv
 cd backend
 venv\Scripts\activate
 
-# 2. Upgrade pip first
+# 2. Install dependencies (no compilation, no database setup needed)
 python -m pip install --upgrade pip
+pip install --only-binary :all: -r requirements.txt
 
-# 3. Install packages with pre-built wheels only (no compilation)
-pip install --only-binary :all: psycopg2-binary
-pip install fastapi uvicorn[standard] python-multipart python-jose[cryptography] passlib[bcrypt] python-dotenv
-pip install sqlalchemy alembic pydantic pydantic-settings httpx python-dateutil
-pip install pytest pytest-asyncio black
+# 3. Run
+uvicorn app.main:app --reload
 
-# Done! Now you can run the backend with:
-# uvicorn app.main:app --reload
+# That's it. SQLite database is auto-created at backend/adaptlearn.db
+# Default accounts (auto-seeded):
+#   Student: student / student123
+#   Admin:   admin / admin123
