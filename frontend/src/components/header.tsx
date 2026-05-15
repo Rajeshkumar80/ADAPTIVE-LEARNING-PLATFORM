@@ -1,59 +1,65 @@
 'use client';
 
-import { Search, Bell, Moon, Sun, Maximize2 } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Search, Settings, Moon, Sun, Github, PanelLeft } from 'lucide-react';
 
-interface HeaderProps {
-  title?: string;
-  description?: string;
-}
-
-export function Header({ title, description }: HeaderProps) {
+export function Header() {
   const [darkMode, setDarkMode] = useState(false);
+  const router = useRouter();
+
+  const toggleTheme = () => {
+    setDarkMode(!darkMode);
+    document.documentElement.classList.toggle('dark');
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between px-6 py-3">
-        {/* Title */}
-        <div>
-          {title && <h1 className="text-xl font-semibold text-gray-900">{title}</h1>}
-          {description && <p className="text-sm text-gray-500">{description}</p>}
-        </div>
-
-        {/* Search */}
-        <div className="flex-1 max-w-md mx-8">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="flex items-center justify-between px-4 py-2.5">
+        {/* Left: Search */}
+        <div className="flex items-center gap-3 flex-1 max-w-md">
+          <button className="p-1.5 hover:bg-gray-100 rounded-md">
+            <PanelLeft className="w-4 h-4" />
+          </button>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              placeholder="Search"
+              className="w-full pl-9 pr-12 py-1.5 bg-white border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
             />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex items-center gap-1 rounded border bg-white px-1.5 font-mono text-[10px] font-medium text-gray-400">
-              ⌘K
+            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 border rounded">
+              ⌘ K
             </kbd>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Maximize2 className="w-5 h-5 text-gray-600" />
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1">
+          <button className="p-2 hover:bg-gray-100 rounded-md transition-colors">
+            <Settings className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={toggleTheme}
+            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
           >
-            {darkMode ? (
-              <Sun className="w-5 h-5 text-gray-600" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-600" />
-            )}
+            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
-            <Bell className="w-5 h-5 text-gray-600" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            <Github className="w-4 h-4" />
+          </a>
+          <Link
+            href="/login"
+            className="ml-2 px-3 py-1.5 bg-black text-white text-xs font-medium rounded-md hover:bg-gray-800 transition-colors"
+          >
+            Sign In
+          </Link>
         </div>
       </div>
     </header>

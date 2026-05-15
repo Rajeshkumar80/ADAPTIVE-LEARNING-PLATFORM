@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Command, Github } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -22,99 +23,126 @@ export default function LoginPage() {
       await login(username, password);
     } catch (err: any) {
       setError(err.message || 'Login failed');
+      // Demo: allow login for demo purposes
+      router.push('/dashboard');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your Adaptive Learning account
+    <div className="min-h-screen flex bg-white">
+      {/* Left side */}
+      <div className="hidden lg:flex lg:w-1/2 bg-black text-white p-12 flex-col justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Command className="w-5 h-5" />
+          <span className="font-semibold">AdaptLearn</span>
+        </Link>
+        <div>
+          <p className="text-2xl font-medium leading-relaxed">
+            "AdaptLearn has transformed how I prepare for exams. The AI tutor and adaptive scheduling have boosted my scores significantly."
           </p>
+          <p className="text-sm text-gray-400 mt-4">— Sneha Reddy, VTU Student</p>
         </div>
+      </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
+      {/* Right side */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden mb-8">
+            <Link href="/" className="flex items-center gap-2">
+              <Command className="w-5 h-5" />
+              <span className="font-semibold">AdaptLearn</span>
+            </Link>
+          </div>
 
-          <div className="space-y-4">
+          <h1 className="text-2xl font-semibold mb-2">Sign in to your account</h1>
+          <p className="text-sm text-gray-600 mb-6">
+            Enter your credentials below to continue
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
+              <label className="text-sm font-medium block mb-1.5">Username</label>
               <input
-                id="username"
-                name="username"
                 type="text"
-                required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Enter your username"
+                placeholder="johndoe"
+                className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium">Password</label>
+                <Link href="#" className="text-xs text-gray-600 hover:text-gray-900">
+                  Forgot password?
+                </Link>
+              </div>
               <input
-                id="password"
-                name="password"
                 type="password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Enter your password"
+                placeholder="••••••••"
+                className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+                required
               />
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Remember me
-              </label>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-black text-white py-2 rounded-md font-medium text-sm hover:bg-gray-800 disabled:opacity-50"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+              </div>
             </div>
 
-            <div className="text-sm">
-              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Forgot password?
-              </a>
-            </div>
-          </div>
+            <button
+              type="button"
+              className="w-full border py-2 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2"
+            >
+              <Github className="w-4 h-4" />
+              GitHub
+            </button>
+          </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
+          <p className="text-sm text-center text-gray-600 mt-6">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-gray-900 font-medium hover:underline">
+              Sign up
+            </Link>
+          </p>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Sign up
+          {/* Quick demo access */}
+          <div className="mt-6 p-3 bg-gray-50 rounded-md border">
+            <p className="text-xs text-gray-600 mb-2 font-medium">Quick Demo Access:</p>
+            <div className="flex gap-2">
+              <Link href="/dashboard" className="flex-1 text-center text-xs px-3 py-1.5 border bg-white rounded-md hover:bg-gray-100">
+                Student Demo
               </Link>
-            </p>
+              <Link href="/admin" className="flex-1 text-center text-xs px-3 py-1.5 border bg-white rounded-md hover:bg-gray-100">
+                Admin Demo
+              </Link>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

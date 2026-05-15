@@ -1,351 +1,241 @@
 'use client';
 
+import { useState } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ActivityChart, MiniSparkline } from '@/components/charts';
 import {
-  StudyHoursChart,
-  PerformanceChart,
-  TestTrendsChart,
-  SubjectDistribution,
-  ProgressRadial,
-  MiniSparkline,
-} from '@/components/charts';
-import {
+  Clock,
+  GraduationCap,
+  BookOpen,
   TrendingUp,
   TrendingDown,
-  Clock,
-  BookOpen,
-  Trophy,
-  Flame,
-  Target,
-  Brain,
+  Filter,
   ArrowUpRight,
-  CheckCircle2,
-  AlertCircle,
-  Calendar,
-  Code2,
+  Search,
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const [filter, setFilter] = useState('all');
+
   const stats = [
     {
-      title: 'Study Hours',
-      value: '45.5',
-      unit: 'hrs',
+      icon: Clock,
+      label: 'Total Study Hours',
+      value: '245.5',
       change: '+12.5%',
       trend: 'up',
-      icon: Clock,
-      color: 'blue',
-      sparkline: [4, 5, 3, 6, 5, 7, 4],
+      description: 'Hours logged for the last 6 months',
+      sparkline: [200, 210, 220, 215, 230, 240, 245],
     },
     {
-      title: 'Tests Completed',
-      value: '12',
-      unit: '',
-      change: '+3',
-      trend: 'up',
-      icon: CheckCircle2,
-      color: 'green',
-      sparkline: [2, 3, 5, 7, 9, 11, 12],
+      icon: GraduationCap,
+      label: 'Tests Taken',
+      value: '1,234',
+      change: '-20%',
+      trend: 'down',
+      description: 'Performance needs attention',
+      sparkline: [1500, 1450, 1400, 1380, 1350, 1280, 1234],
     },
     {
-      title: 'Average Score',
-      value: '85.5',
-      unit: '%',
-      change: '+5.2%',
+      icon: BookOpen,
+      label: 'Active Courses',
+      value: '45,678',
+      change: '+12.5%',
       trend: 'up',
-      icon: Trophy,
-      color: 'yellow',
-      sparkline: [70, 72, 75, 78, 82, 84, 85],
+      description: 'Engagement exceeds targets',
+      sparkline: [40000, 41000, 42000, 43000, 44000, 45000, 45678],
     },
     {
-      title: 'Current Streak',
-      value: '7',
-      unit: 'days',
-      change: '🔥',
+      icon: TrendingUp,
+      label: 'Growth Rate',
+      value: '4.5%',
+      change: '+4.5%',
       trend: 'up',
-      icon: Flame,
-      color: 'red',
-      sparkline: [1, 2, 3, 4, 5, 6, 7],
+      description: 'Meets growth projections',
+      sparkline: [3.5, 3.7, 3.9, 4.0, 4.2, 4.4, 4.5],
     },
   ];
 
-  const upcomingTests = [
-    { id: 1, subject: 'Operating Systems', title: 'Process Scheduling', date: 'May 18', time: '10:00 AM', difficulty: 'Medium' },
-    { id: 2, subject: 'Computer Networks', title: 'TCP/IP Protocol', date: 'May 20', time: '2:00 PM', difficulty: 'Hard' },
-    { id: 3, subject: 'Software Engineering', title: 'SDLC Models', date: 'May 22', time: '11:00 AM', difficulty: 'Easy' },
-  ];
-
-  const recentActivity = [
-    { id: 1, type: 'test', title: 'Data Structures Quiz', score: 92, time: '2 hours ago', icon: CheckCircle2, color: 'green' },
-    { id: 2, type: 'study', title: 'Algorithms Study Session', duration: '1.5 hrs', time: '5 hours ago', icon: BookOpen, color: 'blue' },
-    { id: 3, type: 'journal', title: 'Binary Search Implementation', time: '1 day ago', icon: Code2, color: 'purple' },
-    { id: 4, type: 'achievement', title: 'Earned "7-Day Streak" Badge', time: '1 day ago', icon: Trophy, color: 'yellow' },
-    { id: 5, type: 'test', title: 'DBMS Assignment', score: 88, time: '2 days ago', icon: CheckCircle2, color: 'green' },
-  ];
-
-  const tasks = [
-    { id: 1, title: 'Complete DSA Assignment 3', priority: 'high', dueDate: 'Today', completed: false },
-    { id: 2, title: 'Review OS Notes - Chapter 5', priority: 'medium', dueDate: 'Tomorrow', completed: false },
-    { id: 3, title: 'Practice CN Problem Set', priority: 'low', dueDate: 'May 18', completed: true },
-    { id: 4, title: 'Watch SE Video Lecture', priority: 'medium', dueDate: 'May 19', completed: false },
+  const students = [
+    { id: 'ST-1842', name: 'Rajesh Kumar', plan: 'Pro Plus', billing: 'Annual', status: 'Active', signup: 'Jan 15, 2026' },
+    { id: 'ST-1841', name: 'Priya Sharma', plan: 'Pro', billing: 'Monthly', status: 'Active', signup: 'Jan 14, 2026' },
+    { id: 'ST-1840', name: 'Amit Patel', plan: 'Basic', billing: 'Monthly', status: 'Pending', signup: 'Jan 13, 2026' },
+    { id: 'ST-1839', name: 'Sneha Reddy', plan: 'Pro Plus', billing: 'Annual', status: 'Active', signup: 'Jan 12, 2026' },
+    { id: 'ST-1838', name: 'Karthik Rao', plan: 'Pro', billing: 'Monthly', status: 'Inactive', signup: 'Jan 11, 2026' },
+    { id: 'ST-1837', name: 'Anjali Mehta', plan: 'Pro Plus', billing: 'Annual', status: 'Active', signup: 'Jan 10, 2026' },
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header
-          title="Dashboard"
-          description="Welcome back, Test Student! Here's your learning overview."
-        />
-        
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Stats Cards */}
+
+      <div className="flex-1 flex flex-col">
+        <Header />
+
+        <main className="flex-1 p-6 space-y-6">
+          {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat) => {
               const Icon = stat.icon;
               return (
-                <Card key={stat.title} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
+                <Card key={stat.label} className="border shadow-none">
+                  <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${stat.color}-50`}>
-                        <Icon className={`w-5 h-5 text-${stat.color}-600`} />
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">{stat.label}</span>
                       </div>
-                      <Badge variant={stat.trend === 'up' ? 'success' : 'destructive'}>
-                        {stat.trend === 'up' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                    </div>
+                    <div className="flex items-end justify-between mb-1">
+                      <p className="text-2xl font-semibold">{stat.value}</p>
+                      <div className={`flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded ${
+                        stat.trend === 'up' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'
+                      }`}>
+                        {stat.trend === 'up' ? (
+                          <TrendingUp className="w-3 h-3" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3" />
+                        )}
                         {stat.change}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">{stat.title}</p>
-                      <div className="flex items-baseline gap-1">
-                        <p className="text-3xl font-bold">{stat.value}</p>
-                        {stat.unit && <span className="text-sm text-gray-500">{stat.unit}</span>}
                       </div>
                     </div>
-                    <div className="mt-4 h-10">
-                      <MiniSparkline 
-                        data={stat.sparkline} 
-                        color={
-                          stat.color === 'blue' ? '#3b82f6' :
-                          stat.color === 'green' ? '#10b981' :
-                          stat.color === 'yellow' ? '#f59e0b' : '#ef4444'
-                        }
-                      />
-                    </div>
+                    <p className="text-xs text-gray-500">{stat.description}</p>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
 
-          {/* Charts Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Study Hours Overview</CardTitle>
-                    <CardDescription>Your daily study hours vs target</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    This Week
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <StudyHoursChart />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Progress</CardTitle>
-                <CardDescription>Overall completion</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProgressRadial />
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Completed</span>
-                    <span className="font-medium">28 / 36 modules</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Remaining</span>
-                    <span className="font-medium text-orange-600">8 modules</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Charts Row 2 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Performance by Subject</CardTitle>
-                    <CardDescription>Your scores vs class average</CardDescription>
-                  </div>
-                  <Badge variant="success">Above Average</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <PerformanceChart />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Test Trends</CardTitle>
-                    <CardDescription>Tests taken & scores over time</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    6 Months
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <TestTrendsChart />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Bottom Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Upcoming Tests */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Upcoming Tests</CardTitle>
-                  <Button variant="ghost" size="sm">
-                    View All
-                    <ArrowUpRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {upcomingTests.map((test) => (
-                  <div key={test.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                      <Calendar className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{test.title}</p>
-                      <p className="text-xs text-gray-500">{test.subject}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">
-                          {test.date} • {test.time}
-                        </Badge>
-                        <Badge 
-                          variant={
-                            test.difficulty === 'Easy' ? 'success' :
-                            test.difficulty === 'Medium' ? 'warning' : 'destructive'
-                          } 
-                          className="text-xs"
-                        >
-                          {test.difficulty}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Tasks */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Today's Tasks</CardTitle>
-                  <Badge>{tasks.filter(t => !t.completed).length} pending</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {tasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      readOnly
-                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                        {task.title}
-                      </p>
-                      <p className="text-xs text-gray-500">{task.dueDate}</p>
-                    </div>
-                    <Badge
-                      variant={
-                        task.priority === 'high' ? 'destructive' :
-                        task.priority === 'medium' ? 'warning' : 'secondary'
-                      }
-                      className="text-xs"
-                    >
-                      {task.priority}
-                    </Badge>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Subject Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Time Distribution</CardTitle>
-                <CardDescription>Hours per subject this week</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SubjectDistribution />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
+          {/* Activity Chart */}
+          <Card className="border shadow-none">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Your latest learning activities</CardDescription>
+                  <CardTitle className="text-base font-semibold">Student Activity</CardTitle>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Student activity for the last 3 months
+                  </p>
                 </div>
-                <Button variant="outline" size="sm">View All</Button>
+                <div className="flex items-center gap-2">
+                  <select className="text-xs border rounded-md px-2 py-1.5 bg-white">
+                    <option>3 months</option>
+                    <option>6 months</option>
+                    <option>1 year</option>
+                  </select>
+                  <select className="text-xs border rounded-md px-2 py-1.5 bg-white">
+                    <option>All segments</option>
+                    <option>Active</option>
+                    <option>New</option>
+                  </select>
+                  <button className="text-xs text-gray-700 hover:text-gray-900 flex items-center gap-1">
+                    View report
+                    <ArrowUpRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-gray-900"></div>
+                  <span className="text-xs text-gray-600">Active Accounts</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                  <span className="text-xs text-gray-600">New Students</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                  <span className="text-xs text-gray-600">Returning Users</span>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {recentActivity.map((activity) => {
-                  const Icon = activity.icon;
-                  return (
-                    <div key={activity.id} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${activity.color}-50 shrink-0`}>
-                        <Icon className={`w-5 h-5 text-${activity.color}-600`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{activity.title}</p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
-                      </div>
-                      <div className="text-right">
-                        {activity.score && (
-                          <Badge variant="success">{activity.score}%</Badge>
-                        )}
-                        {activity.duration && (
-                          <span className="text-sm text-gray-600">{activity.duration}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <ActivityChart />
+            </CardContent>
+          </Card>
+
+          {/* Students Table */}
+          <Card className="border shadow-none">
+            <CardHeader className="pb-3 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold">18,426 Students</CardTitle>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Recent student records with plan, billing, status, and signup activity
+                  </p>
+                </div>
+                <Button variant="outline" size="sm">
+                  Export
+                </Button>
               </div>
+              <div className="flex items-center gap-2 mt-3">
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search students..."
+                    className="w-full pl-9 pr-3 py-1.5 border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                </div>
+                <Button variant="outline" size="sm">
+                  <Filter className="w-3 h-3 mr-1" />
+                  Status
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Filter className="w-3 h-3 mr-1" />
+                  Joined date
+                </Button>
+                <div className="ml-auto flex gap-2">
+                  <Button variant="outline" size="sm">Billing</Button>
+                  <Button variant="outline" size="sm">Sort</Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b text-xs text-gray-500">
+                    <th className="text-left p-3 font-medium">
+                      <input type="checkbox" className="rounded" />
+                    </th>
+                    <th className="text-left p-3 font-medium">ID</th>
+                    <th className="text-left p-3 font-medium">Student</th>
+                    <th className="text-left p-3 font-medium">Plan</th>
+                    <th className="text-left p-3 font-medium">Billing</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Signup Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50 text-sm">
+                      <td className="p-3">
+                        <input type="checkbox" className="rounded" />
+                      </td>
+                      <td className="p-3 text-gray-600 font-mono text-xs">{student.id}</td>
+                      <td className="p-3 font-medium">{student.name}</td>
+                      <td className="p-3 text-gray-600">{student.plan}</td>
+                      <td className="p-3 text-gray-600">{student.billing}</td>
+                      <td className="p-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            student.status === 'Active' ? 'border-green-200 bg-green-50 text-green-700' :
+                            student.status === 'Pending' ? 'border-yellow-200 bg-yellow-50 text-yellow-700' :
+                            'border-gray-200 bg-gray-50 text-gray-700'
+                          }
+                        >
+                          {student.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-gray-600">{student.signup}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </CardContent>
           </Card>
         </main>

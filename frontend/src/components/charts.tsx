@@ -20,61 +20,56 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-// ===== Area Chart =====
-export function StudyHoursChart() {
+// ===== Activity Area Chart (like the reference) =====
+export function ActivityChart() {
   const data = [
-    { day: 'Mon', hours: 4.5, target: 5 },
-    { day: 'Tue', hours: 5.2, target: 5 },
-    { day: 'Wed', hours: 3.8, target: 5 },
-    { day: 'Thu', hours: 6.1, target: 5 },
-    { day: 'Fri', hours: 5.5, target: 5 },
-    { day: 'Sat', hours: 7.2, target: 5 },
-    { day: 'Sun', hours: 4.0, target: 5 },
+    { date: 'Feb 17', active: 4500, new: 2300, returning: 1200 },
+    { date: 'Feb 24', active: 5200, new: 2800, returning: 1400 },
+    { date: 'Mar 1', active: 4800, new: 2500, returning: 1300 },
+    { date: 'Mar 8', active: 6100, new: 3200, returning: 1800 },
+    { date: 'Mar 15', active: 5500, new: 2900, returning: 1600 },
+    { date: 'Mar 22', active: 7200, new: 3800, returning: 2100 },
+    { date: 'Mar 29', active: 8500, new: 4200, returning: 2400 },
+    { date: 'Apr 5', active: 6800, new: 3500, returning: 1900 },
+    { date: 'Apr 11', active: 7500, new: 3900, returning: 2200 },
+    { date: 'Apr 18', active: 8200, new: 4100, returning: 2300 },
+    { date: 'Apr 24', active: 6500, new: 3300, returning: 1800 },
+    { date: 'May 1', active: 7800, new: 4000, returning: 2200 },
+    { date: 'May 7', active: 8500, new: 4300, returning: 2400 },
+    { date: 'May 15', active: 9200, new: 4600, returning: 2600 },
   ];
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={280}>
       <AreaChart data={data}>
         <defs>
-          <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+          <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#171717" stopOpacity={0.4} />
+            <stop offset="95%" stopColor="#171717" stopOpacity={0} />
           </linearGradient>
-          <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
-            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+          <linearGradient id="colorNew" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#737373" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#737373" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="colorReturning" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#a3a3a3" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#a3a3a3" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="day" stroke="#9ca3af" fontSize={12} />
-        <YAxis stroke="#9ca3af" fontSize={12} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+        <XAxis dataKey="date" stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
+        <YAxis stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
         <Tooltip
           contentStyle={{
             backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            border: '1px solid #e5e5e5',
             borderRadius: '8px',
+            fontSize: '12px',
           }}
         />
-        <Legend />
-        <Area
-          type="monotone"
-          dataKey="hours"
-          stroke="#6366f1"
-          fillOpacity={1}
-          fill="url(#colorHours)"
-          strokeWidth={2}
-          name="Study Hours"
-        />
-        <Area
-          type="monotone"
-          dataKey="target"
-          stroke="#a855f7"
-          fillOpacity={1}
-          fill="url(#colorTarget)"
-          strokeWidth={2}
-          strokeDasharray="5 5"
-          name="Target"
-        />
+        <Area type="monotone" dataKey="active" stroke="#171717" strokeWidth={2} fill="url(#colorActive)" name="Active" />
+        <Area type="monotone" dataKey="new" stroke="#737373" strokeWidth={2} fill="url(#colorNew)" name="New" />
+        <Area type="monotone" dataKey="returning" stroke="#a3a3a3" strokeWidth={2} fill="url(#colorReturning)" name="Returning" />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -92,21 +87,21 @@ export function PerformanceChart() {
   ];
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="subject" stroke="#9ca3af" fontSize={12} />
-        <YAxis stroke="#9ca3af" fontSize={12} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+        <XAxis dataKey="subject" stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
+        <YAxis stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
         <Tooltip
           contentStyle={{
             backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            border: '1px solid #e5e5e5',
             borderRadius: '8px',
+            fontSize: '12px',
           }}
         />
-        <Legend />
-        <Bar dataKey="score" fill="#6366f1" radius={[8, 8, 0, 0]} name="Your Score" />
-        <Bar dataKey="average" fill="#e0e7ff" radius={[8, 8, 0, 0]} name="Class Average" />
+        <Bar dataKey="score" fill="#171717" radius={[4, 4, 0, 0]} name="Your Score" />
+        <Bar dataKey="average" fill="#d4d4d4" radius={[4, 4, 0, 0]} name="Class Average" />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -124,40 +119,21 @@ export function TestTrendsChart() {
   ];
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
-        <YAxis yAxisId="left" stroke="#9ca3af" fontSize={12} />
-        <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" fontSize={12} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+        <XAxis dataKey="month" stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
+        <YAxis stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
         <Tooltip
           contentStyle={{
             backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            border: '1px solid #e5e5e5',
             borderRadius: '8px',
+            fontSize: '12px',
           }}
         />
-        <Legend />
-        <Line
-          yAxisId="left"
-          type="monotone"
-          dataKey="tests"
-          stroke="#6366f1"
-          strokeWidth={2}
-          dot={{ fill: '#6366f1', r: 4 }}
-          activeDot={{ r: 6 }}
-          name="Tests Taken"
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="score"
-          stroke="#10b981"
-          strokeWidth={2}
-          dot={{ fill: '#10b981', r: 4 }}
-          activeDot={{ r: 6 }}
-          name="Avg Score"
-        />
+        <Line type="monotone" dataKey="tests" stroke="#171717" strokeWidth={2} dot={{ fill: '#171717', r: 3 }} />
+        <Line type="monotone" dataKey="score" stroke="#737373" strokeWidth={2} dot={{ fill: '#737373', r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -166,16 +142,18 @@ export function TestTrendsChart() {
 // ===== Subject Distribution Pie Chart =====
 export function SubjectDistribution() {
   const data = [
-    { name: 'DSA', value: 25, color: '#6366f1' },
-    { name: 'DBMS', value: 20, color: '#8b5cf6' },
-    { name: 'OS', value: 18, color: '#ec4899' },
-    { name: 'CN', value: 15, color: '#f59e0b' },
-    { name: 'SE', value: 12, color: '#10b981' },
-    { name: 'AI', value: 10, color: '#06b6d4' },
+    { name: 'DSA', value: 25 },
+    { name: 'DBMS', value: 20 },
+    { name: 'OS', value: 18 },
+    { name: 'CN', value: 15 },
+    { name: 'SE', value: 12 },
+    { name: 'AI', value: 10 },
   ];
 
+  const colors = ['#171717', '#404040', '#525252', '#737373', '#a3a3a3', '#d4d4d4'];
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={280}>
       <PieChart>
         <Pie
           data={data}
@@ -183,19 +161,20 @@ export function SubjectDistribution() {
           cy="50%"
           labelLine={false}
           label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
-          outerRadius={100}
-          fill="#8884d8"
+          outerRadius={90}
+          fill="#171717"
           dataKey="value"
         >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
+          {data.map((_entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
           ))}
         </Pie>
         <Tooltip
           contentStyle={{
             backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            border: '1px solid #e5e5e5',
             borderRadius: '8px',
+            fontSize: '12px',
           }}
         />
       </PieChart>
@@ -206,17 +185,17 @@ export function SubjectDistribution() {
 // ===== Progress Radial Chart =====
 export function ProgressRadial() {
   const data = [
-    { name: 'Completed', value: 78, fill: '#6366f1' },
+    { name: 'Completed', value: 78, fill: '#171717' },
   ];
 
   return (
     <ResponsiveContainer width="100%" height={250}>
-      <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="90%" data={data} startAngle={180} endAngle={0}>
-        <RadialBar background dataKey="value" cornerRadius={10} />
-        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-3xl font-bold fill-gray-900">
+      <RadialBarChart cx="50%" cy="50%" innerRadius="65%" outerRadius="90%" data={data} startAngle={180} endAngle={0}>
+        <RadialBar background={{ fill: '#f5f5f5' }} dataKey="value" cornerRadius={10} />
+        <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" className="text-3xl font-bold fill-gray-900">
           78%
         </text>
-        <text x="50%" y="65%" textAnchor="middle" dominantBaseline="middle" className="text-sm fill-gray-500">
+        <text x="50%" y="62%" textAnchor="middle" dominantBaseline="middle" className="text-xs fill-gray-500">
           Course Progress
         </text>
       </RadialBarChart>
@@ -225,15 +204,16 @@ export function ProgressRadial() {
 }
 
 // ===== Mini Sparkline =====
-export function MiniSparkline({ data, color = '#6366f1' }: { data: number[]; color?: string }) {
+export function MiniSparkline({ data, positive = true }: { data: number[]; positive?: boolean }) {
   const chartData = data.map((value, index) => ({ index, value }));
+  const color = positive ? '#16a34a' : '#dc2626';
 
   return (
     <ResponsiveContainer width="100%" height={40}>
-      <AreaChart data={chartData}>
+      <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
         <defs>
-          <linearGradient id={`sparkline-${color}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={color} stopOpacity={0.5} />
+          <linearGradient id={`spark-${positive ? 'green' : 'red'}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
             <stop offset="95%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -241,10 +221,43 @@ export function MiniSparkline({ data, color = '#6366f1' }: { data: number[]; col
           type="monotone"
           dataKey="value"
           stroke={color}
-          strokeWidth={2}
-          fill={`url(#sparkline-${color})`}
+          strokeWidth={1.5}
+          fill={`url(#spark-${positive ? 'green' : 'red'})`}
         />
       </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ===== Bar chart for assignment status =====
+export function AssignmentStatusChart() {
+  const data = [
+    { class: 'G11A', overdue: 8, pending: 12, submitted: 25 },
+    { class: 'G11B', overdue: 5, pending: 15, submitted: 22 },
+    { class: 'G11C', overdue: 10, pending: 8, submitted: 28 },
+    { class: 'G11D', overdue: 6, pending: 18, submitted: 20 },
+    { class: 'G11E', overdue: 4, pending: 10, submitted: 30 },
+  ];
+
+  return (
+    <ResponsiveContainer width="100%" height={250}>
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+        <XAxis dataKey="class" stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
+        <YAxis stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} />
+        <Tooltip
+          contentStyle={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e5e5',
+            borderRadius: '8px',
+            fontSize: '12px',
+          }}
+        />
+        <Legend wrapperStyle={{ fontSize: '11px' }} />
+        <Bar dataKey="overdue" fill="#171717" name="Overdue" />
+        <Bar dataKey="pending" fill="#737373" name="Pending" />
+        <Bar dataKey="submitted" fill="#d4d4d4" name="Submitted" />
+      </BarChart>
     </ResponsiveContainer>
   );
 }
