@@ -1,0 +1,60 @@
+# FastAPI Backend Dependencies
+
+# Core Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+asyncpg==0.30.0
+redis==5.2.1
+
+# AI/ML
+torch==2.5.1
+langchain==0.3.14
+langchain-openai==0.2.14
+langchain-anthropic==0.3.3
+spacy==3.8.3
+sentence-transformers==3.3.1
+transformers==4.47.1
+
+# NLP & PDF Processing
+nltk==3.9.1
+pymupdf==1.25.2
+pdfplumber==0.11.4
+
+# Task Queue
+celery==5.4.0
+flower==2.0.1
+
+# Email
+resend==2.6.0
+
+# Validation & Serialization
+pydantic==2.10.5
+pydantic-settings==2.7.1
+
+# HTTP Client
+httpx==0.28.1
+aiohttp==3.11.11
+
+# Utilities
+python-dateutil==2.9.0.post0
+pytz==2024.2
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+httpx==0.28.1
+
+# Development
+black==24.10.0
+flake8==7.1.1
+mypy==1.14.1
