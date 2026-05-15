@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ActivityChart } from '@/components/charts';
-import { Calendar, Clock, Plus, Sparkles, ArrowUpRight } from 'lucide-react';
+import { Plus, Sparkles, CheckCircle2, Play } from 'lucide-react';
 
 export default function PlannerPage() {
   const schedule = [
@@ -25,26 +25,31 @@ export default function PlannerPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 p-6 space-y-6">
-          {/* AI Insights */}
-          <Card className="border shadow-none bg-gray-50">
+        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Study Planner</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">AI-powered scheduling that adapts to your patterns</p>
+          </div>
+
+          {/* AI Recommendation */}
+          <Card className="bg-muted/30">
             <CardContent className="p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-black rounded-md flex items-center justify-center shrink-0">
-                  <Sparkles className="w-5 h-5 text-white" />
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-background" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold mb-1">AI Recommendation</p>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Based on your patterns, focus on Operating Systems tomorrow morning. Your retention is 23% higher in morning sessions.
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Focus on Operating Systems tomorrow morning. Your retention is 23% higher in morning sessions.
                   </p>
                   <div className="flex gap-2">
-                    <Button size="sm" className="bg-black hover:bg-gray-800">Apply</Button>
-                    <Button variant="outline" size="sm">Learn More</Button>
+                    <Button size="sm">Apply</Button>
+                    <Button size="sm" variant="outline">Learn more</Button>
                   </div>
                 </div>
               </div>
@@ -52,112 +57,87 @@ export default function PlannerPage() {
           </Card>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border shadow-none">
-              <CardContent className="p-5">
-                <Clock className="w-4 h-4 text-gray-500 mb-2" />
-                <p className="text-2xl font-semibold">5.5h</p>
-                <p className="text-xs text-gray-500">Today's plan</p>
-              </CardContent>
-            </Card>
-            <Card className="border shadow-none">
-              <CardContent className="p-5">
-                <Calendar className="w-4 h-4 text-gray-500 mb-2" />
-                <p className="text-2xl font-semibold">38h</p>
-                <p className="text-xs text-gray-500">This week</p>
-              </CardContent>
-            </Card>
-            <Card className="border shadow-none">
-              <CardContent className="p-5">
-                <Sparkles className="w-4 h-4 text-gray-500 mb-2" />
-                <p className="text-2xl font-semibold">85%</p>
-                <p className="text-xs text-gray-500">Goal completion</p>
-              </CardContent>
-            </Card>
-            <Card className="border shadow-none">
-              <CardContent className="p-5">
-                <Sparkles className="w-4 h-4 text-gray-500 mb-2" />
-                <p className="text-2xl font-semibold">92%</p>
-                <p className="text-xs text-gray-500">Focus score</p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Today</p><p className="text-2xl font-semibold tracking-tight">5.5h</p></CardContent></Card>
+            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">This week</p><p className="text-2xl font-semibold tracking-tight">38h</p></CardContent></Card>
+            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Goal completion</p><p className="text-2xl font-semibold tracking-tight">85%</p></CardContent></Card>
+            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Focus score</p><p className="text-2xl font-semibold tracking-tight">92%</p></CardContent></Card>
           </div>
 
+          {/* Schedule + Goals */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Today's Schedule */}
-            <Card className="lg:col-span-2 border shadow-none">
-              <CardHeader className="pb-3 border-b">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base font-semibold">Today's Schedule</CardTitle>
-                    <p className="text-xs text-gray-500">Friday, May 15, 2026</p>
+                    <CardTitle>Today's Schedule</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">Friday, May 15</p>
                   </div>
-                  <Button size="sm" className="bg-black hover:bg-gray-800">
-                    <Plus className="w-3 h-3 mr-1" />
+                  <Button size="sm" variant="outline">
+                    <Plus className="w-3 h-3" />
                     Add
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                {schedule.map((s) => (
-                  <div key={s.id} className={`flex items-center p-3 border-b last:border-0 hover:bg-gray-50 border-l-4 ${
-                    s.status === 'completed' ? 'border-l-green-500' :
-                    s.status === 'in-progress' ? 'border-l-yellow-500' :
-                    'border-l-gray-200'
-                  }`}>
-                    <div className="w-16 text-center">
-                      <p className="text-sm font-medium">{s.time}</p>
-                      <p className="text-xs text-gray-500">{s.duration}m</p>
+                <div className="divide-y divide-border">
+                  {schedule.map((s) => (
+                    <div key={s.id} className="flex items-center px-6 py-3 hover:bg-muted/40 transition-colors">
+                      <div className="w-14 text-xs text-muted-foreground font-mono">{s.time}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{s.topic}</p>
+                        <p className="text-xs text-muted-foreground">{s.subject} · {s.duration}m</p>
+                      </div>
+                      {s.status === 'completed' ? (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                          Done
+                        </div>
+                      ) : s.status === 'in-progress' ? (
+                        <Button size="sm" className="h-7">
+                          <Play className="w-3 h-3" />
+                          Continue
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs">Start</Button>
+                      )}
                     </div>
-                    <div className="flex-1 ml-4">
-                      <p className="text-sm font-medium">{s.topic}</p>
-                      <p className="text-xs text-gray-500">{s.subject}</p>
-                    </div>
-                    <Badge variant="outline" className={`text-xs ${
-                      s.status === 'completed' ? 'border-green-200 bg-green-50 text-green-700' :
-                      s.status === 'in-progress' ? 'border-yellow-200 bg-yellow-50 text-yellow-700' :
-                      ''
-                    }`}>
-                      {s.status}
-                    </Badge>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </CardContent>
             </Card>
 
-            {/* Goals */}
-            <Card className="border shadow-none">
-              <CardHeader className="pb-3 border-b">
+            <Card>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold">Weekly Goals</CardTitle>
-                  <button className="text-xs hover:text-gray-700 flex items-center gap-1">
-                    All
-                    <ArrowUpRight className="w-3 h-3" />
-                  </button>
+                  <CardTitle>Weekly Goals</CardTitle>
+                  <Button size="sm" variant="ghost" className="text-xs h-7">
+                    <Plus className="w-3 h-3" />
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-4 space-y-4">
+              <CardContent className="space-y-4">
                 {goals.map((g) => (
                   <div key={g.id}>
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-sm font-medium">{g.title}</p>
-                      <span className="text-xs text-gray-500">{g.progress}%</span>
+                      <span className="text-xs text-muted-foreground font-mono">{g.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1">
-                      <div className="bg-black h-1.5 rounded-full" style={{ width: `${g.progress}%` }}></div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden mb-1">
+                      <div className="h-full bg-foreground" style={{ width: `${g.progress}%` }} />
                     </div>
-                    <p className="text-xs text-gray-500">Due {g.deadline}</p>
+                    <p className="text-xs text-muted-foreground">Due {g.deadline}</p>
                   </div>
                 ))}
               </CardContent>
             </Card>
           </div>
 
-          {/* Activity Chart */}
-          <Card className="border shadow-none">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Weekly Activity</CardTitle>
-              <p className="text-xs text-gray-500">Your study time distribution</p>
+          {/* Activity */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Weekly Activity</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Your study time distribution</p>
             </CardHeader>
             <CardContent>
               <ActivityChart />
