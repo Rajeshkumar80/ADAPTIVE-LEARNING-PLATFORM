@@ -1,6 +1,5 @@
 """
-Authentication Router
-Handles user registration, login, password reset
+Authentication Router - Complete Implementation
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,8 +8,11 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from typing import Optional
 
 from app.database import get_db
+from app.models import User, StudentProfile
+from app.schemas import UserCreate, UserLogin, UserResponse, Token, StudentProfileCreate
 from app.config import settings
 
 router = APIRouter()
@@ -21,15 +23,18 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
     return pwd_context.verify(plain_password, hashed_password)
+
 
 def get_password_hash(password: str) -> str:
     """Hash password"""
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
     to_encode = data.copy()
     if expires_delta:
@@ -41,37 +46,120 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-@router.post("/register/student")
-async def register_student(db: Session = Depends(get_db)):
-    """Register a new student"""
-    return {"message": "Student registration endpoint - to be implemented"}
 
-@router.post("/register/admin")
-async def register_admin(db: Session = Depends(get_db)):
-    """Register a new admin/teacher"""
-    return {"message": "Admin registration endpoint - to be implemented"}
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """Get current authenticated user"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    
+    return user
 
-@router.post("/login")
+
+@router.post("/register", response_model=Token)
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    """Register new user"""
+    
+    # Check if user exists
+    existing_user = db.query(User).filter(
+        (User.email == user_data.email) | (User.username == user_data.username)
+    ).first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email or username already registered"
+        )
+    
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+    new_user = User(
+        email=user_data.email,
+        username=user_data.username,
+        full_name=user_data.full_name,
+        hashed_password=hashed_password
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": new_user.username})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": new_user
+    }
+
+
+@router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Login endpoint for both students and admins"""
-    return {"message": "Login endpoint - to be implemented"}
+    """Login user"""
+    
+    # Find user
+    user = db.query(User).filter(User.username == form_data.username).first()
+    
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user"
+        )
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user.username})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
 
 @router.post("/logout")
-async def logout():
-    """Logout endpoint"""
-    return {"message": "Logged out successfully"}
+async def logout(current_user: User = Depends(get_current_user)):
+    """Logout user (client should delete token)"""
+    return {"message": "Successfully logged out"}
 
-@router.post("/forgot-password")
-async def forgot_password(db: Session = Depends(get_db)):
-    """Send password reset email"""
-    return {"message": "Password reset email sent"}
 
-@router.post("/reset-password")
-async def reset_password(db: Session = Depends(get_db)):
-    """Reset password with OTP"""
-    return {"message": "Password reset successful"}
-
-@router.get("/profile")
-async def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile"""
-    return {"message": "User profile - to be implemented"}
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_me(
+    full_name: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user profile"""
+    if full_name:
+        current_user.full_name = full_name
+    
+    db.commit()
+    db.refresh(current_user)
+    return current_user
