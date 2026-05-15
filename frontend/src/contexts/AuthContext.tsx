@@ -1,24 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { mockDB, User } from '@/lib/mockdb';
 import { useRouter } from 'next/navigation';
-
-interface User {
-  id: number;
-  email: string;
-  username: string;
-  full_name?: string;
-  role: 'student' | 'admin';
-  is_active: boolean;
-}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (username: string, password: string, role: 'student' | 'admin') => Promise<User>;
+  register: (data: any, role: 'student' | 'admin') => Promise<User>;
+  logout: () => void;
   isAuthenticated: boolean;
 }
 
@@ -30,54 +21,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in on mount
-    checkAuth();
+    mockDB.init();
+    const currentUser = mockDB.getCurrentUser();
+    setUser(currentUser);
+    setLoading(false);
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const userData = await api.getMe();
-        setUser(userData);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.removeItem('token');
-    } finally {
-      setLoading(false);
+  const login = async (username: string, password: string, role: 'student' | 'admin'): Promise<User> => {
+    const loggedInUser = mockDB.login(username, password, role);
+    if (!loggedInUser) {
+      throw new Error('Invalid credentials or wrong role');
     }
-  };
-
-  const login = async (username: string, password: string) => {
-    try {
-      const response = await api.login(username, password);
-      setUser(response.user);
+    setUser(loggedInUser);
+    
+    // Redirect based on role
+    if (loggedInUser.role === 'admin') {
+      router.push('/admin');
+    } else {
       router.push('/dashboard');
-    } catch (error: any) {
-      throw new Error(error.message || 'Login failed');
     }
+    
+    return loggedInUser;
   };
 
-  const register = async (data: any) => {
-    try {
-      const response = await api.register(data);
-      setUser(response.user);
+  const register = async (data: any, role: 'student' | 'admin'): Promise<User> => {
+    const newUser = mockDB.register(data, role);
+    if (!newUser) {
+      throw new Error('User already exists');
+    }
+    setUser(newUser);
+    
+    if (newUser.role === 'admin') {
+      router.push('/admin');
+    } else {
       router.push('/dashboard');
-    } catch (error: any) {
-      throw new Error(error.message || 'Registration failed');
     }
+    
+    return newUser;
   };
 
-  const logout = async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      router.push('/login');
-    }
+  const logout = () => {
+    mockDB.logout();
+    setUser(null);
+    router.push('/');
   };
 
   return (

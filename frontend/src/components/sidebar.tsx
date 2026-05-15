@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   BookOpen,
@@ -15,20 +15,16 @@ import {
   FileText,
   BarChart3,
   Trophy,
-  Mail,
-  MessageSquare,
-  CalendarDays,
-  Layers,
-  Receipt,
-  UserCircle,
-  Shield,
-  Plus,
+  Award,
   Command,
-  Inbox,
-  Sparkles,
-  ChevronDown,
-  MoreHorizontal,
-  X,
+  Plus,
+  Bell,
+  LogOut,
+  ClipboardList,
+  TrendingUp,
+  ShieldCheck,
+  BookMarked,
+  Target,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,153 +33,173 @@ interface SidebarProps {
 
 export function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
-  const dashboardItems = isAdmin ? [
-    { icon: LayoutDashboard, label: 'Overview', href: '/admin' },
-    { icon: Users, label: 'Students', href: '/admin/students' },
-    { icon: GraduationCap, label: 'Tests', href: '/admin/tests' },
-    { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
-    { icon: BookOpen, label: 'Subjects', href: '/admin/subjects' },
-    { icon: FileText, label: 'Reports', href: '/admin/reports' },
-    { icon: Shield, label: 'Permissions', href: '/admin/permissions', soon: true },
-  ] : [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: BookOpen, label: 'Courses', href: '/courses' },
-    { icon: Code2, label: 'Code Journal', href: '/journal' },
-    { icon: BarChart3, label: 'Analytics', href: '/analytics' },
-    { icon: GraduationCap, label: 'Tests', href: '/tests' },
-    { icon: Calendar, label: 'Planner', href: '/planner' },
-    { icon: Trophy, label: 'Achievements', href: '/achievements', soon: true },
+  // ========= STUDENT MENU =========
+  const studentMenu = [
+    {
+      section: 'Learning',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+        { icon: BookOpen, label: 'My Subjects', href: '/courses' },
+        { icon: Brain, label: 'AI Tutor', href: '/ai-tutor' },
+        { icon: Calendar, label: 'Study Planner', href: '/planner' },
+      ],
+    },
+    {
+      section: 'Practice',
+      items: [
+        { icon: GraduationCap, label: 'Tests & Quizzes', href: '/tests' },
+        { icon: Code2, label: 'Code Journal', href: '/journal' },
+        { icon: Target, label: 'Topic Mastery', href: '/mastery' },
+      ],
+    },
+    {
+      section: 'Achievements',
+      items: [
+        { icon: Award, label: 'Certificates', href: '/certificates' },
+        { icon: Trophy, label: 'Achievements', href: '/achievements' },
+        { icon: BarChart3, label: 'My Progress', href: '/analytics' },
+      ],
+    },
   ];
 
-  const pageItems = [
-    { icon: Mail, label: 'Email', href: '/email', soon: true },
-    { icon: MessageSquare, label: 'Chat', href: '/chat', soon: true },
-    { icon: CalendarDays, label: 'Calendar', href: '/calendar', soon: true },
-    { icon: Layers, label: 'Kanban', href: '/kanban', soon: true },
-    { icon: Receipt, label: 'Invoice', href: '/invoice', soon: true },
-    { icon: UserCircle, label: 'Users', href: '/users', soon: true },
-    { icon: Shield, label: 'Roles', href: '/roles', soon: true },
+  // ========= ADMIN MENU =========
+  const adminMenu = [
+    {
+      section: 'Overview',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
+        { icon: TrendingUp, label: 'Class Analytics', href: '/admin/analytics' },
+      ],
+    },
+    {
+      section: 'Manage Students',
+      items: [
+        { icon: Users, label: 'All Students', href: '/admin/students' },
+        { icon: BookMarked, label: 'Subjects', href: '/admin/subjects' },
+        { icon: Bell, label: 'Notifications', href: '/admin/notifications' },
+      ],
+    },
+    {
+      section: 'Assessments',
+      items: [
+        { icon: ClipboardList, label: 'Create Test', href: '/admin/tests/create' },
+        { icon: GraduationCap, label: 'All Tests', href: '/admin/tests' },
+        { icon: ShieldCheck, label: 'Anti-Cheat Logs', href: '/admin/anti-cheat' },
+        { icon: FileText, label: 'Reports', href: '/admin/reports' },
+      ],
+    },
   ];
+
+  const menuSections = isAdmin ? adminMenu : studentMenu;
+
+  // Color accent based on role
+  const accent = isAdmin ? 'red' : 'indigo';
+  const gradientFrom = isAdmin ? 'from-red-500' : 'from-indigo-500';
+  const gradientTo = isAdmin ? 'to-orange-500' : 'to-purple-600';
 
   return (
-    <aside className="w-64 h-screen bg-[#fafafa] border-r border-gray-200 flex flex-col sticky top-0 shrink-0">
+    <aside className="w-64 h-screen border-r border-gray-200 bg-[#fafafa] flex flex-col sticky top-0 shrink-0">
       {/* Logo */}
       <div className="p-4 border-b border-gray-200">
-        <Link href="/" className="flex items-center gap-2">
-          <Command className="w-5 h-5" />
-          <span className="font-semibold text-sm">AdaptLearn {isAdmin ? 'Admin' : 'Studio'}</span>
+        <Link href={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-2">
+          <div className={cn(
+            "w-8 h-8 rounded-md flex items-center justify-center bg-gradient-to-br text-white",
+            gradientFrom, gradientTo
+          )}>
+            <Command className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">AdaptLearn</p>
+            <p className="text-[10px] text-gray-500">
+              {isAdmin ? 'Teacher Portal' : 'Student Hub'}
+            </p>
+          </div>
         </Link>
       </div>
 
-      {/* Quick Create */}
+      {/* Quick Action */}
       <div className="p-3 border-b border-gray-200">
-        <div className="flex gap-2">
-          <button className="flex-1 flex items-center gap-2 px-3 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 transition-colors">
+        {isAdmin ? (
+          <Link
+            href="/admin/tests/create"
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-md text-sm font-medium hover:from-red-600 hover:to-orange-600 transition-all shadow-sm"
+          >
             <Plus className="w-4 h-4" />
-            Quick Create
-          </button>
-          <button className="p-2 border rounded-md hover:bg-gray-100 transition-colors">
-            <Inbox className="w-4 h-4" />
-          </button>
-        </div>
+            Create Test
+          </Link>
+        ) : (
+          <Link
+            href="/journal"
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-md text-sm font-medium hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            New Entry
+          </Link>
+        )}
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-6">
-        {/* Dashboards */}
-        <div>
-          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider px-2 mb-2">
-            Dashboards
-          </p>
-          <div className="space-y-0.5">
-            {dashboardItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.soon ? '#' : item.href}
-                  className={cn(
-                    'flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors group',
-                    isActive
-                      ? 'bg-white text-gray-900 font-medium shadow-sm border'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                    item.soon && 'cursor-not-allowed opacity-60'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4" />
+      <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+        {menuSections.map((section) => (
+          <div key={section.section}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider px-2 mb-2 text-gray-400">
+              {section.section}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors',
+                      isActive
+                        ? 'bg-white text-gray-900 font-medium shadow-sm border'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    )}
+                  >
+                    <Icon className={cn(
+                      "w-4 h-4",
+                      isActive && (isAdmin ? 'text-red-600' : 'text-indigo-600')
+                    )} />
                     <span>{item.label}</span>
-                  </div>
-                  {item.soon && (
-                    <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                      Soon
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-
-        {/* Pages */}
-        <div>
-          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider px-2 mb-2">
-            Pages
-          </p>
-          <div className="space-y-0.5">
-            {pageItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href="#"
-                  className="flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-gray-600 hover:bg-gray-100 transition-colors cursor-not-allowed opacity-60"
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </div>
-                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                    Soon
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        ))}
       </nav>
-
-      {/* Promo Card */}
-      <div className="p-3">
-        <div className="bg-gray-100 rounded-lg p-3 relative">
-          <button className="absolute top-2 right-2 p-0.5 hover:bg-gray-200 rounded">
-            <X className="w-3 h-3" />
-          </button>
-          <p className="text-xs font-medium mb-1">Looking for something more?</p>
-          <p className="text-xs text-gray-600">
-            Open an issue or do reach out to me on X.
-          </p>
-        </div>
-      </div>
 
       {/* User Profile */}
       <div className="border-t border-gray-200 p-3">
-        <div className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-md cursor-pointer transition-colors">
-          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-semibold">
-            {isAdmin ? 'AD' : 'TS'}
+        <div className="flex items-center gap-2 mb-2">
+          <div className={cn(
+            "w-9 h-9 rounded-md flex items-center justify-center text-xs font-semibold shrink-0 text-white bg-gradient-to-br",
+            gradientFrom, gradientTo
+          )}>
+            {user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || (isAdmin ? 'AD' : 'ST')}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">
-              {isAdmin ? 'Admin User' : 'Test Student'}
+              {user?.full_name || (isAdmin ? 'Admin User' : 'Student')}
             </p>
-            <p className="text-[11px] text-gray-500 truncate">
-              {isAdmin ? 'admin@vtu.edu' : 'student@vtu.edu'}
+            <p className="text-[10px] truncate text-gray-500">
+              {isAdmin ? user?.employee_id : user?.usn}
             </p>
           </div>
-          <MoreHorizontal className="w-4 h-4 text-gray-400" />
         </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors border bg-white hover:bg-gray-100 text-gray-700"
+        >
+          <LogOut className="w-3 h-3" />
+          Sign Out
+        </button>
       </div>
     </aside>
   );
