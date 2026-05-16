@@ -2,6 +2,19 @@
  * CodeJournal types — programming-specific knowledge journal
  */
 
+import type { LucideIcon } from 'lucide-react';
+import {
+  BookOpen,
+  HelpCircle,
+  Zap,
+  Sparkles,
+  GitMerge,
+  ListTodo,
+  CheckCircle2,
+  BookMarked,
+  Lightbulb,
+} from 'lucide-react';
+
 export type ContentType =
   | 'concept'
   | 'confusion'
@@ -81,16 +94,88 @@ export interface CodeJournalProject {
   updatedAt: number;
 }
 
-export const CONTENT_TYPES: Record<ContentType, { label: string; icon: string; color: string; bg: string; border: string }> = {
-  concept: { label: 'Concept', icon: '📚', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
-  confusion: { label: 'Confusion', icon: '❓', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-  edgecase: { label: 'Edge Case', icon: '⚡', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' },
-  synthesis: { label: 'Synthesis', icon: '✨', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200' },
-  conflict: { label: 'Conflict', icon: '⚖️', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
-  assignment: { label: 'Assignment', icon: '✅', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  resolved: { label: 'Resolved', icon: '✓', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
-  definition: { label: 'Definition', icon: '📖', color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200' },
-  hypothesis: { label: 'Hypothesis', icon: '💡', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200' },
+interface ContentTypeConfig {
+  label: string;
+  Icon: LucideIcon;
+  color: string;       // text color
+  bg: string;          // soft background
+  border: string;      // border accent
+  iconColor: string;   // pure icon color (hex-friendly)
+}
+
+export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
+  concept: {
+    label: 'Concept',
+    Icon: BookOpen,
+    color: 'text-blue-700',
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    iconColor: '#1d4ed8',
+  },
+  confusion: {
+    label: 'Confusion',
+    Icon: HelpCircle,
+    color: 'text-amber-700',
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    iconColor: '#b45309',
+  },
+  edgecase: {
+    label: 'Edge Case',
+    Icon: Zap,
+    color: 'text-purple-700',
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    iconColor: '#7e22ce',
+  },
+  synthesis: {
+    label: 'Synthesis',
+    Icon: Sparkles,
+    color: 'text-indigo-700',
+    bg: 'bg-indigo-50',
+    border: 'border-indigo-200',
+    iconColor: '#4338ca',
+  },
+  conflict: {
+    label: 'Conflict',
+    Icon: GitMerge,
+    color: 'text-red-700',
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    iconColor: '#b91c1c',
+  },
+  assignment: {
+    label: 'Assignment',
+    Icon: ListTodo,
+    color: 'text-emerald-700',
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    iconColor: '#047857',
+  },
+  resolved: {
+    label: 'Resolved',
+    Icon: CheckCircle2,
+    color: 'text-green-700',
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    iconColor: '#15803d',
+  },
+  definition: {
+    label: 'Definition',
+    Icon: BookMarked,
+    color: 'text-slate-700',
+    bg: 'bg-slate-50',
+    border: 'border-slate-200',
+    iconColor: '#334155',
+  },
+  hypothesis: {
+    label: 'Hypothesis',
+    Icon: Lightbulb,
+    color: 'text-yellow-700',
+    bg: 'bg-yellow-50',
+    border: 'border-yellow-200',
+    iconColor: '#a16207',
+  },
 };
 
 export const CONTENT_TYPE_LIST: ContentType[] = [

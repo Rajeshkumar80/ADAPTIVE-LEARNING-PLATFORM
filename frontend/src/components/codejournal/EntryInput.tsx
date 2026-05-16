@@ -52,13 +52,14 @@ export function EntryInput({ onSubmit, disabled }: Props) {
               .slice(0, 9)
               .map(ct => {
                 const cfg = CONTENT_TYPES[ct];
+                const Icon = cfg.Icon;
                 return (
                   <button
                     key={ct}
                     onClick={() => setText(`#${ct} `)}
                     className="text-[11px] px-2 py-0.5 border border-border rounded hover:bg-muted flex items-center gap-1"
                   >
-                    {cfg.icon} #{ct}
+                    <Icon className={`w-2.5 h-2.5 ${cfg.color}`} /> #{ct}
                   </button>
                 );
               })}

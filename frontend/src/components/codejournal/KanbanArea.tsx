@@ -3,6 +3,8 @@
 import { useMemo } from 'react';
 import { CodeJournalBlock, CONTENT_TYPES, CONTENT_TYPE_LIST } from '@/lib/codejournal/types';
 import { TileCard } from './TileCard';
+import { cn } from '@/lib/utils';
+import { LayoutGrid } from 'lucide-react';
 
 interface Props {
   blocks: CodeJournalBlock[];
@@ -23,32 +25,30 @@ export function KanbanArea({ blocks, onDelete, onTogglePin, onBlockClick }: Prop
     return map;
   }, [blocks]);
 
-  // Show only columns with content or always show 4 main ones
-  const columns = CONTENT_TYPE_LIST.filter(ct =>
-    grouped[ct].length > 0 ||
-    ['concept', 'confusion', 'edgecase', 'resolved'].includes(ct)
-  );
-
   if (blocks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="text-5xl mb-4">📋</div>
+        <LayoutGrid className="w-10 h-10 text-muted-foreground/40 mb-4" />
         <p className="text-sm font-medium mb-1">Kanban board is empty</p>
         <p className="text-xs text-muted-foreground">Add entries to organize them by type</p>
       </div>
     );
   }
 
+  // Show all 9 columns always for consistency
+  const columns = CONTENT_TYPE_LIST;
+
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
       {columns.map(ct => {
         const cfg = CONTENT_TYPES[ct];
+        const Icon = cfg.Icon;
         const items = grouped[ct];
         return (
           <div key={ct} className="flex-shrink-0 w-72">
-            <div className="flex items-center gap-2 mb-3 px-2">
-              <span className="text-base">{cfg.icon}</span>
-              <h2 className={`text-xs font-medium uppercase tracking-wider ${cfg.color}`}>
+            <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-muted/30 rounded-md">
+              <Icon className={cn('w-3.5 h-3.5', cfg.color)} />
+              <h2 className={cn('text-xs font-medium uppercase tracking-wider', cfg.color)}>
                 {cfg.label}
               </h2>
               <span className="text-[10px] font-mono text-muted-foreground ml-auto">

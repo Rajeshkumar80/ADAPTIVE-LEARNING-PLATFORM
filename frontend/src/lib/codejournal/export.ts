@@ -46,7 +46,7 @@ source: CodeJournal
   for (const b of enrichedBlocks) counts[b.contentType] = (counts[b.contentType] || 0) + 1;
   for (const [type, count] of Object.entries(counts)) {
     const cfg = CONTENT_TYPES[type as ContentType];
-    md += `| ${cfg.icon} ${cfg.label} | ${count} |\n`;
+    md += `| ${cfg.label} | ${count} |\n`;
   }
 
   md += '\n---\n\n';
@@ -62,8 +62,8 @@ source: CodeJournal
     md += `## ${category}\n\n`;
     for (const b of blocks) {
       const cfg = CONTENT_TYPES[b.contentType];
-      md += `### ${cfg.icon} ${b.text}\n\n`;
-      md += `*${cfg.label}* · Confidence: ${b.confidence || '?'}/5\n\n`;
+      md += `### [${cfg.label}] ${b.text}\n\n`;
+      md += `Confidence: ${b.confidence || '?'}/5\n\n`;
       if (b.annotation) {
         md += `> ${b.annotation}\n\n`;
       }

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { CodeJournalBlock } from '@/lib/codejournal/types';
 import { TileCard } from './TileCard';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pin, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -29,7 +29,7 @@ export function TilingArea({
     const pinned = blocks.filter(b => b.isPinned);
     const rest = blocks.filter(b => !b.isPinned);
 
-    if (pinned.length > 0) map['📌 Pinned'] = pinned;
+    if (pinned.length > 0) map['Pinned'] = pinned;
 
     for (const block of rest) {
       if (!map[block.category]) map[block.category] = [];
@@ -41,7 +41,7 @@ export function TilingArea({
   if (blocks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="text-5xl mb-4">📓</div>
+        <BookOpen className="w-10 h-10 text-muted-foreground/40 mb-4" />
         <p className="text-sm font-medium mb-1">Start writing</p>
         <p className="text-xs text-muted-foreground max-w-sm">
           Type anything you learned today in the box below. AI will classify, annotate, and connect it.
@@ -59,6 +59,7 @@ export function TilingArea({
     <div className="space-y-6">
       {Object.entries(grouped).map(([category, items]) => {
         const isCollapsed = collapsedCategories.includes(category);
+        const isPinnedCategory = category === 'Pinned';
         return (
           <div key={category}>
             <button
@@ -70,6 +71,7 @@ export function TilingArea({
               ) : (
                 <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
               )}
+              {isPinnedCategory && <Pin className="w-3 h-3 text-muted-foreground" />}
               <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
                 {category}
               </h2>

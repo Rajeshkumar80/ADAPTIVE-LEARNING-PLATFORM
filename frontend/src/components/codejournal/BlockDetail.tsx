@@ -16,6 +16,7 @@ interface Props {
 
 export function BlockDetail({ block, relatedBlocks, onClose, onDelete, onTogglePin, onSelectRelated }: Props) {
   const cfg = CONTENT_TYPES[block.contentType];
+  const Icon = cfg.Icon;
   const time = new Date(block.timestamp).toLocaleString();
 
   return (
@@ -26,7 +27,7 @@ export function BlockDetail({ block, relatedBlocks, onClose, onDelete, onToggleP
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-base">{cfg.icon}</span>
+            <Icon className={`w-4 h-4 ${cfg.color}`} />
             <Badge variant="outline" className={cfg.color}>{cfg.label}</Badge>
             <span className="text-xs text-muted-foreground font-mono ml-2">{block.category}</span>
           </div>
@@ -76,6 +77,7 @@ export function BlockDetail({ block, relatedBlocks, onClose, onDelete, onToggleP
               <div className="space-y-2">
                 {relatedBlocks.map(b => {
                   const rcfg = CONTENT_TYPES[b.contentType];
+                  const RIcon = rcfg.Icon;
                   return (
                     <button
                       key={b.id}
@@ -83,7 +85,7 @@ export function BlockDetail({ block, relatedBlocks, onClose, onDelete, onToggleP
                       className="w-full text-left p-3 border border-border rounded-md hover:bg-muted/40 transition-colors"
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs">{rcfg.icon}</span>
+                        <RIcon className={`w-3 h-3 ${rcfg.color}`} />
                         <span className={`text-[10px] uppercase tracking-wider ${rcfg.color}`}>
                           {rcfg.label}
                         </span>

@@ -13,6 +13,7 @@ interface Props {
 
 export function TileCard({ block, onDelete, onTogglePin, onClick }: Props) {
   const cfg = CONTENT_TYPES[block.contentType];
+  const Icon = cfg.Icon;
   const time = new Date(block.timestamp);
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -20,16 +21,14 @@ export function TileCard({ block, onDelete, onTogglePin, onClick }: Props) {
     <div
       onClick={() => onClick?.(block)}
       className={cn(
-        'group relative border rounded-lg p-4 transition-all cursor-pointer hover:shadow-sm',
-        cfg.bg,
-        cfg.border,
-        block.isError && 'border-red-200 bg-red-50',
+        'group relative bg-card border border-border rounded-lg p-4 transition-all cursor-pointer hover:border-foreground/30 hover:shadow-sm',
+        block.isError && 'border-red-200 bg-red-50/50',
       )}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-base">{cfg.icon}</span>
+          <Icon className={cn('w-3.5 h-3.5', cfg.color)} />
           <span className={cn('text-[10px] font-medium uppercase tracking-wider', cfg.color)}>
             {cfg.label}
           </span>
@@ -41,7 +40,7 @@ export function TileCard({ block, onDelete, onTogglePin, onClick }: Props) {
           {onTogglePin && (
             <button
               onClick={(e) => { e.stopPropagation(); onTogglePin(block.id); }}
-              className="p-1 hover:bg-white/60 rounded text-muted-foreground hover:text-foreground"
+              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
             >
               {block.isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
             </button>
@@ -49,7 +48,7 @@ export function TileCard({ block, onDelete, onTogglePin, onClick }: Props) {
           {onDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
-              className="p-1 hover:bg-white/60 rounded text-muted-foreground hover:text-red-600"
+              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-red-600"
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -64,10 +63,10 @@ export function TileCard({ block, onDelete, onTogglePin, onClick }: Props) {
 
       {/* AI Annotation */}
       {block.annotation && (
-        <div className="mt-3 pt-3 border-t border-foreground/10">
+        <div className="mt-3 pt-3 border-t border-border">
           <div className="flex items-start gap-1.5">
             <Sparkles className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-            <p className="text-xs text-muted-foreground leading-relaxed italic">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {block.annotation}
             </p>
           </div>

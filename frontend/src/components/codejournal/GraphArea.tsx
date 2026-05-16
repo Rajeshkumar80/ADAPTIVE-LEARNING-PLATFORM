@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { CodeJournalBlock, CONTENT_TYPES } from '@/lib/codejournal/types';
+import { Network } from 'lucide-react';
 
 interface Props {
   blocks: CodeJournalBlock[];
@@ -20,6 +21,19 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   target: string | GraphNode;
 }
 
+// Single-letter abbreviations for nodes
+const TYPE_ABBR: Record<string, string> = {
+  concept: 'C',
+  confusion: '?',
+  edgecase: 'E',
+  synthesis: 'S',
+  conflict: 'X',
+  assignment: 'A',
+  resolved: '✓',
+  definition: 'D',
+  hypothesis: 'H',
+};
+
 export function GraphArea({ blocks, onBlockClick }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,7 +47,7 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
     const nodes: GraphNode[] = blocks.map(b => ({
       id: b.id,
       block: b,
-      radius: Math.max(8, Math.min(20, 8 + (b.text.length / 30))),
+      radius: Math.max(10, Math.min(22, 10 + (b.text.length / 30))),
     }));
 
     const links: GraphLink[] = [];
@@ -51,12 +65,10 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
-
     svg.attr('viewBox', `0 0 ${width} ${height}`).attr('width', '100%').attr('height', height);
 
     const g = svg.append('g');
 
-    // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
       .on('zoom', (event) => {
@@ -64,14 +76,12 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
       });
     svg.call(zoom);
 
-    // Force simulation
     const simulation = d3.forceSimulation<GraphNode>(nodes)
-      .force('link', d3.forceLink<GraphNode, GraphLink>(links).id(d => d.id).distance(80).strength(0.5))
-      .force('charge', d3.forceManyBody().strength(-200))
+      .force('link', d3.forceLink<GraphNode, GraphLink>(links).id(d => d.id).distance(90).strength(0.5))
+      .force('charge', d3.forceManyBody().strength(-280))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collide', d3.forceCollide<GraphNode>().radius(d => d.radius + 4));
+      .force('collide', d3.forceCollide<GraphNode>().radius(d => d.radius + 6));
 
-    // Draw links
     const link = g.append('g')
       .attr('stroke', 'hsl(240 6% 80%)')
       .attr('stroke-width', 1)
@@ -79,7 +89,6 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
       .data(links)
       .join('line');
 
-    // Draw nodes
     const node = g.append('g')
       .selectAll('g')
       .data(nodes)
@@ -105,31 +114,18 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
 
     node.append('circle')
       .attr('r', d => d.radius)
-      .attr('fill', d => {
-        const cfg = CONTENT_TYPES[d.block.contentType];
-        // map color name to actual hex
-        const colorMap: Record<string, string> = {
-          'text-blue-700': '#1d4ed8',
-          'text-amber-700': '#b45309',
-          'text-purple-700': '#7e22ce',
-          'text-indigo-700': '#4338ca',
-          'text-red-700': '#b91c1c',
-          'text-emerald-700': '#047857',
-          'text-green-700': '#15803d',
-          'text-slate-700': '#334155',
-          'text-yellow-700': '#a16207',
-        };
-        return colorMap[cfg.color] || '#666';
-      })
-      .attr('fill-opacity', 0.7)
+      .attr('fill', d => CONTENT_TYPES[d.block.contentType].iconColor)
+      .attr('fill-opacity', 0.9)
       .attr('stroke', 'white')
       .attr('stroke-width', 2);
 
     node.append('text')
-      .text(d => CONTENT_TYPES[d.block.contentType].icon)
+      .text(d => TYPE_ABBR[d.block.contentType] || '?')
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
-      .attr('font-size', d => d.radius)
+      .attr('font-size', d => d.radius * 0.9)
+      .attr('font-weight', '600')
+      .attr('fill', 'white')
       .attr('pointer-events', 'none');
 
     node.append('title').text(d => `${d.block.text.slice(0, 80)}\n${d.block.category}`);
@@ -152,7 +148,7 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
   if (blocks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="text-5xl mb-4">🕸️</div>
+        <Network className="w-10 h-10 text-muted-foreground/40 mb-4" />
         <p className="text-sm font-medium mb-1">Graph is empty</p>
         <p className="text-xs text-muted-foreground">Add at least 2 entries to see connections</p>
       </div>
