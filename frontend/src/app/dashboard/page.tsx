@@ -238,12 +238,16 @@ export default function StudentDashboard() {
                           Done
                         </div>
                       ) : s.status === 'in-progress' ? (
-                        <Button size="sm" variant="default" className="h-7">
-                          <Play className="w-3 h-3" />
-                          Continue
-                        </Button>
+                        <Link href="/planner">
+                          <Button size="sm" variant="default" className="h-7">
+                            <Play className="w-3 h-3" />
+                            Continue
+                          </Button>
+                        </Link>
                       ) : (
-                        <Button size="sm" variant="outline" className="h-7 text-xs">Start</Button>
+                        <Link href="/planner">
+                          <Button size="sm" variant="outline" className="h-7 text-xs">Start</Button>
+                        </Link>
                       )}
                     </div>
                   ))}

@@ -1,26 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Send, Sparkles, Bot, User } from 'lucide-react';
+import { Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
+
+interface Message {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  time: string;
+}
 
 export default function AITutorPage() {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { id: 1, role: 'assistant', content: "Hi! I'm your AI tutor. Ask me anything about your subjects, debug code, or get study tips.", time: 'Just now' },
-    { id: 2, role: 'user', content: 'Can you explain how Binary Search works?', time: '2m ago' },
-    { id: 3, role: 'assistant', content: "Binary Search is an efficient algorithm for finding a target value in a sorted array.\n\nHere's how it works:\n\n1. Compare the target with the middle element\n2. If equal, you've found it\n3. If target is smaller, search the left half\n4. If target is larger, search the right half\n5. Repeat until found or array is empty\n\nTime Complexity: O(log n) — much faster than linear search O(n)", time: '2m ago' },
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 1,
+      role: 'assistant',
+      content: "Hi! I'm your AI tutor. Ask me anything about your subjects, debug code, or get study tips.",
+      time: 'Just now',
+    },
   ]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestions = [
     'Explain DBMS normalization',
-    'Help me debug this code',
-    'Give me practice problems',
-    'How to study effectively?',
+    'How does binary search work?',
+    'What is process scheduling?',
+    'Tips for studying effectively',
   ];
 
   const recent = [
@@ -30,10 +42,59 @@ export default function AITutorPage() {
     { id: 4, topic: 'OSI Model', subject: 'CN' },
   ];
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    setMessages([...messages, { id: messages.length + 1, role: 'user', content: message, time: 'Just now' }]);
+  const fallbackResponses: Record<string, string> = {
+    binary: "Binary Search is an efficient algorithm for finding a target value in a sorted array.\n\n1. Compare target with middle element\n2. If equal, you've found it\n3. If target is smaller, search left half\n4. If larger, search right half\n5. Repeat until found\n\nTime Complexity: O(log n)",
+    sort: "Common sorting algorithms:\n\n• Bubble Sort — O(n²), simple\n• Quick Sort — O(n log n) avg\n• Merge Sort — O(n log n), stable\n• Heap Sort — O(n log n), in-place",
+    normal: "Database normalization reduces redundancy.\n\n• 1NF — atomic values\n• 2NF — 1NF + no partial dependencies\n• 3NF — 2NF + no transitive dependencies\n• BCNF — stricter 3NF",
+    process: "Process scheduling determines which process runs next on the CPU.\n\nCommon algorithms:\n• FCFS (First Come First Served)\n• SJF (Shortest Job First)\n• Round Robin\n• Priority Scheduling\n• Multilevel Queue",
+    osi: "The OSI Model has 7 layers:\n\n7. Application — User interface\n6. Presentation — Data format/encryption\n5. Session — Connections\n4. Transport — TCP/UDP\n3. Network — Routing (IP)\n2. Data Link — Frames (MAC)\n1. Physical — Bits over wire",
+  };
+
+  const generateFallback = (query: string): string => {
+    const q = query.toLowerCase();
+    for (const [key, response] of Object.entries(fallbackResponses)) {
+      if (q.includes(key)) return response;
+    }
+    return `That's an interesting question about "${query}".\n\nI'm currently running in offline mode. To get full AI responses, the backend needs to be configured with an OpenAI API key. I can still help with common topics like binary search, sorting, normalization, process scheduling, and the OSI model.`;
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (text?: string) => {
+    const query = (text || message).trim();
+    if (!query || loading) return;
+
+    const userMsg: Message = {
+      id: Date.now(),
+      role: 'user',
+      content: query,
+      time: 'Just now',
+    };
+    setMessages(prev => [...prev, userMsg]);
     setMessage('');
+    setLoading(true);
+
+    try {
+      const response = await api.askAI(query);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: response.response || generateFallback(query),
+        time: 'Just now',
+      }]);
+    } catch {
+      // Fallback when backend unavailable
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: generateFallback(query),
+        time: 'Just now',
+      }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,8 +112,9 @@ export default function AITutorPage() {
                   {suggestions.map((s, i) => (
                     <button
                       key={i}
-                      onClick={() => setMessage(s)}
-                      className="w-full text-left px-3 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
+                      onClick={() => handleSend(s)}
+                      disabled={loading}
+                      className="w-full text-left px-3 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors disabled:opacity-50"
                     >
                       {s}
                     </button>
@@ -64,7 +126,11 @@ export default function AITutorPage() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2 mt-6">Recent</p>
                 <div className="space-y-1">
                   {recent.map((r) => (
-                    <button key={r.id} className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors">
+                    <button
+                      key={r.id}
+                      onClick={() => handleSend(`Tell me about ${r.topic}`)}
+                      className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors"
+                    >
                       <p className="text-sm font-medium truncate">{r.topic}</p>
                       <p className="text-xs text-muted-foreground">{r.subject}</p>
                     </button>
@@ -95,9 +161,7 @@ export default function AITutorPage() {
                     </div>
                     <div className={`max-w-[80%] ${msg.role === 'user' ? 'text-right' : ''}`}>
                       <div className={`px-3.5 py-2.5 rounded-lg text-sm whitespace-pre-wrap ${
-                        msg.role === 'user'
-                          ? 'bg-foreground text-background'
-                          : 'bg-muted text-foreground'
+                        msg.role === 'user' ? 'bg-foreground text-background' : 'bg-muted text-foreground'
                       }`}>
                         {msg.content}
                       </div>
@@ -105,6 +169,17 @@ export default function AITutorPage() {
                     </div>
                   </div>
                 ))}
+                {loading && (
+                  <div className="flex gap-3">
+                    <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center shrink-0">
+                      <Bot className="w-3.5 h-3.5 text-background" />
+                    </div>
+                    <div className="px-3.5 py-2.5 rounded-lg bg-muted">
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
 
               <div className="border-t border-border p-3">
@@ -113,12 +188,13 @@ export default function AITutorPage() {
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     placeholder="Ask anything..."
-                    className="flex-1 h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors"
+                    disabled={loading}
+                    className="flex-1 h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors disabled:opacity-50"
                   />
-                  <Button onClick={handleSend} size="icon">
-                    <Send className="w-4 h-4" />
+                  <Button onClick={() => handleSend()} size="icon" disabled={loading || !message.trim()}>
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>

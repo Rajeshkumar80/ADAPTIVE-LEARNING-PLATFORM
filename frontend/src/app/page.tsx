@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Github } from 'lucide-react';
 
 export default function Home() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border">
+      <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur z-40">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
@@ -36,9 +36,9 @@ export default function Home() {
             <span className="font-semibold text-sm tracking-tight">AdaptLearn</span>
           </Link>
           <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
+            <Link href="/learn-more" className="hover:text-foreground transition-colors">About</Link>
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/login" className="h-8 px-3 inline-flex items-center text-xs font-medium hover:bg-muted rounded-md transition-colors">
@@ -52,7 +52,7 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-20 pb-24 text-center animate-fade-in">
+      <section className="max-w-4xl mx-auto px-6 pt-20 pb-20 text-center animate-fade-in">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-8 border border-border rounded-full text-[11px] text-muted-foreground bg-muted/30">
           <Sparkles className="w-3 h-3" />
           AI-powered learning for VTU students
@@ -75,46 +75,67 @@ export default function Home() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
           <Link
-            href="/login"
+            href="/learn-more"
             className="h-10 px-5 inline-flex items-center justify-center text-sm font-medium border border-border hover:bg-muted rounded-md transition-colors"
           >
-            Sign in
+            Learn more
           </Link>
         </div>
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="max-w-5xl mx-auto px-6 pb-24">
+      <section id="features" className="max-w-5xl mx-auto px-6 pb-24 scroll-mt-20">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl font-semibold tracking-tight mb-2">Everything you need</h2>
+          <p className="text-sm text-muted-foreground">Six core features designed to elevate your learning</p>
+        </div>
         <div className="grid md:grid-cols-2 gap-px bg-border rounded-lg overflow-hidden border border-border">
           {[
-            {
-              title: 'Smart Subjects',
-              description: 'AI-curated content tailored to your learning pace and style.',
-            },
-            {
-              title: 'Code Journal',
-              description: 'Document and track your coding journey with rich snippets.',
-            },
-            {
-              title: 'Adaptive Tests',
-              description: 'Smart assessments that adjust to your level in real-time.',
-            },
-            {
-              title: 'AI Tutor',
-              description: 'Get instant help on any topic, available 24/7.',
-            },
-            {
-              title: 'Study Planner',
-              description: 'RL-powered scheduler that learns your patterns.',
-            },
-            {
-              title: 'Achievements',
-              description: 'Earn certificates and badges as you progress.',
-            },
+            { title: 'Smart Subjects', description: 'AI-curated content tailored to your learning pace and style.' },
+            { title: 'Code Journal', description: 'Document and track your coding journey with rich snippets.' },
+            { title: 'Adaptive Tests', description: 'Smart assessments that adjust to your level in real-time.' },
+            { title: 'AI Tutor', description: 'Get instant help on any topic, available 24/7.' },
+            { title: 'Study Planner', description: 'RL-powered scheduler that learns your patterns.' },
+            { title: 'Achievements', description: 'Earn certificates and badges as you progress.' },
           ].map((feature) => (
             <div key={feature.title} className="bg-background p-8 hover:bg-muted/30 transition-colors">
               <h3 className="text-base font-semibold tracking-tight mb-2">{feature.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-8">
+          <Link
+            href="/learn-more"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            See all features
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section id="how" className="max-w-3xl mx-auto px-6 pb-24 scroll-mt-20">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl font-semibold tracking-tight mb-2">How it works</h2>
+          <p className="text-sm text-muted-foreground">Four simple steps</p>
+        </div>
+        <div className="space-y-6">
+          {[
+            { step: '01', title: 'Sign up', desc: 'Create your account as a student or teacher in seconds.' },
+            { step: '02', title: 'Diagnostic test', desc: 'Quick assessment to understand your current knowledge.' },
+            { step: '03', title: 'Personalized plan', desc: 'AI generates a custom study schedule for you.' },
+            { step: '04', title: 'Learn & adapt', desc: 'The plan evolves based on your progress every day.' },
+          ].map((s) => (
+            <div key={s.step} className="flex gap-5">
+              <div className="text-3xl font-semibold tracking-tighter text-muted-foreground/40 shrink-0 w-12">
+                {s.step}
+              </div>
+              <div>
+                <h3 className="font-semibold tracking-tight mb-1">{s.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -128,13 +149,21 @@ export default function Home() {
         <p className="text-sm text-muted-foreground mb-8">
           Join thousands of students learning smarter every day.
         </p>
-        <Link
-          href="/register"
-          className="h-10 px-5 inline-flex items-center gap-1.5 text-sm font-medium bg-foreground text-background hover:bg-foreground/90 rounded-md transition-colors"
-        >
-          Create free account
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <Link
+            href="/register"
+            className="h-10 px-5 inline-flex items-center justify-center gap-1.5 text-sm font-medium bg-foreground text-background hover:bg-foreground/90 rounded-md transition-colors"
+          >
+            Create free account
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <Link
+            href="/learn-more"
+            className="h-10 px-5 inline-flex items-center justify-center text-sm font-medium border border-border hover:bg-muted rounded-md transition-colors"
+          >
+            Learn more
+          </Link>
+        </div>
       </section>
 
       {/* Footer */}
@@ -142,9 +171,11 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between text-xs text-muted-foreground">
           <p>© 2026 AdaptLearn</p>
           <div className="flex items-center gap-5">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+            <Link href="/learn-more" className="hover:text-foreground transition-colors">About</Link>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <Github className="w-3 h-3" />
+              GitHub
+            </a>
           </div>
         </div>
       </footer>

@@ -180,7 +180,7 @@ export default function LoginPage() {
                 <label className="text-xs font-medium text-foreground">
                   Password
                 </label>
-                <Link href="#" className="text-xs text-muted-foreground hover:text-foreground">
+                <Link href="/learn-more" className="text-xs text-muted-foreground hover:text-foreground">
                   Forgot?
                 </Link>
               </div>

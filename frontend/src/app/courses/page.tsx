@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -96,10 +97,12 @@ export default function CoursesPage() {
                           {subject.progress}%
                         </span>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7">
-                        Continue
-                        <ArrowRight className="w-3 h-3" />
-                      </Button>
+                      <Link href="/ai-tutor">
+                        <Button variant="ghost" size="sm" className="h-7">
+                          Continue
+                          <ArrowRight className="w-3 h-3" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 ))}

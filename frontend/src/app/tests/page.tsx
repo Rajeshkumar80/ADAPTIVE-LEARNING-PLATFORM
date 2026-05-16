@@ -1,20 +1,33 @@
 'use client';
 
+import { useState } from 'react';
+import Link from 'next/link';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, X, Award } from 'lucide-react';
+
+interface CompletedTest {
+  id: number;
+  title: string;
+  subject: string;
+  date: string;
+  score: number;
+  grade: string;
+}
 
 export default function TestsPage() {
+  const [selectedResult, setSelectedResult] = useState<CompletedTest | null>(null);
+
   const upcoming = [
     { id: 1, title: 'Operating Systems Mid-Term', subject: 'OS', date: 'May 18', time: '10:00 AM', duration: 60, questions: 30, difficulty: 'Hard' },
     { id: 2, title: 'Computer Networks Quiz 4', subject: 'CN', date: 'May 20', time: '2:00 PM', duration: 30, questions: 15, difficulty: 'Medium' },
     { id: 3, title: 'Software Engineering Test', subject: 'SE', date: 'May 22', time: '11:00 AM', duration: 90, questions: 50, difficulty: 'Easy' },
   ];
 
-  const completed = [
+  const completed: CompletedTest[] = [
     { id: 1, title: 'Data Structures Mid-Term', subject: 'DSA', date: 'May 12', score: 92, grade: 'A+' },
     { id: 2, title: 'DBMS Quiz 3', subject: 'DBMS', date: 'May 10', score: 88, grade: 'A' },
     { id: 3, title: 'Algorithms Assignment', subject: 'DSA', date: 'May 8', score: 85, grade: 'A' },
@@ -68,7 +81,9 @@ export default function TestsPage() {
                       }`}>
                         {test.difficulty}
                       </Badge>
-                      <Button size="sm" variant="outline">Prepare</Button>
+                      <Link href="/ai-tutor">
+                        <Button size="sm" variant="outline">Prepare</Button>
+                      </Link>
                     </div>
                   ))}
                 </div>
@@ -96,7 +111,12 @@ export default function TestsPage() {
                           <p className="text-base font-semibold tabular-nums">{test.score}<span className="text-xs text-muted-foreground">/100</span></p>
                         </div>
                         <Badge variant="default" className="font-mono">{test.grade}</Badge>
-                        <Button size="sm" variant="ghost" className="h-7">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7"
+                          onClick={() => setSelectedResult(test)}
+                        >
                           View
                           <ChevronRight className="w-3 h-3" />
                         </Button>
@@ -109,6 +129,89 @@ export default function TestsPage() {
           </div>
         </main>
       </div>
+
+      {/* Result Modal */}
+      {selectedResult && (
+        <div
+          className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in"
+          onClick={() => setSelectedResult(null)}
+        >
+          <div
+            className="bg-background rounded-lg max-w-lg w-full overflow-hidden border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+              <h2 className="text-base font-semibold tracking-tight">Test Result</h2>
+              <button
+                onClick={() => setSelectedResult(null)}
+                className="p-1 hover:bg-muted rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight">{selectedResult.title}</h3>
+                <p className="text-sm text-muted-foreground">{selectedResult.subject} · {selectedResult.date}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-4 border border-border rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Score</p>
+                  <p className="text-2xl font-semibold tracking-tight">{selectedResult.score}</p>
+                </div>
+                <div className="text-center p-4 border border-border rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Total</p>
+                  <p className="text-2xl font-semibold tracking-tight">100</p>
+                </div>
+                <div className="text-center p-4 border border-border rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Grade</p>
+                  <p className="text-2xl font-semibold tracking-tight font-mono">{selectedResult.grade}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Performance Breakdown</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span>Easy questions</span>
+                    <span className="font-mono">10/10 · 100%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span>Medium questions</span>
+                    <span className="font-mono">8/10 · 80%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span>Hard questions</span>
+                    <span className="font-mono">7/10 · 70%</span>
+                  </div>
+                </div>
+              </div>
+
+              {selectedResult.score >= 90 && (
+                <div className="flex items-center gap-2 p-3 bg-muted/50 border border-border rounded-md">
+                  <Award className="w-4 h-4 shrink-0" />
+                  <p className="text-xs">
+                    Excellent! A certificate has been added to your collection.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Link href="/certificates" className="flex-1">
+                  <Button variant="outline" className="w-full">
+                    View Certificate
+                  </Button>
+                </Link>
+                <Button onClick={() => setSelectedResult(null)} className="flex-1">
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

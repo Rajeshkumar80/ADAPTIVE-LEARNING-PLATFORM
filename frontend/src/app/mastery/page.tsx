@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,7 +60,9 @@ export default function MasteryPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Focus on Memory Management and Dynamic Programming — they have high forgetting probability and weak mastery. Spend 30 mins on each daily.
                   </p>
-                  <Button size="sm">Start Review Session</Button>
+                  <Link href="/ai-tutor">
+                    <Button size="sm">Start Review Session</Button>
+                  </Link>
                 </div>
               </div>
             </CardContent>
@@ -90,7 +93,9 @@ export default function MasteryPage() {
                       <Badge variant="outline" className={`text-[10px] ${statusConfig[topic.status as keyof typeof statusConfig]}`}>
                         {topic.status}
                       </Badge>
-                      <Button size="sm" variant="outline">Review</Button>
+                      <Link href="/ai-tutor">
+                        <Button size="sm" variant="outline">Review</Button>
+                      </Link>
                     </div>
                   </div>
                 ))}

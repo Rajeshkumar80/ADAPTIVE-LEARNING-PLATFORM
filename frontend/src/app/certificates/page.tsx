@@ -10,6 +10,53 @@ import { mockDB, Certificate } from '@/lib/mockdb';
 import { useAuth } from '@/contexts/AuthContext';
 import { Award, Download, Share2 } from 'lucide-react';
 
+function downloadCertificate(cert: Certificate) {
+  const content = `CERTIFICATE OF ${cert.type.toUpperCase()}
+
+This certifies that
+${(typeof window !== 'undefined' && JSON.parse(localStorage.getItem('adaptlearn_current_user') || '{}').full_name) || 'Student'}
+
+has successfully completed
+${cert.title}
+
+Subject: ${cert.subject}
+Score: ${cert.score}%
+Issued: ${new Date(cert.issued_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+
+— AdaptLearn 2026 —`;
+
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${cert.title.replace(/\s+/g, '_')}_Certificate.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function shareCertificate(cert: Certificate) {
+  const text = `I just earned my "${cert.title}" certificate on AdaptLearn with a score of ${cert.score}%! 🎓`;
+  if (navigator.share) {
+    navigator.share({
+      title: cert.title,
+      text,
+      url: window.location.href,
+    }).catch(() => copyToClipboard(text));
+  } else {
+    copyToClipboard(text);
+  }
+}
+
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Certificate details copied to clipboard');
+  }).catch(() => {
+    alert(`Share this:\n\n${text}`);
+  });
+}
+
 export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [selected, setSelected] = useState<Certificate | null>(null);
@@ -101,11 +148,11 @@ export default function CertificatesPage() {
                 {new Date(selected.issued_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
               <div className="flex gap-2 justify-center">
-                <Button>
+                <Button onClick={() => downloadCertificate(selected)}>
                   <Download className="w-3.5 h-3.5" />
                   Download
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => shareCertificate(selected)}>
                   <Share2 className="w-3.5 h-3.5" />
                   Share
                 </Button>
