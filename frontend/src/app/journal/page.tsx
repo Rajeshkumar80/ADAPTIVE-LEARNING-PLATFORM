@@ -1,372 +1,529 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Star, Filter, MoreHorizontal, X, Trash2 } from 'lucide-react';
+import {
+  CodeJournalBlock,
+  CodeJournalProject,
+  CONTENT_TYPES,
+} from '@/lib/codejournal/types';
+import {
+  loadProjects,
+  saveProjects,
+  getActiveProjectId,
+  setActiveProjectId,
+  createProject,
+  newBlockId,
+} from '@/lib/codejournal/storage';
+import { detectContentType, stripInlineTag } from '@/lib/codejournal/detect';
+import { enrichBlock, synthesize } from '@/lib/codejournal/ai';
+import { seedProject } from '@/lib/codejournal/seed';
+import {
+  exportCodeJournal,
+  exportMarkdown,
+  exportKnowledgeDoc,
+  downloadFile,
+} from '@/lib/codejournal/export';
+import { ProjectsBar } from '@/components/codejournal/ProjectsBar';
+import { TilingArea } from '@/components/codejournal/TilingArea';
+import { KanbanArea } from '@/components/codejournal/KanbanArea';
+import { GraphArea } from '@/components/codejournal/GraphArea';
+import { EntryInput } from '@/components/codejournal/EntryInput';
+import { SynthesisPanel } from '@/components/codejournal/SynthesisPanel';
+import { BlockDetail } from '@/components/codejournal/BlockDetail';
+import {
+  LayoutGrid,
+  Columns3,
+  Network,
+  Sparkles,
+  Download,
+  Upload,
+  Search,
+  X,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface Entry {
-  id: number;
-  title: string;
-  language: string;
-  tags: string[];
-  date: string;
-  starred: boolean;
-  code: string;
-}
+type View = 'tiling' | 'kanban' | 'graph';
 
-const STORAGE_KEY = 'adaptlearn_journal_entries';
-
-const defaultEntries: Entry[] = [
-  { id: 1, title: 'Binary Search Implementation', language: 'Python', tags: ['algorithm', 'searching'], date: 'May 15', starred: true, code: 'def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1' },
-  { id: 2, title: 'Quick Sort Algorithm', language: 'JavaScript', tags: ['algorithm', 'sorting'], date: 'May 14', starred: false, code: 'function quickSort(arr) {\n  if (arr.length <= 1) return arr;\n  const pivot = arr[0];\n  const left = arr.slice(1).filter(x => x < pivot);\n  const right = arr.slice(1).filter(x => x >= pivot);\n  return [...quickSort(left), pivot, ...quickSort(right)];\n}' },
-  { id: 3, title: 'Linked List Operations', language: 'C++', tags: ['data-structure'], date: 'May 13', starred: true, code: 'class Node {\n  public:\n    int data;\n    Node* next;\n    Node(int val) : data(val), next(nullptr) {}\n};' },
-  { id: 4, title: 'Database Connection Pool', language: 'Java', tags: ['database'], date: 'May 12', starred: false, code: 'public class ConnectionPool {\n    private static final int MAX = 10;\n    private List<Connection> pool;\n}' },
-  { id: 5, title: 'React Custom Hooks', language: 'TypeScript', tags: ['react', 'hooks'], date: 'May 11', starred: true, code: 'export function useDebounce<T>(value: T, delay: number): T {\n  const [debouncedValue, setDebouncedValue] = useState(value);\n  useEffect(() => {\n    const handler = setTimeout(() => setDebouncedValue(value), delay);\n    return () => clearTimeout(handler);\n  }, [value, delay]);\n  return debouncedValue;\n}' },
-];
-
-export default function JournalPage() {
+export default function CodeJournalPage() {
+  const [projects, setProjects] = useState<CodeJournalProject[]>([]);
+  const [activeId, setActiveId] = useState<string>('');
+  const [view, setView] = useState<View>('tiling');
+  const [showSynthesis, setShowSynthesis] = useState(false);
+  const [synthesisLoading, setSynthesisLoading] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<CodeJournalBlock | null>(null);
   const [search, setSearch] = useState('');
-  const [entries, setEntries] = useState<Entry[]>(defaultEntries);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Entry | null>(null);
-  const [viewing, setViewing] = useState<Entry | null>(null);
-  const [showOnlyStarred, setShowOnlyStarred] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
-  // Load from localStorage on mount
+  // Load projects on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          setEntries(JSON.parse(saved));
-        } catch {}
-      }
+    const loaded = loadProjects();
+    if (loaded.length === 0) {
+      const seeded = seedProject();
+      setProjects([seeded]);
+      setActiveId(seeded.id);
+      saveProjects([seeded]);
+      setActiveProjectId(seeded.id);
+    } else {
+      setProjects(loaded);
+      const cachedId = getActiveProjectId();
+      const validId = cachedId && loaded.find(p => p.id === cachedId) ? cachedId : loaded[0].id;
+      setActiveId(validId);
+      setActiveProjectId(validId);
     }
+    setHydrated(true);
   }, []);
 
-  // Save to localStorage on change
+  // Persist on change (after hydration)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    if (hydrated && projects.length > 0) {
+      saveProjects(projects);
     }
-  }, [entries]);
+  }, [projects, hydrated]);
 
-  const toggleStar = (id: number) => {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, starred: !e.starred } : e));
-  };
+  const activeProject = useMemo(
+    () => projects.find(p => p.id === activeId),
+    [projects, activeId]
+  );
 
-  const deleteEntry = (id: number) => {
-    setEntries(prev => prev.filter(e => e.id !== id));
-    setViewing(null);
-    setEditing(null);
-  };
+  const updateActiveProject = useCallback(
+    (updater: (p: CodeJournalProject) => CodeJournalProject) => {
+      setProjects(prev =>
+        prev.map(p => (p.id === activeId ? { ...updater(p), updatedAt: Date.now() } : p))
+      );
+    },
+    [activeId]
+  );
 
-  const saveEntry = (data: Partial<Entry>) => {
-    if (editing) {
-      setEntries(prev => prev.map(e => e.id === editing.id ? { ...e, ...data } : e));
-    } else {
-      const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const newEntry: Entry = {
-        id: Date.now(),
-        title: data.title || 'Untitled',
-        language: data.language || 'Python',
-        tags: data.tags || [],
-        date: today,
-        starred: false,
-        code: data.code || '',
+  // ===== Add entry =====
+  const addEntry = useCallback(
+    async (text: string) => {
+      if (!activeProject) return;
+
+      const detected = detectContentType(text);
+      const cleanText = stripInlineTag(text);
+      const blockId = newBlockId();
+
+      const initialBlock: CodeJournalBlock = {
+        id: blockId,
+        text: cleanText,
+        timestamp: Date.now(),
+        contentType: detected.type,
+        category: 'General',
+        isEnriching: true,
       };
-      setEntries(prev => [newEntry, ...prev]);
+
+      // Optimistic add
+      updateActiveProject(p => ({ ...p, blocks: [initialBlock, ...p.blocks] }));
+
+      // AI enrich (async, may use backend or fall back)
+      try {
+        const existingBlocks = activeProject.blocks;
+        const enriched = await enrichBlock(text, existingBlocks);
+
+        updateActiveProject(p => ({
+          ...p,
+          blocks: p.blocks.map(b =>
+            b.id === blockId ? { ...b, ...enriched, isEnriching: false } : b
+          ),
+        }));
+      } catch (e) {
+        updateActiveProject(p => ({
+          ...p,
+          blocks: p.blocks.map(b =>
+            b.id === blockId ? { ...b, isEnriching: false, isError: true } : b
+          ),
+        }));
+      }
+    },
+    [activeProject, updateActiveProject]
+  );
+
+  // ===== Delete =====
+  const deleteBlock = useCallback(
+    (id: string) => {
+      updateActiveProject(p => ({ ...p, blocks: p.blocks.filter(b => b.id !== id) }));
+      if (selectedBlock?.id === id) setSelectedBlock(null);
+    },
+    [updateActiveProject, selectedBlock]
+  );
+
+  const togglePin = useCallback(
+    (id: string) => {
+      updateActiveProject(p => ({
+        ...p,
+        blocks: p.blocks.map(b => (b.id === id ? { ...b, isPinned: !b.isPinned } : b)),
+      }));
+    },
+    [updateActiveProject]
+  );
+
+  const toggleCategory = useCallback(
+    (cat: string) => {
+      updateActiveProject(p => ({
+        ...p,
+        collapsedCategories: p.collapsedCategories.includes(cat)
+          ? p.collapsedCategories.filter(c => c !== cat)
+          : [...p.collapsedCategories, cat],
+      }));
+    },
+    [updateActiveProject]
+  );
+
+  // ===== Synthesis =====
+  const runSynthesis = useCallback(async () => {
+    if (!activeProject) return;
+    setSynthesisLoading(true);
+    try {
+      const result = await synthesize(activeProject.blocks);
+      updateActiveProject(p => ({ ...p, synthesis: result }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSynthesisLoading(false);
     }
-    setShowForm(false);
-    setEditing(null);
+  }, [activeProject, updateActiveProject]);
+
+  // ===== Project management =====
+  const switchProject = (id: string) => {
+    setActiveId(id);
+    setActiveProjectId(id);
+    setSelectedBlock(null);
   };
 
-  const filtered = entries
-    .filter(e =>
-      search === '' ||
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      e.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
-    )
-    .filter(e => !showOnlyStarred || e.starred);
+  const createNewProject = () => {
+    const name = prompt('Project name:', `Project ${projects.length + 1}`);
+    if (!name) return;
+    const project = createProject(name);
+    setProjects(prev => [...prev, project]);
+    switchProject(project.id);
+  };
 
-  const languagesCount = new Set(entries.map(e => e.language)).size;
+  const renameProject = (id: string, name: string) => {
+    setProjects(prev => prev.map(p => (p.id === id ? { ...p, name } : p)));
+  };
+
+  const deleteProject = (id: string) => {
+    if (projects.length === 1) return;
+    const remaining = projects.filter(p => p.id !== id);
+    setProjects(remaining);
+    if (activeId === id) {
+      switchProject(remaining[0].id);
+    }
+  };
+
+  // Re-enrich all entries in the current project
+  const reEnrichAll = useCallback(async () => {
+    if (!activeProject) return;
+    const blocksToRedo = [...activeProject.blocks];
+
+    for (const block of blocksToRedo) {
+      const enriched = await enrichBlock(block.text, activeProject.blocks.filter(b => b.id !== block.id));
+      updateActiveProject(p => ({
+        ...p,
+        blocks: p.blocks.map(b =>
+          b.id === block.id ? { ...b, ...enriched, isEnriching: false } : b
+        ),
+      }));
+    }
+  }, [activeProject, updateActiveProject]);
+
+  const loadDemoData = () => {
+    if (!confirm('Replace current project with sample journal data? This cannot be undone.')) return;
+    const seeded = seedProject();
+    seeded.id = activeId;
+    seeded.name = activeProject?.name || 'Sample Journal';
+    setProjects(prev => prev.map(p => (p.id === activeId ? seeded : p)));
+  };
+
+  // ===== Export =====
+  const handleExport = (format: 'codejournal' | 'markdown' | 'knowledge') => {
+    if (!activeProject) return;
+    const filename = activeProject.name.replace(/\s+/g, '_');
+    if (format === 'codejournal') {
+      downloadFile(exportCodeJournal(activeProject), `${filename}.codejournal`, 'application/json');
+    } else if (format === 'markdown') {
+      downloadFile(exportMarkdown(activeProject), `${filename}.md`, 'text/markdown');
+    } else {
+      downloadFile(exportKnowledgeDoc(activeProject), `${filename}_knowledge.md`, 'text/markdown');
+    }
+  };
+
+  // ===== Import =====
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.codejournal,.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result as string);
+          if (data.project) {
+            const importedProject: CodeJournalProject = {
+              ...data.project,
+              id: data.project.id + '_imported',
+              name: `${data.project.name} (imported)`,
+            };
+            setProjects(prev => [...prev, importedProject]);
+            switchProject(importedProject.id);
+          }
+        } catch (err) {
+          alert('Invalid file format');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  // ===== Search filter =====
+  const filteredBlocks = useMemo(() => {
+    if (!activeProject) return [];
+    if (!search.trim()) return activeProject.blocks;
+    const q = search.toLowerCase();
+    return activeProject.blocks.filter(
+      b =>
+        b.text.toLowerCase().includes(q) ||
+        b.category.toLowerCase().includes(q) ||
+        (b.annotation && b.annotation.toLowerCase().includes(q))
+    );
+  }, [activeProject, search]);
+
+  // ===== Stats =====
+  const stats = useMemo(() => {
+    if (!activeProject) return { total: 0, byType: {} as Record<string, number> };
+    const byType: Record<string, number> = {};
+    for (const b of activeProject.blocks) {
+      byType[b.contentType] = (byType[b.contentType] || 0) + 1;
+    }
+    return { total: activeProject.blocks.length, byType };
+  }, [activeProject]);
+
+  // Related blocks for detail
+  const relatedBlocks = useMemo(() => {
+    if (!selectedBlock || !activeProject) return [];
+    const ids = new Set(selectedBlock.influencedBy || []);
+    // Also include blocks that point to this one
+    for (const b of activeProject.blocks) {
+      if (b.influencedBy?.includes(selectedBlock.id)) ids.add(b.id);
+    }
+    return activeProject.blocks.filter(b => ids.has(b.id));
+  }, [selectedBlock, activeProject]);
+
+  if (!hydrated || !activeProject) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
-          <div className="flex items-end justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Code Journal</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Document your coding journey</p>
-            </div>
-            <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }}>
-              <Plus className="w-3.5 h-3.5" />
-              New entry
-            </Button>
+
+        {/* Projects bar */}
+        <ProjectsBar
+          projects={projects}
+          activeId={activeId}
+          onSwitch={switchProject}
+          onCreate={createNewProject}
+          onRename={renameProject}
+          onDelete={deleteProject}
+        />
+
+        {/* Toolbar */}
+        <div className="border-b border-border bg-background px-6 py-3 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
+            {[
+              { v: 'tiling' as View, icon: LayoutGrid, label: 'Tiling' },
+              { v: 'kanban' as View, icon: Columns3, label: 'Kanban' },
+              { v: 'graph' as View, icon: Network, label: 'Graph' },
+            ].map(({ v, icon: Icon, label }) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors',
+                  view === v
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:bg-muted'
+                )}
+              >
+                <Icon className="w-3 h-3" />
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Total entries</p><p className="text-2xl font-semibold tracking-tight">{entries.length}</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Languages</p><p className="text-2xl font-semibold tracking-tight">{languagesCount}</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Starred</p><p className="text-2xl font-semibold tracking-tight">{entries.filter(e => e.starred).length}</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Showing</p><p className="text-2xl font-semibold tracking-tight">{filtered.length}</p></CardContent></Card>
-          </div>
-
-          {/* Filter */}
-          <div className="flex items-center gap-2">
+          {/* Search toggle */}
+          {showSearch ? (
             <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search entries..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-8 pl-9 pr-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors"
+                placeholder="Search entries..."
+                autoFocus
+                className="w-full h-7 pl-8 pr-7 border border-border rounded text-xs focus:outline-none focus:border-foreground"
               />
+              <button
+                onClick={() => { setSearch(''); setShowSearch(false); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-muted rounded"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </div>
+          ) : (
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowSearch(true)}>
+              <Search className="w-3 h-3" />
+              Search
+            </Button>
+          )}
+
+          {/* Stats summary */}
+          <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground ml-2">
+            <span>{stats.total} entries</span>
+            {Object.entries(stats.byType).slice(0, 4).map(([type, count]) => {
+              const cfg = CONTENT_TYPES[type as keyof typeof CONTENT_TYPES];
+              return (
+                <span key={type} className="flex items-center gap-1">
+                  <span>{cfg.icon}</span>
+                  <span className="font-mono">{count}</span>
+                </span>
+              );
+            })}
+          </div>
+
+          <div className="ml-auto flex items-center gap-1">
             <Button
-              variant={showOnlyStarred ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              onClick={() => setShowOnlyStarred(!showOnlyStarred)}
+              className="h-7 text-xs"
+              onClick={reEnrichAll}
+              title="Re-classify all entries with the latest AI"
             >
-              <Star className="w-3 h-3" />
-              {showOnlyStarred ? 'Starred only' : 'All'}
+              <Sparkles className="w-3 h-3" />
+              Re-classify
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setShowSynthesis(true)}
+            >
+              <Sparkles className="w-3 h-3" />
+              Synthesize
+            </Button>
+
+            {/* Export dropdown via simple button group */}
+            <div className="relative group">
+              <Button variant="outline" size="sm" className="h-7 text-xs">
+                <Download className="w-3 h-3" />
+                Export
+              </Button>
+              <div className="absolute right-0 top-8 bg-background border border-border rounded-md shadow-lg w-48 hidden group-hover:block z-30">
+                <button
+                  onClick={() => handleExport('codejournal')}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted"
+                >
+                  .codejournal (full backup)
+                </button>
+                <button
+                  onClick={() => handleExport('markdown')}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted"
+                >
+                  Markdown
+                </button>
+                <button
+                  onClick={() => handleExport('knowledge')}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted"
+                >
+                  Knowledge doc
+                </button>
+                <div className="border-t border-border" />
+                <button
+                  onClick={loadDemoData}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-muted-foreground"
+                >
+                  Load sample data
+                </button>
+              </div>
+            </div>
+
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleImport}>
+              <Upload className="w-3 h-3" />
+              Import
             </Button>
           </div>
-
-          {/* Entries */}
-          <Card>
-            <CardContent className="p-0">
-              {filtered.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-sm text-muted-foreground mb-4">No entries found</p>
-                  <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }}>
-                    <Plus className="w-3.5 h-3.5" />
-                    Create your first entry
-                  </Button>
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {filtered.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="group flex items-center px-6 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => setViewing(entry)}
-                    >
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleStar(entry.id); }}
-                        className="mr-3"
-                      >
-                        <Star className={`w-4 h-4 ${entry.starred ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'}`} />
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-medium truncate">{entry.title}</p>
-                          <Badge variant="outline" className="text-[10px]">{entry.language}</Badge>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {entry.tags.map((tag) => (
-                            <span key={tag}>#{tag}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <span className="text-xs text-muted-foreground ml-4 w-16 text-right">{entry.date}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-
-      {/* New/Edit Entry Form */}
-      {showForm && (
-        <EntryForm
-          entry={editing}
-          onSave={saveEntry}
-          onCancel={() => { setShowForm(false); setEditing(null); }}
-        />
-      )}
-
-      {/* View Entry */}
-      {viewing && !showForm && (
-        <EntryView
-          entry={viewing}
-          onClose={() => setViewing(null)}
-          onEdit={() => { setEditing(viewing); setViewing(null); setShowForm(true); }}
-          onDelete={() => deleteEntry(viewing.id)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ============= Entry Form =============
-function EntryForm({
-  entry,
-  onSave,
-  onCancel,
-}: {
-  entry: Entry | null;
-  onSave: (data: Partial<Entry>) => void;
-  onCancel: () => void;
-}) {
-  const [title, setTitle] = useState(entry?.title || '');
-  const [language, setLanguage] = useState(entry?.language || 'Python');
-  const [tagsInput, setTagsInput] = useState(entry?.tags.join(', ') || '');
-  const [code, setCode] = useState(entry?.code || '');
-
-  const handleSave = () => {
-    if (!title.trim()) return;
-    onSave({
-      title: title.trim(),
-      language,
-      tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
-      code,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onCancel}>
-      <div
-        className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-base font-semibold tracking-tight">
-            {entry ? 'Edit entry' : 'New entry'}
-          </h2>
-          <button onClick={onCancel} className="p-1 hover:bg-muted rounded">
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div>
-            <label className="text-xs font-medium block mb-1.5">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Binary Search Implementation"
-              className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-              autoFocus
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1.5">Language</label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full h-9 px-3 border border-border rounded-md text-sm bg-background"
-              >
-                <option>Python</option>
-                <option>JavaScript</option>
-                <option>TypeScript</option>
-                <option>Java</option>
-                <option>C++</option>
-                <option>C</option>
-                <option>Go</option>
-                <option>Rust</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1.5">Tags (comma-separated)</label>
-              <input
-                type="text"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="algorithm, sorting"
-                className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
+        {/* Content area */}
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto">
+            {view === 'tiling' && (
+              <TilingArea
+                blocks={filteredBlocks}
+                collapsedCategories={activeProject.collapsedCategories}
+                onToggleCategory={toggleCategory}
+                onDelete={deleteBlock}
+                onTogglePin={togglePin}
+                onBlockClick={setSelectedBlock}
               />
-            </div>
+            )}
+            {view === 'kanban' && (
+              <KanbanArea
+                blocks={filteredBlocks}
+                onDelete={deleteBlock}
+                onTogglePin={togglePin}
+                onBlockClick={setSelectedBlock}
+              />
+            )}
+            {view === 'graph' && (
+              <GraphArea blocks={filteredBlocks} onBlockClick={setSelectedBlock} />
+            )}
           </div>
+        </main>
 
-          <div>
-            <label className="text-xs font-medium block mb-1.5">Code</label>
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              rows={12}
-              placeholder="# Your code here"
-              className="w-full px-3 py-2 border border-border rounded-md text-xs font-mono focus:outline-none focus:border-foreground resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={handleSave}>
-            {entry ? 'Save changes' : 'Create entry'}
-          </Button>
-        </div>
+        {/* Entry input */}
+        <EntryInput onSubmit={addEntry} />
       </div>
-    </div>
-  );
-}
 
-// ============= Entry View =============
-function EntryView({
-  entry,
-  onClose,
-  onEdit,
-  onDelete,
-}: {
-  entry: Entry;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
-      <div
-        className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-border flex items-start justify-between">
-          <div>
-            <h2 className="text-base font-semibold tracking-tight">{entry.title}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-[10px]">{entry.language}</Badge>
-              {entry.tags.map(t => (
-                <span key={t} className="text-xs text-muted-foreground">#{t}</span>
-              ))}
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-muted rounded">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Synthesis panel */}
+      {showSynthesis && (
+        <SynthesisPanel
+          synthesis={activeProject.synthesis || null}
+          loading={synthesisLoading}
+          blockCount={activeProject.blocks.filter(b => !b.isEnriching && !b.isError).length}
+          onSynthesize={runSynthesis}
+          onClose={() => setShowSynthesis(false)}
+        />
+      )}
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <pre className="bg-muted/50 border border-border rounded-md p-4 text-xs font-mono overflow-x-auto whitespace-pre">
-            {entry.code}
-          </pre>
-        </div>
-
-        <div className="px-6 py-4 border-t border-border flex justify-between">
-          <Button variant="outline" onClick={onDelete} className="text-red-600 hover:bg-red-50">
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>Close</Button>
-            <Button onClick={onEdit}>Edit</Button>
-          </div>
-        </div>
-      </div>
+      {/* Block detail */}
+      {selectedBlock && (
+        <BlockDetail
+          block={selectedBlock}
+          relatedBlocks={relatedBlocks}
+          onClose={() => setSelectedBlock(null)}
+          onDelete={deleteBlock}
+          onTogglePin={togglePin}
+          onSelectRelated={setSelectedBlock}
+        />
+      )}
     </div>
   );
 }
