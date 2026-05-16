@@ -16,6 +16,8 @@ import {
   SECTIONS,
   SEMESTERS,
   getStudentStats,
+  buildUSN,
+  nextUSNSequence,
   type Branch,
   type Section,
   type StudentRecord,
@@ -578,7 +580,7 @@ function AddStudentForm({
     branch: defaults.branch,
     section: defaults.section,
     semester: defaults.semester,
-    admissionYear: 2021,
+    admissionYear: 2023,
     cgpa: 0,
     attendance: 100,
 
@@ -602,18 +604,10 @@ function AddStudentForm({
     }
   };
 
-  // Auto-generate USN when branch/admission year changes (if user hasn't typed one)
+  // Auto-generate USN like 1GD23CS001
   const generateUSN = () => {
-    const branchPrefix: Record<Branch, string> = {
-      CSE: 'CS', ISE: 'IS', ECE: 'EC', EEE: 'EE',
-      AERO: 'AE', DS: 'DS', ME: 'ME',
-    };
-    const yearShort = String(form.admissionYear).slice(-2);
-    const existing = existingStudents
-      .filter(s => s.branch === form.branch && s.usn.startsWith(`1MS${yearShort}${branchPrefix[form.branch]}`))
-      .map(s => parseInt(s.usn.slice(-3)) || 0);
-    const nextNum = (existing.length ? Math.max(...existing) : 0) + 1;
-    return `1MS${yearShort}${branchPrefix[form.branch]}${String(nextNum).padStart(3, '0')}`;
+    const seq = nextUSNSequence(existingStudents, form.branch, form.admissionYear);
+    return buildUSN(form.branch, form.admissionYear, seq);
   };
 
   const validateStep = (s: number): boolean => {
@@ -627,7 +621,7 @@ function AddStudentForm({
     }
     if (s === 2) {
       if (!form.usn.trim()) errs.usn = 'USN is required';
-      else if (!/^1MS\d{2}[A-Z]{2}\d{3}$/.test(form.usn)) errs.usn = 'Format: 1MS21CS001';
+      else if (!/^1GD\d{2}[A-Z]{2}\d{3,4}$/.test(form.usn)) errs.usn = 'Format: 1GD23CS001';
       if (form.cgpa < 0 || form.cgpa > 10) errs.cgpa = 'CGPA must be 0-10';
       if (form.attendance < 0 || form.attendance > 100) errs.attendance = 'Attendance must be 0-100';
     }
@@ -790,13 +784,13 @@ function AddStudentForm({
             <>
               <p className="text-xs text-muted-foreground -mt-2 mb-2">Academic details</p>
 
-              <Field label="USN" required error={errors.usn} hint="Format: 1MS21CS001">
+              <Field label="USN" required error={errors.usn} hint="Format: 1GD23CS001 (1GD + year + branch + number)">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={form.usn}
                     onChange={(e) => updateField('usn', e.target.value.toUpperCase())}
-                    placeholder="1MS21CS001"
+                    placeholder="1GD23CS001"
                     className="flex-1 h-9 px-3 border border-border rounded-md text-sm font-mono uppercase focus:outline-none focus:border-foreground"
                   />
                   <Button

@@ -33,7 +33,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     )
 
     if role == "student":
-        user.usn = payload.usn or f"1MS21CS{user.id or 'NEW'}"
+        user.usn = payload.usn or f"1GD23CS{user.id or 'NEW'}"
         user.semester = 6
         user.branch = "Computer Science"
         user.section = "A"

@@ -221,7 +221,7 @@ export default function RegisterPage() {
                   name="usn"
                   value={formData.usn}
                   onChange={handleChange}
-                  placeholder="1MS21CS001"
+                  placeholder="1GD23CS001"
                   className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors"
                 />
               </div>

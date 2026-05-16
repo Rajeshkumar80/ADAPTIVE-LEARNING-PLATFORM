@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 
 export default function AntiCheatPage() {
   const flags = [
-    { id: 1, severity: 'critical', test: 'DSA Mid-Term', student: '#1MS21CS045', violation: 'Multiple tab switches detected', count: 5, time: '5m ago' },
-    { id: 2, severity: 'warning', test: 'OS Assignment 2', student: '#1MS21CS089', violation: 'Copy-paste blocked', count: 2, time: '15m ago' },
-    { id: 3, severity: 'critical', test: 'CN Lab Test', student: '#1MS21CS112', violation: 'Browser dev tools opened', count: 1, time: '30m ago' },
-    { id: 4, severity: 'info', test: 'DBMS Quiz 3', student: '#1MS21CS067', violation: 'Right-click disabled', count: 1, time: '1h ago' },
-    { id: 5, severity: 'warning', test: 'DSA Mid-Term', student: '#1MS21CS023', violation: 'Multiple tab switches', count: 3, time: '2h ago' },
+    { id: 1, severity: 'critical', test: 'DSA Mid-Term', student: '#1GD23CS045', violation: 'Multiple tab switches detected', count: 5, time: '5m ago' },
+    { id: 2, severity: 'warning', test: 'OS Assignment 2', student: '#1GD23CS089', violation: 'Copy-paste blocked', count: 2, time: '15m ago' },
+    { id: 3, severity: 'critical', test: 'CN Lab Test', student: '#1GD23CS112', violation: 'Browser dev tools opened', count: 1, time: '30m ago' },
+    { id: 4, severity: 'info', test: 'DBMS Quiz 3', student: '#1GD23CS067', violation: 'Right-click disabled', count: 1, time: '1h ago' },
+    { id: 5, severity: 'warning', test: 'DSA Mid-Term', student: '#1GD23CS023', violation: 'Multiple tab switches', count: 3, time: '2h ago' },
   ];
 
   return (

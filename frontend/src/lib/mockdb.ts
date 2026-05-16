@@ -61,7 +61,7 @@ const seedUsers: User[] = [
     password: 'student123',
     full_name: 'Rajesh Kumar',
     role: 'student',
-    usn: '1MS21CS001',
+    usn: '1GD23CS001',
     semester: 6,
     branch: 'Computer Science',
     section: 'A',
@@ -186,7 +186,7 @@ export const mockDB = {
       role,
       created_at: new Date().toISOString(),
       ...(role === 'student' ? {
-        usn: data.usn || `1MS21CS${Math.floor(Math.random() * 1000)}`,
+        usn: data.usn || `1GD23CS${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`,
         semester: 6,
         branch: 'Computer Science',
         section: 'A',

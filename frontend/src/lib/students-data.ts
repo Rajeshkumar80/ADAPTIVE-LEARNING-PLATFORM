@@ -73,7 +73,13 @@ function generateStudents(): StudentRecord[] {
         const cgpa = 6.5 + rand() * 3.5;
         const attendance = 65 + Math.floor(rand() * 35);
         const isActive = rand() > 0.15;
-        const usn = `1MS${21}${branch.code === 'CSE' ? 'CS' : branch.code === 'ISE' ? 'IS' : branch.code === 'ECE' ? 'EC' : branch.code === 'EEE' ? 'EE' : branch.code === 'AERO' ? 'AE' : branch.code === 'DS' ? 'DS' : 'ME'}${String(counter).padStart(3, '0')}`;
+        const branchCode = branch.code === 'CSE' ? 'CS' :
+                          branch.code === 'ISE' ? 'IS' :
+                          branch.code === 'ECE' ? 'EC' :
+                          branch.code === 'EEE' ? 'EE' :
+                          branch.code === 'AERO' ? 'AE' :
+                          branch.code === 'DS' ? 'DS' : 'ME';
+        const usn = `1GD23${branchCode}${String(counter).padStart(3, '0')}`;
 
         students.push({
           id: `std_${counter}`,
@@ -101,6 +107,39 @@ function generateStudents(): StudentRecord[] {
 }
 
 export const ALL_STUDENTS = generateStudents();
+
+// Branch code mapping for USN generation
+export const BRANCH_USN_CODE: Record<Branch, string> = {
+  CSE: 'CS',
+  ISE: 'IS',
+  ECE: 'EC',
+  EEE: 'EE',
+  AERO: 'AE',
+  DS: 'DS',
+  ME: 'ME',
+};
+
+// Build a USN like 1GD23CS001
+export function buildUSN(branch: Branch, admissionYear: number, sequence: number): string {
+  const yearShort = String(admissionYear).slice(-2);
+  const code = BRANCH_USN_CODE[branch];
+  return `1GD${yearShort}${code}${String(sequence).padStart(3, '0')}`;
+}
+
+// Find next available USN sequence for a branch + year
+export function nextUSNSequence(
+  students: StudentRecord[],
+  branch: Branch,
+  admissionYear: number
+): number {
+  const yearShort = String(admissionYear).slice(-2);
+  const code = BRANCH_USN_CODE[branch];
+  const prefix = `1GD${yearShort}${code}`;
+  const used = students
+    .filter(s => s.usn.startsWith(prefix))
+    .map(s => parseInt(s.usn.slice(prefix.length)) || 0);
+  return (used.length ? Math.max(...used) : 0) + 1;
+}
 
 export function filterStudents(filters: {
   branch?: Branch | 'all';

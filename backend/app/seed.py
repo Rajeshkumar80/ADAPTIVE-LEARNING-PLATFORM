@@ -25,7 +25,7 @@ def seed_database(db: Session):
         full_name="Rajesh Kumar",
         hashed_password=hash_password("student123"),
         role="student",
-        usn="1MS21CS001",
+        usn="1GD23CS001",
         semester=6,
         branch="Computer Science",
         section="A",

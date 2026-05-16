@@ -83,11 +83,11 @@ export default function AdminDashboard() {
   ];
 
   const topPerformers = [
-    { name: 'Aishwarya Iyer', usn: '1MS21CS024', branch: 'CSE', section: 'A', mastery: 96 },
-    { name: 'Rohan Kumar', usn: '1MS21CS032', branch: 'CSE', section: 'B', mastery: 94 },
-    { name: 'Priya Reddy', usn: '1MS21IS014', branch: 'ISE', section: 'A', mastery: 93 },
-    { name: 'Karthik Pai', usn: '1MS21EC008', branch: 'ECE', section: 'A', mastery: 92 },
-    { name: 'Sneha Nair', usn: '1MS21DS003', branch: 'DS', section: 'A', mastery: 91 },
+    { name: 'Aishwarya Iyer', usn: '1GD23CS024', branch: 'CSE', section: 'A', mastery: 96 },
+    { name: 'Rohan Kumar', usn: '1GD23CS032', branch: 'CSE', section: 'B', mastery: 94 },
+    { name: 'Priya Reddy', usn: '1GD23IS014', branch: 'ISE', section: 'A', mastery: 93 },
+    { name: 'Karthik Pai', usn: '1GD23EC008', branch: 'ECE', section: 'A', mastery: 92 },
+    { name: 'Sneha Nair', usn: '1GD23DS003', branch: 'DS', section: 'A', mastery: 91 },
   ];
 
   const liveTests = [
