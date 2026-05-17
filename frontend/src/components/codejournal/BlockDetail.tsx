@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function BlockDetail({ block, relatedBlocks, onClose, onDelete, onTogglePin, onSelectRelated }: Props) {
-  const cfg = CONTENT_TYPES[block.contentType];
+  const cfg = CONTENT_TYPES[block.contentType] ?? CONTENT_TYPES['concept'];
   const Icon = cfg.Icon;
   const time = new Date(block.timestamp).toLocaleString();
 
@@ -76,7 +76,7 @@ export function BlockDetail({ block, relatedBlocks, onClose, onDelete, onToggleP
               </div>
               <div className="space-y-2">
                 {relatedBlocks.map(b => {
-                  const rcfg = CONTENT_TYPES[b.contentType];
+                  const rcfg = CONTENT_TYPES[b.contentType] ?? CONTENT_TYPES['concept'];
                   const RIcon = rcfg.Icon;
                   return (
                     <button

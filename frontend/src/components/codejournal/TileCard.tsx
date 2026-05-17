@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function TileCard({ block, onDelete, onTogglePin, onClick }: Props) {
-  const cfg = CONTENT_TYPES[block.contentType];
+  const cfg = CONTENT_TYPES[block.contentType] ?? CONTENT_TYPES['concept'];
   const Icon = cfg.Icon;
   const time = new Date(block.timestamp);
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

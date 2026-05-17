@@ -81,3 +81,11 @@ token-optimizer-mcp/
 claude-token-optimizer/
 rtk-bin/
 rtk-windows.zip
+
+# AI agent / tool config directories — do NOT push
+.claude/
+.kiro/
+oh-my-claudecode/
+CLAUDE.md
+readmecodejurnol.md
+final_prd_new.docx

@@ -17,7 +17,7 @@ interface Props {
 
 export function TilingArea({
   blocks,
-  collapsedCategories,
+  collapsedCategories = [],
   onToggleCategory,
   onDelete,
   onTogglePin,
