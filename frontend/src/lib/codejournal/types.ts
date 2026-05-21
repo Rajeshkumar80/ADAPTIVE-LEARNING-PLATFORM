@@ -107,18 +107,18 @@ export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
   concept: {
     label: 'Concept',
     Icon: BookOpen,
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    iconColor: '#1d4ed8',
+    color: 'text-indigo-700',
+    bg: 'bg-indigo-50',
+    border: 'border-indigo-200',
+    iconColor: '#4f46e5',
   },
   confusion: {
     label: 'Confusion',
     Icon: HelpCircle,
-    color: 'text-amber-700',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    iconColor: '#b45309',
+    color: 'text-orange-700',
+    bg: 'bg-orange-50',
+    border: 'border-orange-200',
+    iconColor: '#ea580c',
   },
   edgecase: {
     label: 'Edge Case',
@@ -126,7 +126,7 @@ export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
     color: 'text-purple-700',
     bg: 'bg-purple-50',
     border: 'border-purple-200',
-    iconColor: '#7e22ce',
+    iconColor: '#9333ea',
   },
   synthesis: {
     label: 'Synthesis',
@@ -142,15 +142,15 @@ export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
     color: 'text-red-700',
     bg: 'bg-red-50',
     border: 'border-red-200',
-    iconColor: '#b91c1c',
+    iconColor: '#dc2626',
   },
   assignment: {
     label: 'Assignment',
     Icon: ListTodo,
-    color: 'text-emerald-700',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    iconColor: '#047857',
+    color: 'text-cyan-700',
+    bg: 'bg-cyan-50',
+    border: 'border-cyan-200',
+    iconColor: '#0891b2',
   },
   resolved: {
     label: 'Resolved',
@@ -158,7 +158,7 @@ export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
     color: 'text-green-700',
     bg: 'bg-green-50',
     border: 'border-green-200',
-    iconColor: '#15803d',
+    iconColor: '#16a34a',
   },
   definition: {
     label: 'Definition',
@@ -166,7 +166,7 @@ export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
     color: 'text-slate-700',
     bg: 'bg-slate-50',
     border: 'border-slate-200',
-    iconColor: '#334155',
+    iconColor: '#475569',
   },
   hypothesis: {
     label: 'Hypothesis',
@@ -174,7 +174,7 @@ export const CONTENT_TYPES: Record<ContentType, ContentTypeConfig> = {
     color: 'text-yellow-700',
     bg: 'bg-yellow-50',
     border: 'border-yellow-200',
-    iconColor: '#a16207',
+    iconColor: '#ca8a04',
   },
 };
 

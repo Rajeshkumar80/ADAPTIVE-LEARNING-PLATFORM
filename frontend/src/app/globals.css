@@ -25,6 +25,17 @@
   --warning: 38 92% 50%;
   --destructive: 0 72% 51%;
   --info: 217 91% 60%;
+
+  /* Content type accent colors (from CodeJournal reference) */
+  --type-concept: #4f46e5;
+  --type-confusion: #ea580c;
+  --type-edgecase: #9333ea;
+  --type-synthesis: #4338ca;
+  --type-conflict: #dc2626;
+  --type-assignment: #0891b2;
+  --type-resolved: #16a34a;
+  --type-definition: #475569;
+  --type-hypothesis: #ca8a04;
   
   /* Typography Scale */
   --font-display: var(--font-geist-sans);

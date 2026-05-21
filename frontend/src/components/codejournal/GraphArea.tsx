@@ -64,7 +64,7 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
     const nodes: GraphNode[] = blocks.map((b, i) => ({
       id:     b.id,
       block:  b,
-      radius: Math.max(22, Math.min(36, 22 + b.text.length / 25)),  // bigger nodes like reference
+      radius: 22,  // will be updated after degree calculation
       phase:  (i / blocks.length) * Math.PI * 2,
     }));
 
@@ -84,6 +84,13 @@ export function GraphArea({ blocks, onBlockClick }: Props) {
         }
       }
     }
+
+    // Size nodes by degree (like reference: R_MIN=22, R_MAX=34)
+    const maxDeg = Math.max(1, ...nodes.map(n => adjacency[n.id]?.size ?? 0));
+    nodes.forEach(n => {
+      const deg = adjacency[n.id]?.size ?? 0;
+      n.radius = 22 + (34 - 22) * Math.sqrt(deg / maxDeg);
+    });
 
     // ── SVG ───────────────────────────────────────────────────────────────
     const svg = d3.select(svgRef.current);
