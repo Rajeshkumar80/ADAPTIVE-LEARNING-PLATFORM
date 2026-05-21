@@ -1,537 +1,1231 @@
-'use client';
+"use client"
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  CodeJournalBlock, CodeJournalProject, CONTENT_TYPES, CONTENT_TYPE_LIST,
-} from '@/lib/codejournal/types';
-import {
-  loadProjects, saveProjects, getActiveProjectId, setActiveProjectId,
-  createProject, newBlockId,
-} from '@/lib/codejournal/storage';
-import { detectContentType, stripInlineTag } from '@/lib/codejournal/detect';
-import { enrichBlock, synthesize } from '@/lib/codejournal/ai';
-import { seedProject } from '@/lib/codejournal/seed';
-import { exportCodeJournal, exportMarkdown, exportKnowledgeDoc, downloadFile } from '@/lib/codejournal/export';
-import { Sidebar } from '@/components/sidebar';
-import { GraphArea } from '@/components/codejournal/GraphArea';
-import { TilingArea } from '@/components/codejournal/TilingArea';
-import { KanbanArea } from '@/components/codejournal/KanbanArea';
-import { SynthesisPanel } from '@/components/codejournal/SynthesisPanel';
-import {
-  BookOpen, Sparkles, Download, Upload, Search, X, Plus,
-  Pin, PinOff, Trash2, Link2, ChevronRight, Network,
-  Loader2, Send, LayoutGrid, Columns3,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { TilingArea } from "@/components/codejournal-v2/tiling-area"
+import { KanbanArea } from "@/components/codejournal-v2/kanban-area"
+import { GraphArea } from "@/components/codejournal-v2/graph-area"
+import { ProjectSidebar } from "@/components/codejournal-v2/project-sidebar"
+import { StatusBar } from "@/components/codejournal-v2/status-bar"
+import { GhostPanel, type GhostNote } from "@/components/codejournal-v2/ghost-panel"
+import { VimInput } from "@/components/codejournal-v2/vim-input"
+import { IntroModal } from "@/components/codejournal-v2/intro-modal"
+import type { TextBlock, ConfidenceHistoryEntry } from "@/components/codejournal-v2/tile-card"
+import type { ContentType } from "@/lib/codejournal-v2/content-types"
+import { INITIAL_PROJECTS } from "@/lib/codejournal-v2/initial-data"
+import { useAISettings } from "@/lib/codejournal-v2/ai-settings"
+import { enrichBlockClient } from "@/lib/codejournal-v2/ai-enrich"
+import { generateGhostClient } from "@/lib/codejournal-v2/ai-ghost"
+import { exportToMarkdown, downloadMarkdown, copyToClipboard, exportToKnowledgeDoc, downloadKnowledgeDoc, type KnowledgeDocData } from "@/lib/codejournal-v2/export"
+import { downloadNodepadFile, parseNodepadFile, CodeJournalParseError } from "@/lib/codejournal-v2/nodepad-format"
+import { detectContentType } from "@/lib/codejournal-v2/detect-content-type"
+import { generateSynthesisClient, type SynthesisResult } from "@/lib/codejournal-v2/ai-synthesize"
 
-type View = 'tiling' | 'kanban' | 'graph';
+function generateId() {
+  return Math.random().toString(36).substring(2, 10)
+}
 
-export default function CodeJournalPage() {
-  const [projects, setProjects]           = useState<CodeJournalProject[]>([]);
-  const [activeId, setActiveId]           = useState<string>('');
-  const [view, setView]                   = useState<View>('graph');
-  const [selectedBlock, setSelectedBlock] = useState<CodeJournalBlock | null>(null);
-  const [showSynthesis, setShowSynthesis] = useState(false);
-  const [synthesisLoading, setSynthesisLoading] = useState(false);
-  const [search, setSearch]               = useState('');
-  const [showSearch, setShowSearch]       = useState(false);
-  const [hydrated, setHydrated]           = useState(false);
-  const [entryText, setEntryText]         = useState('');
-  const [isAdding, setIsAdding]           = useState(false);
-
-  useEffect(() => {
-    const loaded = loadProjects();
-    if (loaded.length === 0) {
-      const seeded = seedProject();
-      setProjects([seeded]); setActiveId(seeded.id);
-      saveProjects([seeded]); setActiveProjectId(seeded.id);
-    } else {
-      setProjects(loaded);
-      const cachedId = getActiveProjectId();
-      const validId = cachedId && loaded.find(p => p.id === cachedId) ? cachedId : loaded[0].id;
-      setActiveId(validId); setActiveProjectId(validId);
+/**
+ * Pure function that propagates a +1 confidence boost to all concept nodes
+ * sharing the same category as the trigger. Used when a confusion is resolved
+ * or an assignment sub-task is completed.
+ */
+function propagateConfidenceBoost(
+  blocks: TextBlock[],
+  triggerCategory: string,
+  reason: "resolved_boost" | "assignment_boost"
+): TextBlock[] {
+  return blocks.map(block => {
+    if (
+      block.contentType !== "concept" ||
+      block.category !== triggerCategory
+    ) {
+      return block
     }
-    setHydrated(true);
-  }, []);
 
-  useEffect(() => { if (hydrated && projects.length > 0) saveProjects(projects); }, [projects, hydrated]);
+    const currentConfidence = block.confidence
+    // If confidence is null, set to 2 (baseline + boost) rather than null + 1
+    const newConfidence = currentConfidence == null
+      ? 2
+      : Math.min(5, currentConfidence + 1)
 
-  const activeProject = useMemo(() => projects.find(p => p.id === activeId), [projects, activeId]);
+    const historyEntry: ConfidenceHistoryEntry = {
+      timestamp: Date.now(),
+      score: newConfidence,
+      reason,
+    }
 
-  const updateActiveProject = useCallback((updater: (p: CodeJournalProject) => CodeJournalProject) => {
-    setProjects(prev => prev.map(p => p.id === activeId ? { ...updater(p), updatedAt: Date.now() } : p));
-  }, [activeId]);
+    return {
+      ...block,
+      confidence: newConfidence,
+      confidenceHistory: [...(block.confidenceHistory || []), historyEntry],
+    }
+  })
+}
 
-  const addEntry = useCallback(async (text: string) => {
-    if (!activeProject || !text.trim()) return;
-    setIsAdding(true);
-    const detected = detectContentType(text);
-    const cleanText = stripInlineTag(text);
-    const blockId = newBlockId();
-    const initial: CodeJournalBlock = {
-      id: blockId, text: cleanText, timestamp: Date.now(),
-      contentType: detected.type, category: 'General', isEnriching: true,
-    };
-    updateActiveProject(p => ({ ...p, blocks: [initial, ...p.blocks] }));
+export interface Project {
+  id: string
+  name: string
+  blocks: TextBlock[]
+  collapsedIds: string[]
+  ghostNotes: GhostNote[]
+  lastGhostBlockCount?: number
+  lastGhostTimestamp?: number
+  /** Texts of recently generated ghost notes — passed back to the API to prevent near-duplicates */
+  lastGhostTexts?: string[]
+}
+
+import { TileIndex } from "@/components/codejournal-v2/tile-index"
+import { SynthesisPanel } from "@/components/codejournal-v2/synthesis-panel"
+
+export default function Page() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [activeProjectId, setActiveProjectId] = useState<string>("")
+  const [highlightedBlockId, setHighlightedBlockId] = useState<string | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isIndexOpen, setIsIndexOpen] = useState(false)
+  const [isGhostPanelOpen, setIsGhostPanelOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<"tiling" | "kanban" | "graph">("tiling")
+  const [isCommandKOpen, setIsCommandKOpen] = useState(false)
+  const [jumpToSettings, setJumpToSettings] = useState(false)
+  const [isIntroOpen, setIsIntroOpen] = useState(false)
+  const [showHelpTooltip, setShowHelpTooltip] = useState(false)
+  const helpTooltipTimer = useRef<NodeJS.Timeout | null>(null)
+  const { settings, updateSettings, resolvedModelId, currentModel, isHydrated } = useAISettings()
+  const debounceTimers = useRef<Record<string, Record<string, NodeJS.Timeout>>>({})
+
+  // ── Synthesis state ───────────────────────────────────────────────────────
+  const [synthesis, setSynthesis] = useState<SynthesisResult | null>(null)
+  const [isSynthesisGenerating, setIsSynthesisGenerating] = useState(false)
+  const [isSynthesisPanelOpen, setIsSynthesisPanelOpen] = useState(false)
+
+  // ── Undo history ring (max 20 block snapshots per project) ───────────────
+  const blockHistoryRef = useRef<Record<string, TextBlock[][]>>({})
+  const [undoToast, setUndoToast] = useState<string | null>(null)
+  const undoToastTimer = useRef<NodeJS.Timeout | null>(null)
+
+  const pushHistory = useCallback((projectId: string, currentBlocks: TextBlock[]) => {
+    if (!blockHistoryRef.current[projectId]) blockHistoryRef.current[projectId] = []
+    const stack = blockHistoryRef.current[projectId]
+    stack.push(currentBlocks.map(b => ({ ...b })))
+    if (stack.length > 20) stack.shift()
+  }, [])
+
+  const showUndoToast = useCallback((msg: string) => {
+    if (undoToastTimer.current) clearTimeout(undoToastTimer.current)
+    setUndoToast(msg)
+    undoToastTimer.current = setTimeout(() => setUndoToast(null), 2200)
+  }, [])
+
+  // Clean up undo toast timer on unmount
+  useEffect(() => () => {
+    if (undoToastTimer.current) clearTimeout(undoToastTimer.current)
+  }, [])
+
+  // ── Intro modal ──────────────────────────────────────────────────────────
+  const handleIntroClose = useCallback(() => {
+    setIsIntroOpen(false)
+    localStorage.setItem("codejournal-intro-seen", "true")
+    // Show the help tooltip for 6 seconds pointing to the ? button
+    setShowHelpTooltip(true)
+    if (helpTooltipTimer.current) clearTimeout(helpTooltipTimer.current)
+    helpTooltipTimer.current = setTimeout(() => setShowHelpTooltip(false), 6000)
+  }, [])
+
+  useEffect(() => () => {
+    if (helpTooltipTimer.current) clearTimeout(helpTooltipTimer.current)
+  }, [])
+
+  const undo = useCallback(() => {
+    const stack = blockHistoryRef.current[activeProjectId]
+    if (!stack || stack.length === 0) {
+      showUndoToast("Nothing to undo")
+      return
+    }
+    const previousBlocks = stack.pop()!
+    setProjects(prev => prev.map(p => p.id === activeProjectId
+      ? { ...p, blocks: previousBlocks }
+      : p
+    ))
+    showUndoToast("↩ Undone")
+  }, [activeProjectId, showUndoToast])
+
+  const activeProject = useMemo(() =>
+    projects.find(p => p.id === activeProjectId) || projects[0],
+  [projects, activeProjectId])
+
+  const blocks = activeProject?.blocks || []
+  const ghostNotes = activeProject?.ghostNotes || []
+
+  const updateActiveProject = useCallback((updater: (p: Project) => Project) => {
+    setProjects(prev => prev.map(p => p.id === activeProjectId ? updater(p) : p))
+  }, [activeProjectId])
+
+  // Clear debounce timers for the previous project when switching
+  const prevActiveProjectId = useRef<string | null>(null)
+  useEffect(() => {
+    const prev = prevActiveProjectId.current
+    if (prev && prev !== activeProjectId && debounceTimers.current[prev]) {
+      Object.values(debounceTimers.current[prev]).forEach(clearTimeout)
+      delete debounceTimers.current[prev]
+    }
+    prevActiveProjectId.current = activeProjectId
+  }, [activeProjectId])
+
+  // 1. Persistence: Initial Load & Migration
+  useEffect(() => {
+    const savedProjects = localStorage.getItem("codejournal-projects")
+    const savedActiveId = localStorage.getItem("codejournal-active-project")
+    
+    const oldBlocks = localStorage.getItem("codejournal-blocks")
+    const oldCollapsed = localStorage.getItem("codejournal-collapsed")
+
+    let initialProjects: Project[] = []
+    let initialActiveId = ""
+
+    const backupProjects = localStorage.getItem("codejournal-backup")
+
+    if (savedProjects) {
+      try {
+        initialProjects = JSON.parse(savedProjects)
+        initialActiveId = savedActiveId || initialProjects[0]?.id || ""
+      } catch (e) {
+        console.error("Failed to parse saved projects — trying backup", e)
+        // Fall through to backup attempt below
+      }
+    }
+
+    // Fallback: restore from silent backup if primary key was absent or corrupt
+    if (initialProjects.length === 0 && backupProjects) {
+      try {
+        initialProjects = JSON.parse(backupProjects)
+        initialActiveId = initialProjects[0]?.id || ""
+        console.info("Restored from codejournal-backup")
+      } catch (e) {
+        console.error("Backup restore also failed", e)
+      }
+    }
+
+    if (initialProjects.length === 0 && oldBlocks) {
+      try {
+        const blks = JSON.parse(oldBlocks)
+        const collapsed = oldCollapsed ? JSON.parse(oldCollapsed) : []
+        const defaultProject: Project = {
+          id: "default",
+          name: "Default Session",
+          blocks: blks,
+          collapsedIds: collapsed,
+          ghostNotes: [],
+        }
+        initialProjects = [defaultProject]
+        initialActiveId = "default"
+      } catch (e) {
+        console.error("Migration failed", e)
+      }
+    }
+
+    if (initialProjects.length === 0) {
+      initialProjects = INITIAL_PROJECTS
+      initialActiveId = INITIAL_PROJECTS[0].id
+    }
+
+    setProjects(initialProjects)
+    setActiveProjectId(initialActiveId)
+    setIsLoaded(true)
+
+    // Show intro modal on first visit
+    if (!localStorage.getItem("codejournal-intro-seen")) {
+      setIsIntroOpen(true)
+    }
+
+  }, [])
+
+  // 2. Persistence: Save on Change
+  useEffect(() => {
+    if (!isLoaded) return
+    localStorage.setItem("codejournal-projects", JSON.stringify(projects))
+    localStorage.setItem("codejournal-active-project", activeProjectId)
+  }, [projects, activeProjectId, isLoaded])
+
+  // 3. Silent rolling backup — written on every change, separate key.
+  //    If codejournal-projects is ever wiped, the load effect can fall back to this.
+  useEffect(() => {
+    if (!isLoaded || projects.length === 0) return
     try {
-      const enriched = await enrichBlock(text, activeProject.blocks);
-      updateActiveProject(p => ({
-        ...p, blocks: p.blocks.map(b => b.id === blockId ? { ...b, ...enriched, isEnriching: false } : b),
-      }));
-    } catch {
-      updateActiveProject(p => ({
-        ...p, blocks: p.blocks.map(b => b.id === blockId ? { ...b, isEnriching: false, isError: true } : b),
-      }));
-    } finally { setIsAdding(false); }
-  }, [activeProject, updateActiveProject]);
+      localStorage.setItem("codejournal-backup", JSON.stringify(projects))
+    } catch { /* quota exceeded — skip silently */ }
+  }, [projects, isLoaded])
 
-  const handleSubmit = () => {
-    const t = entryText.trim();
-    if (!t || isAdding) return;
-    addEntry(t); setEntryText('');
-  };
+  // Hidden file input for .nodepad import — triggered from sidebar or ⌘K
+  const importInputRef = useRef<HTMLInputElement>(null)
 
-  const deleteBlock = useCallback((id: string) => {
-    updateActiveProject(p => ({ ...p, blocks: p.blocks.filter(b => b.id !== id) }));
-    if (selectedBlock?.id === id) setSelectedBlock(null);
-  }, [updateActiveProject, selectedBlock]);
+  const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const raw = ev.target?.result as string
+        const names = projectsRef.current.map(p => p.name)
+        const imported = parseNodepadFile(raw, names) as Project
+        setProjects(prev => [...prev, imported])
+        setActiveProjectId(imported.id)
+        setIsSidebarOpen(false)
+      } catch (err) {
+        if (err instanceof CodeJournalParseError) {
+          alert(err.message)
+        } else {
+          alert("Could not import file — make sure it's a valid .codejournal file.")
+        }
+      }
+    }
+    reader.readAsText(file)
+    // Reset input so the same file can be re-imported if needed
+    e.target.value = ""
+  }, [])
 
-  const togglePin = useCallback((id: string) => {
-    updateActiveProject(p => ({ ...p, blocks: p.blocks.map(b => b.id === id ? { ...b, isPinned: !b.isPinned } : b) }));
-  }, [updateActiveProject]);
+  // A ref to read current projects without causing re-renders or stale closures
+  const projectsRef = useRef(projects)
+  useEffect(() => { projectsRef.current = projects }, [projects])
 
-  const toggleCategory = useCallback((cat: string) => {
-    updateActiveProject(p => ({
-      ...p,
-      collapsedCategories: p.collapsedCategories.includes(cat)
-        ? p.collapsedCategories.filter(c => c !== cat)
-        : [...p.collapsedCategories, cat],
-    }));
-  }, [updateActiveProject]);
+  // Stable ref to active blocks — lets useCallbacks read current blocks without
+  // listing `blocks` in their deps (which would recreate them on every state change
+  // and cause all memo-ized TileCards to re-render unnecessarily).
+  const blocksRef = useRef<TextBlock[]>([])
+  useEffect(() => { blocksRef.current = blocks }, [blocks])
 
-  const runSynthesis = useCallback(async () => {
-    if (!activeProject) return;
-    setSynthesisLoading(true);
-    try { const r = await synthesize(activeProject.blocks); updateActiveProject(p => ({ ...p, synthesis: r })); }
-    catch (e) { console.error(e); }
-    finally { setSynthesisLoading(false); }
-  }, [activeProject, updateActiveProject]);
+  // Tracks which project IDs currently have a ghost generation in-flight
+  const generatingRef = useRef<Set<string>>(new Set())
 
-  const switchProject = (id: string) => { setActiveId(id); setActiveProjectId(id); setSelectedBlock(null); };
+  /**
+   * Builds a recency-biased, category-diverse context window for ghost generation.
+   * Strategy:
+   *   1. Always include the 4 most recently added blocks (freshest thinking).
+   *   2. Then add the single most-recent block from every category not yet represented.
+   *   3. Fill remaining slots (up to 10 total) with the next most-recent blocks.
+   * This forces the model to see cross-category material rather than a wall of the
+   * dominant theme.
+   */
+  function buildGhostContext(enrichedBlocks: TextBlock[]) {
+    if (enrichedBlocks.length <= 8) return enrichedBlocks
 
-  const createNewProject = () => {
-    const name = prompt('Project name:', `Project ${projects.length + 1}`);
-    if (!name) return;
-    const p = createProject(name); setProjects(prev => [...prev, p]); switchProject(p.id);
-  };
+    const sorted = [...enrichedBlocks].sort((a, b) => b.timestamp - a.timestamp)
+    const selected = new Set<string>()
+    const result: TextBlock[] = []
 
-  const loadDemoData = () => {
-    if (!confirm('Replace current project with sample data?')) return;
-    const seeded = seedProject(); seeded.id = activeId; seeded.name = activeProject?.name || 'Sample Journal';
-    setProjects(prev => prev.map(p => p.id === activeId ? seeded : p));
-  };
+    // Step 1 — most recent 4
+    sorted.slice(0, 4).forEach(b => { selected.add(b.id); result.push(b) })
 
-  const handleExport = (format: 'codejournal' | 'markdown' | 'knowledge') => {
-    if (!activeProject) return;
-    const fn = activeProject.name.replace(/\s+/g, '_');
-    if (format === 'codejournal') downloadFile(exportCodeJournal(activeProject), `${fn}.codejournal`, 'application/json');
-    else if (format === 'markdown') downloadFile(exportMarkdown(activeProject), `${fn}.md`, 'text/markdown');
-    else downloadFile(exportKnowledgeDoc(activeProject), `${fn}_knowledge.md`, 'text/markdown');
-  };
+    // Step 2 — one representative per missing category
+    const representedCats = new Set(result.map(b => b.category))
+    const byCat = new Map<string, TextBlock>()
+    sorted.forEach(b => {
+      if (b.category && !byCat.has(b.category)) byCat.set(b.category, b)
+    })
+    for (const [cat, block] of byCat) {
+      if (result.length >= 10) break
+      if (!representedCats.has(cat) && !selected.has(block.id)) {
+        selected.add(block.id)
+        result.push(block)
+        representedCats.add(cat)
+      }
+    }
 
-  const handleImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.codejournal,.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result as string);
-          if (data.project) {
-            const imp: CodeJournalProject = { ...data.project, id: data.project.id + '_imported', name: `${data.project.name} (imported)` };
-            setProjects(prev => [...prev, imp]); switchProject(imp.id);
-          }
-        } catch { alert('Invalid file format'); }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  };
+    // Step 3 — fill to 10 with remaining recent blocks
+    for (const b of sorted) {
+      if (result.length >= 10) break
+      if (!selected.has(b.id)) { selected.add(b.id); result.push(b) }
+    }
 
-  const filteredBlocks = useMemo(() => {
-    if (!activeProject) return [];
-    if (!search.trim()) return activeProject.blocks;
-    const q = search.toLowerCase();
-    return activeProject.blocks.filter(b =>
-      b.text.toLowerCase().includes(q) || b.category.toLowerCase().includes(q) ||
-      (b.annotation && b.annotation.toLowerCase().includes(q))
-    );
-  }, [activeProject, search]);
-
-  const stats = useMemo(() => {
-    if (!activeProject) return { total: 0, byType: {} as Record<string, number> };
-    const byType: Record<string, number> = {};
-    for (const b of activeProject.blocks) byType[b.contentType] = (byType[b.contentType] || 0) + 1;
-    return { total: activeProject.blocks.length, byType };
-  }, [activeProject]);
-
-  const relatedBlocks = useMemo(() => {
-    if (!selectedBlock || !activeProject) return [];
-    const ids = new Set(selectedBlock.influencedBy || []);
-    for (const b of activeProject.blocks) if (b.influencedBy?.includes(selectedBlock.id)) ids.add(b.id);
-    return activeProject.blocks.filter(b => ids.has(b.id));
-  }, [selectedBlock, activeProject]);
-
-  if (!hydrated || !activeProject) {
-    return (
-      <div className="flex h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent" />
-        </div>
-      </div>
-    );
+    return result
   }
 
-  const selectedCfg = selectedBlock ? (CONTENT_TYPES[selectedBlock.contentType] ?? CONTENT_TYPES['concept']) : null;
+  const generateGhostNote = useCallback(async (projectId: string) => {
+    const targetProject = projectsRef.current.find(p => p.id === projectId)
+
+    if (!targetProject) return
+
+    // Require at least 5 enriched blocks
+    const enrichedBlocks = targetProject.blocks.filter(b => !b.isEnriching && b.category)
+    if (enrichedBlocks.length < 5) return
+
+    // Cap panel at 5 ghost notes
+    if ((targetProject.ghostNotes || []).length >= 5) return
+
+    // No concurrent generation for this project
+    if (generatingRef.current.has(projectId)) return
+
+    // Require at least 5 new blocks since last generation
+    const lastCount = targetProject.lastGhostBlockCount || 0
+    if (enrichedBlocks.length < lastCount + 5) return
+
+    // Require at least 5 minutes since last generation
+    const lastTime = targetProject.lastGhostTimestamp || 0
+    const fiveMinutes = 5 * 60 * 1000
+    if (Date.now() - lastTime < fiveMinutes) return
+
+    // Require at least 2 distinct categories (meaningful diversity)
+    const categories = new Set(enrichedBlocks.map(b => b.category).filter(Boolean))
+    if (categories.size < 2) return
+
+    generatingRef.current.add(projectId)
+    const ghostId = "ghost-" + generateId()
+
+    setProjects(prev => prev.map(p => p.id === projectId ? {
+      ...p,
+      ghostNotes: [...(p.ghostNotes || []), { id: ghostId, text: "", category: "synthesis", isGenerating: true }],
+      lastGhostBlockCount: enrichedBlocks.length,
+      lastGhostTimestamp: Date.now()
+    } : p))
+
+    try {
+      const curated = buildGhostContext(enrichedBlocks)
+      const context = curated.map(b => ({
+        text: b.text,
+        category: b.category,
+        contentType: b.contentType,
+      }))
+
+      // Pass the last 5 generated ghost texts so the model can avoid near-duplicates
+      const previousSyntheses = (targetProject.lastGhostTexts || []).slice(-5)
+
+      const data = await generateGhostClient(context, previousSyntheses)
+      setProjects(prev => prev.map(p => {
+        if (p.id !== projectId) return p
+        return {
+          ...p,
+          ghostNotes: (p.ghostNotes || []).map(n =>
+            n.id === ghostId ? { ...n, text: data.text, category: data.category, isGenerating: false } : n
+          ),
+          // Accumulate ghost texts for dedup (keep last 10)
+          lastGhostTexts: [...(p.lastGhostTexts || []), data.text].slice(-10),
+        }
+      }))
+    } catch (e) {
+      console.error("Ghost note generation failed", e)
+      setProjects(prev => prev.map(p => p.id === projectId
+        ? { ...p, ghostNotes: (p.ghostNotes || []).filter(n => n.id !== ghostId) }
+        : p
+      ))
+    } finally {
+      generatingRef.current.delete(projectId)
+    }
+  }, [])
+
+  const enrichBlock = useCallback(async (projectId: string, id: string, text: string, category?: string, forcedType?: string) => {
+    // Read context directly from the ref — avoids wrapping in setProjects() which
+    // React StrictMode double-invokes in development, causing two concurrent
+    // enrichment requests and a visible category flicker.
+    const targetProject = projectsRef.current.find(p => p.id === projectId)
+    if (!targetProject) return
+
+    const context = targetProject.blocks
+      .filter((b) => b.id !== id && !b.isEnriching)
+      .map((b) => ({
+        id: b.id,
+        text: b.text,
+        category: b.category,
+        annotation: b.annotation,
+      }))
+      .slice(-15)
+
+    // Compute per-category average confidence from existing blocks
+    const categoryConfidenceHistory: { category: string; avgConfidence: number; count: number }[] = []
+    const catMap = new Map<string, { sum: number; count: number }>()
+    for (const b of targetProject.blocks) {
+      if (b.category && b.confidence != null) {
+        const entry = catMap.get(b.category)
+        if (entry) {
+          entry.sum += b.confidence
+          entry.count += 1
+        } else {
+          catMap.set(b.category, { sum: b.confidence, count: 1 })
+        }
+      }
+    }
+    for (const [cat, { sum, count }] of catMap) {
+      categoryConfidenceHistory.push({ category: cat, avgConfidence: sum / count, count })
+    }
+
+    try {
+      const data = await enrichBlockClient(
+        text,
+        context.map(({ id, ...rest }) => ({ id, ...rest })),
+        forcedType,
+        category,
+        categoryConfidenceHistory.length > 0 ? categoryConfidenceHistory : undefined,
+      )
+
+      // Map indices back to stable block IDs — the context array carries
+      // the original block IDs so we get exact, rename-proof references.
+      const influencedBy = data.influencedByIndices
+        ? (data.influencedByIndices as number[])
+            .map((idx) => context[idx]?.id)
+            .filter(Boolean) as string[]
+        : []
+
+      setProjects((current: Project[]) => {
+        const mergeTargetIdx = data.mergeWithIndex
+        const mergeTargetId = mergeTargetIdx !== null && context[mergeTargetIdx] ? context[mergeTargetIdx].id : null
+
+        return current.map(proj => {
+          if (proj.id !== projectId) return proj
+
+          if (mergeTargetId) {
+            return {
+              ...proj,
+              blocks: proj.blocks
+                .filter(b => b.id !== id)
+                .map(b => {
+                  if (b.id !== mergeTargetId) return b
+                  const hadConfidence = b.confidence != null
+                  const newHistoryEntry: ConfidenceHistoryEntry | null = data.confidence != null
+                    ? { timestamp: Date.now(), score: data.confidence, reason: hadConfidence ? "re-enrichment" : "enrichment" }
+                    : null
+                  return {
+                    ...b,
+                    text: b.text + "\n\n" + text,
+                    contentType: data.contentType,
+                    category: data.category,
+                    annotation: data.annotation,
+                    confidence: data.confidence,
+                    confidenceHistory: newHistoryEntry
+                      ? [...(b.confidenceHistory || []), newHistoryEntry]
+                      : b.confidenceHistory,
+                    influencedBy,
+                    isUnrelated: data.isUnrelated,
+                    sources: data.sources ?? undefined,
+                    isEnriching: false,
+                    statusText: undefined,
+                    isError: false,
+                  }
+                })
+            }
+          }
+          if (data.contentType === "assignment") {
+            const existingTaskIndex = proj.blocks.findIndex(b => b.contentType === "assignment" && b.id !== id)
+            if (existingTaskIndex !== -1) {
+              const existingTask = proj.blocks[existingTaskIndex]
+              const newSubTask = {
+                id: Math.random().toString(36).substring(2, 9),
+                text: text,
+                isDone: false,
+                timestamp: Date.now()
+              }
+              return {
+                ...proj,
+                blocks: proj.blocks
+                  .filter(b => b.id !== id)
+                  .map(b => b.id === existingTask.id ? {
+                    ...b,
+                    subTasks: [...(b.subTasks || []), newSubTask],
+                    isEnriching: false,
+                    statusText: undefined
+                  } : b)
+              }
+            } else {
+              return {
+                ...proj,
+                blocks: proj.blocks.map(b => b.id === id ? {
+                  ...b,
+                  contentType: "assignment",
+                  category: "Assignments",
+                  subTasks: [{
+                    id: Math.random().toString(36).substring(2, 9),
+                    text: text,
+                    isDone: false,
+                    timestamp: Date.now()
+                  }],
+                  isEnriching: false,
+                  statusText: undefined,
+                  isError: false
+                } : b)
+              }
+            }
+          }
+
+          return {
+            ...proj,
+            blocks: proj.blocks.map(b => {
+              if (b.id !== id) return b
+              const hadConfidence = b.confidence != null
+              const newHistoryEntry: ConfidenceHistoryEntry | null = data.confidence != null
+                ? { timestamp: Date.now(), score: data.confidence, reason: hadConfidence ? "re-enrichment" : "enrichment" }
+                : null
+              return {
+                ...b,
+                contentType: data.contentType,
+                category: data.category,
+                annotation: data.annotation,
+                confidence: data.confidence,
+                confidenceHistory: newHistoryEntry
+                  ? [...(b.confidenceHistory || []), newHistoryEntry]
+                  : b.confidenceHistory,
+                influencedBy,
+                isUnrelated: data.isUnrelated,
+                sources: data.sources ?? undefined,
+                isEnriching: false,
+                statusText: undefined,
+                isError: false,
+              }
+            })
+          }
+        })
+      })
+
+      setTimeout(() => generateGhostNote(projectId), 2500)
+    } catch (e: any) {
+      console.warn(e)
+      const isNoKey = e?.message?.includes("No API key") || e?.message?.includes("Invalid or missing API key") || false
+      const errorStatus = isNoKey ? "no-api-key" : (e instanceof Error ? e.message : undefined)
+      setProjects((current: Project[]) => current.map(proj => proj.id === projectId ? {
+        ...proj,
+        blocks: proj.blocks.map(b => b.id === id ? { ...b, isEnriching: false, isError: true, statusText: errorStatus } : b)
+      } : proj))
+    }
+  }, [generateGhostNote])
+
+  const claimGhostNote = useCallback((id: string) => {
+    const note = (activeProject?.ghostNotes || []).find(n => n.id === id)
+    if (!note || note.isGenerating) return
+    const newId = generateId()
+    const { text, category } = note
+
+    updateActiveProject(p => {
+      const updatedProject = {
+        ...p,
+        blocks: [...p.blocks, {
+          id: newId,
+          text,
+          timestamp: Date.now(),
+          contentType: "synthesis" as ContentType,
+          category,
+          isEnriching: true
+        }],
+        ghostNotes: (p.ghostNotes || []).filter(n => n.id !== id),
+      }
+      enrichBlock(p.id, newId, text, category, "synthesis")
+      return updatedProject
+    })
+  }, [activeProject, updateActiveProject, enrichBlock])
+
+  const dismissGhostNote = useCallback((id: string) => {
+    updateActiveProject(p => ({
+      ...p,
+      ghostNotes: (p.ghostNotes || []).filter(n => n.id !== id),
+    }))
+  }, [updateActiveProject])
+
+  // ── Synthesis generation ──────────────────────────────────────────────────
+  const generateSynthesis = useCallback(async () => {
+    const enrichedBlocks = blocks.filter(b => !b.isEnriching && b.category)
+    if (enrichedBlocks.length < 3) return
+
+    setIsSynthesisGenerating(true)
+    setIsSynthesisPanelOpen(true)
+
+    try {
+      const context = enrichedBlocks.map(b => ({
+        text: b.text,
+        category: b.category,
+        contentType: b.contentType,
+        confidence: b.confidence,
+      }))
+
+      const result = await generateSynthesisClient(context)
+      setSynthesis(result)
+    } catch (e: any) {
+      console.error("Synthesis generation failed", e)
+      const msg = e?.message || "Unknown error"
+      alert(`Failed to generate synthesis: ${msg}`)
+      setIsSynthesisPanelOpen(false)
+    } finally {
+      setIsSynthesisGenerating(false)
+    }
+  }, [blocks])
+
+  useEffect(() => {
+    const handleKeys = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setIsCommandKOpen(prev => !prev)
+      }
+      if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        // Don't intercept while typing in an input/textarea
+        const tag = (e.target as HTMLElement).tagName
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault()
+          undo()
+        }
+      }
+      if (e.key === "Escape") {
+        if (isCommandKOpen) {
+          setIsCommandKOpen(false)
+        } else if (isGhostPanelOpen) {
+          setIsGhostPanelOpen(false)
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeys)
+    return () => window.removeEventListener("keydown", handleKeys)
+  }, [isCommandKOpen, isGhostPanelOpen, undo])
+
+  const addBlock = useCallback(
+    (text: string, forcedType?: ContentType) => {
+      // Parse inline #type tag  e.g. "#claim The earth is 4.5 billion years old"
+      let resolvedText = text
+      let resolvedType = forcedType
+
+      if (!resolvedType) {
+        const tagMatch = text.match(/^#([a-z]+)\s+(.+)/i)
+        if (tagMatch) {
+          const tag = tagMatch[1].toLowerCase() as ContentType
+          const ALL_TYPES: ContentType[] = [
+            "concept", "confusion", "edgecase", "synthesis", "conflict",
+            "assignment", "resolved", "definition", "hypothesis"
+          ]
+          if (ALL_TYPES.includes(tag)) {
+            resolvedType = tag
+            resolvedText = tagMatch[2].trim()
+          }
+        }
+      }
+
+      const newId = generateId()
+
+      // Types where the heuristic is syntactically unambiguous — the AI is also
+      // sent forcedType so it won't reclassify them.  We can show these types
+      // immediately because they will never change after enrichment.
+      const heuristicType = resolvedType ?? detectContentType(resolvedText)
+      const HIGH_CONFIDENCE_TYPES = new Set<ContentType>(["confusion", "assignment", "edgecase"])
+      const enrichForcedType = resolvedType
+        ?? (HIGH_CONFIDENCE_TYPES.has(heuristicType) ? heuristicType : undefined)
+
+      // For ambiguous types the AI may return a
+      // different classification, so start as "concept" during enrichment to
+      // avoid a jarring double-classification jump in the UI.
+      const initialDisplayType: ContentType = resolvedType
+        ?? (HIGH_CONFIDENCE_TYPES.has(heuristicType) ? heuristicType : "concept")
+
+      pushHistory(activeProjectId, blocksRef.current)
+      updateActiveProject(p => ({
+        ...p,
+        blocks: [...p.blocks, {
+          id: newId,
+          text: resolvedText,
+          timestamp: Date.now(),
+          contentType: initialDisplayType,
+          isEnriching: true,
+        }]
+      }))
+
+      setIsCommandKOpen(false)
+      enrichBlock(activeProjectId, newId, resolvedText, undefined, enrichForcedType).catch(console.error)
+    },
+    [activeProjectId, pushHistory, updateActiveProject, enrichBlock]
+  )
+
+  const deleteBlock = useCallback((id: string) => {
+    pushHistory(activeProjectId, blocksRef.current)
+    updateActiveProject(p => ({
+      ...p,
+      blocks: p.blocks.filter(b => b.id !== id)
+    }))
+  }, [activeProjectId, pushHistory, updateActiveProject])
+
+  const editBlock = useCallback((id: string, newText: string) => {
+    // Snapshot before the edit so Cmd+Z restores the original text
+    const currentProj = projectsRef.current.find(p => p.id === activeProjectId)
+    if (currentProj) {
+      const currentBlock = currentProj.blocks.find(b => b.id === id)
+      if (currentBlock && currentBlock.text !== newText) {
+        pushHistory(activeProjectId, currentProj.blocks)
+      }
+    }
+
+    setProjects(prev => {
+      const proj = prev.find(p => p.id === activeProjectId)
+      if (!proj) return prev
+      const block = proj.blocks.find(b => b.id === id)
+      if (!block || block.text === newText) return prev
+
+      if (!debounceTimers.current[activeProjectId]) {
+        debounceTimers.current[activeProjectId] = {}
+      }
+
+      if (debounceTimers.current[activeProjectId][id]) {
+        clearTimeout(debounceTimers.current[activeProjectId][id])
+      }
+
+      debounceTimers.current[activeProjectId][id] = setTimeout(() => {
+        enrichBlock(activeProjectId, id, newText, block.category).catch(console.error)
+        delete debounceTimers.current[activeProjectId][id]
+      }, 800)
+
+      return prev.map(p => p.id === activeProjectId ? {
+        ...p,
+        blocks: p.blocks.map(b => b.id === id ? { ...b, text: newText, isEnriching: true, isError: false } : b)
+      } : p)
+    })
+  }, [activeProjectId, enrichBlock, pushHistory])
+
+  const reEnrichBlock = useCallback((id: string, newCategory?: string) => {
+    const block = blocksRef.current.find(b => b.id === id)
+    if (!block) return
+
+    updateActiveProject(p => ({
+      ...p,
+      blocks: p.blocks.map(b => b.id === id ? { ...b, category: newCategory, isEnriching: true } : b)
+    }))
+
+    enrichBlock(activeProjectId, id, block.text, newCategory || block.category, block.contentType).catch(console.error)
+  }, [activeProjectId, updateActiveProject, enrichBlock])
+
+  const editAnnotation = useCallback((id: string, newAnnotation: string) => {
+    updateActiveProject(p => ({
+      ...p,
+      blocks: p.blocks.map(b => b.id === id ? { ...b, annotation: newAnnotation } : b)
+    }))
+  }, [updateActiveProject])
+
+  const toggleCollapse = useCallback((id: string) => {
+    updateActiveProject(p => {
+      const next = new Set(p.collapsedIds)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return { ...p, collapsedIds: [...next] }
+    })
+  }, [updateActiveProject])
+
+  const handleTogglePin = useCallback((id: string) => {
+    setProjects((current) => current.map(p => p.id === activeProjectId ? {
+      ...p,
+      blocks: p.blocks.map(b => b.id === id ? { ...b, isPinned: !b.isPinned } : b)
+    } : p))
+  }, [activeProjectId])
+
+  const handleToggleSubTask = useCallback((blockId: string, subTaskId: string) => {
+    const block = blocksRef.current.find(b => b.id === blockId)
+    const subTask = block?.subTasks?.find(st => st.id === subTaskId)
+    const isTransitioningToDone = subTask && !subTask.isDone
+
+    setProjects((current) => current.map(p => p.id === activeProjectId ? {
+      ...p,
+      blocks: (() => {
+        let updatedBlocks = p.blocks.map(b => b.id === blockId ? {
+          ...b,
+          subTasks: b.subTasks?.map(st => st.id === subTaskId ? { ...st, isDone: !st.isDone } : st)
+        } : b)
+
+        // Propagate confidence boost when a sub-task transitions from not-done to done
+        if (isTransitioningToDone && block?.category) {
+          updatedBlocks = propagateConfidenceBoost(updatedBlocks, block.category, "assignment_boost")
+        }
+
+        return updatedBlocks
+      })()
+    } : p))
+  }, [activeProjectId])
+
+  const handleDeleteSubTask = useCallback((blockId: string, subTaskId: string) => {
+    setProjects((current) => current.map(p => p.id === activeProjectId ? {
+      ...p,
+      blocks: p.blocks.map(b => b.id === blockId ? {
+        ...b,
+        subTasks: b.subTasks?.filter(st => st.id !== subTaskId)
+      } : b)
+    } : p))
+  }, [activeProjectId])
+
+  const handleChangeType = useCallback((id: string, newType: ContentType) => {
+    const block = blocksRef.current.find(b => b.id === id)
+    if (!block) return
+    pushHistory(activeProjectId, blocksRef.current)
+    updateActiveProject(p => {
+      let updatedBlocks = p.blocks.map(b => b.id === id ? { ...b, contentType: newType, isEnriching: true } : b)
+
+      // When resolving a confusion, propagate confidence boost to related concept nodes
+      if (newType === "resolved" && block.category) {
+        updatedBlocks = propagateConfidenceBoost(updatedBlocks, block.category, "resolved_boost")
+      }
+
+      return { ...p, blocks: updatedBlocks }
+    })
+    enrichBlock(activeProjectId, id, block.text, block.category, newType).catch(console.error)
+  }, [activeProjectId, pushHistory, updateActiveProject, enrichBlock])
+
+  const clearBlocks = useCallback(() => {
+    pushHistory(activeProjectId, blocksRef.current)
+    updateActiveProject(p => ({ ...p, blocks: [], collapsedIds: [] }))
+  }, [activeProjectId, pushHistory, updateActiveProject])
+
+  const createProject = useCallback(() => {
+    const newProject: Project = {
+      id: generateId(),
+      name: "New Session",
+      blocks: [],
+      collapsedIds: [],
+      ghostNotes: [],
+    }
+    setProjects(prev => [...prev, newProject])
+    setActiveProjectId(newProject.id)
+  }, [])
+
+  const renameProject = useCallback((id: string, newName: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p))
+  }, [])
+
+  const deleteProject = useCallback((id: string) => {
+    setProjects(prev => {
+      if (prev.length <= 1) return prev
+      const nextProjects = prev.filter(p => p.id !== id)
+      if (activeProjectId === id) {
+        setActiveProjectId(nextProjects[0].id)
+      }
+      return nextProjects
+    })
+  }, [activeProjectId])
+
+  // Move a block from the active workspace to another workspace.
+  // influencedBy references IDs in the source workspace and would be dangling
+  // in the target, so we drop them — the block can be re-enriched in context.
+  const moveBlockToWorkspace = useCallback((blockId: string, targetWorkspaceId: string) => {
+    if (targetWorkspaceId === activeProjectId) return
+    pushHistory(activeProjectId, blocksRef.current)
+    setProjects(prev => {
+      const source = prev.find(p => p.id === activeProjectId)
+      const block = source?.blocks.find(b => b.id === blockId)
+      if (!block) return prev
+      return prev.map(p => {
+        if (p.id === activeProjectId) {
+          return {
+            ...p,
+            blocks: p.blocks.filter(b => b.id !== blockId),
+            collapsedIds: p.collapsedIds.filter(id => id !== blockId),
+          }
+        }
+        if (p.id === targetWorkspaceId) {
+          const idCollision = p.blocks.some(b => b.id === blockId)
+          const moved: TextBlock = {
+            ...block,
+            id: idCollision ? generateId() : block.id,
+            influencedBy: undefined,
+          }
+          return { ...p, blocks: [...p.blocks, moved] }
+        }
+        return p
+      })
+    })
+    showUndoToast(`→ Moved to ${projectsRef.current.find(p => p.id === targetWorkspaceId)?.name ?? "space"}`)
+  }, [activeProjectId, pushHistory, showUndoToast])
+
+  // Copy keeps the original in place and inserts a fresh node (new id, new
+  // timestamp, no inherited connections) in the target workspace.
+  const copyBlockToWorkspace = useCallback((blockId: string, targetWorkspaceId: string) => {
+    if (targetWorkspaceId === activeProjectId) return
+    setProjects(prev => {
+      const source = prev.find(p => p.id === activeProjectId)
+      const block = source?.blocks.find(b => b.id === blockId)
+      if (!block) return prev
+      return prev.map(p => {
+        if (p.id !== targetWorkspaceId) return p
+        const copy: TextBlock = {
+          ...block,
+          id: generateId(),
+          timestamp: Date.now(),
+          influencedBy: undefined,
+        }
+        return { ...p, blocks: [...p.blocks, copy] }
+      })
+    })
+    showUndoToast(`⎘ Copied to ${projectsRef.current.find(p => p.id === targetWorkspaceId)?.name ?? "space"}`)
+  }, [activeProjectId, showUndoToast])
+
+  const workspaceOptions = useMemo(
+    () => projects.map(p => ({ id: p.id, name: p.name })),
+    [projects]
+  )
+
+  const handleCommand = useCallback((cmd: string, text?: string) => {
+    setIsCommandKOpen(false)
+    
+    // Handle view switches
+    if (cmd === "kanban") {
+      setViewMode("kanban")
+    } else if (cmd === "tiling") {
+      setViewMode("tiling")
+    } else if (cmd === "graph") {
+      setViewMode("graph")
+    } else if (cmd === "open-projects") {
+      setIsGhostPanelOpen(false)
+      setIsIndexOpen(false)
+      setIsSidebarOpen(prev => !prev)
+    } else if (cmd === "new-project") {
+      setIsGhostPanelOpen(false)
+      setIsIndexOpen(false)
+      setIsSidebarOpen(true)
+      createProject()
+    } else if (cmd === "open-index") {
+      setIsSidebarOpen(false)
+      setIsGhostPanelOpen(false)
+      setIsIndexOpen(prev => !prev)
+    } else if (cmd === "open-synthesis") {
+      setIsSidebarOpen(false)
+      setIsIndexOpen(false)
+      setIsGhostPanelOpen(prev => !prev)
+    } else if (cmd === "synthesize") {
+      generateSynthesis()
+    } else if (cmd === "clear") clearBlocks()
+    else if (cmd === "help") window.open("https://github.com/albingroen/react-cmdk", "_blank")
+    
+    // .nodepad export / import
+    else if (cmd === "export-nodepad") {
+      setProjects(prev => {
+        const proj = prev.find(p => p.id === activeProjectId)
+        if (proj) downloadNodepadFile(proj)
+        return prev
+      })
+    } else if (cmd === "import-nodepad") {
+      importInputRef.current?.click()
+    }
+
+    // Export commands — read project from state snapshot via ref to avoid stale closure
+    else if (cmd === "export-md") {
+      setProjects(prev => {
+        const proj = prev.find(p => p.id === activeProjectId)
+        if (proj) {
+          const md = exportToMarkdown(proj.name, proj.blocks)
+          const slug = proj.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+          downloadMarkdown(`${slug}.md`, md)
+        }
+        return prev
+      })
+    } else if (cmd === "copy-md") {
+      setProjects(prev => {
+        const proj = prev.find(p => p.id === activeProjectId)
+        if (proj) {
+          const md = exportToMarkdown(proj.name, proj.blocks)
+          copyToClipboard(md)
+        }
+        return prev
+      })
+    } else if (cmd === "export-knowledge") {
+      setProjects(prev => {
+        const proj = prev.find(p => p.id === activeProjectId)
+        if (proj) {
+          const data: KnowledgeDocData = {
+            projectName: proj.name,
+            blocks: proj.blocks,
+            synthesis: synthesis?.synthesis,
+            blindSpots: synthesis?.blind_spots,
+            assignment: synthesis?.assignment,
+            connections: synthesis?.connections,
+          }
+          const md = exportToKnowledgeDoc(data)
+          const today = new Date().toISOString().split('T')[0]
+          downloadKnowledgeDoc(`codejournal-export-${today}.md`, md)
+        }
+        return prev
+      })
+    }
+    
+    // Handle type overrides
+    else if (cmd === "assignment" && text) addBlock(text, "assignment")
+    else if (cmd === "synthesis" && text) addBlock(text, "synthesis")
+    
+    setIsCommandKOpen(false)
+  }, [clearBlocks, addBlock, activeProjectId])
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-dvh overflow-hidden bg-background">
+      {/* Hidden file input for .codejournal import */}
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".codejournal,.json"
+        className="hidden"
+        onChange={handleImportFile}
+      />
 
-      {/* ── LEFT SIDEBAR (nav) ─────────────────────────────────────────── */}
-      <Sidebar />
+      <ProjectSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={setActiveProjectId}
+        onCreateProject={createProject}
+        onRenameProject={renameProject}
+        onDeleteProject={deleteProject}
+        onImportProject={() => importInputRef.current?.click()}
+        aiSettings={settings}
+        onUpdateAISettings={updateSettings}
+        openToSettings={jumpToSettings}
+        onSettingsOpened={() => setJumpToSettings(false)}
+        onSynthesize={generateSynthesis}
+        blockCount={blocks.length}
+      />
 
-      {/* ── MAIN AREA ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <StatusBar
+          blockCount={blocks.length}
+          blocks={blocks}
+          isSidebarOpen={isSidebarOpen}
+          isIndexOpen={isIndexOpen}
+          isGhostPanelOpen={isGhostPanelOpen}
+          ghostNoteCount={ghostNotes.filter(n => !n.isGenerating).length}
+          activeProjectName={activeProject?.name || ""}
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          onIndexToggle={() => setIsIndexOpen(!isIndexOpen)}
+          onGhostPanelToggle={() => setIsGhostPanelOpen(prev => !prev)}
+          modelLabel={isHydrated && settings.apiKey ? currentModel.shortLabel : undefined}
+          showHelpTooltip={showHelpTooltip}
+          onHelpTooltipDismiss={() => {
+            setShowHelpTooltip(false)
+            if (helpTooltipTimer.current) clearTimeout(helpTooltipTimer.current)
+          }}
+        />
 
-        {/* ── TOP HEADER ──────────────────────────────────────────────── */}
-        <header className="flex items-center gap-3 px-5 h-11 border-b border-border bg-background flex-shrink-0">
-          {/* Brand */}
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-bold tracking-tight lowercase">codejournal</span>
-          </div>
-
-          {/* Project tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
-            {projects.map(p => (
+        {isHydrated && !settings.apiKey && (
+          <div className="flex items-center justify-center gap-3 px-4 py-2 bg-amber-950/80 border-b border-amber-800/60 text-amber-200 text-xs shrink-0">
+            <span className="opacity-80">⚡ AI enrichment requires an <strong className="text-amber-200">OpenRouter API key</strong> — use a free model (no credits needed) or add credits for GPT-4o, Claude, and more. Configure in the <strong className="text-amber-200">☰ left panel</strong>.</span>
+            <div className="flex items-center gap-2 shrink-0">
               <button
-                key={p.id}
-                onClick={() => switchProject(p.id)}
-                className={cn(
-                  'flex items-center gap-1 px-2.5 h-6 rounded text-[11px] font-medium whitespace-nowrap transition-colors',
-                  p.id === activeId ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
-                )}
+                onClick={() => { setIsSidebarOpen(true); setJumpToSettings(true) }}
+                className="px-2.5 py-1 rounded bg-amber-700/60 hover:bg-amber-600/70 text-amber-100 font-medium transition-colors cursor-pointer border border-amber-600/50"
               >
-                <ChevronRight className="w-2.5 h-2.5" />
-                {p.name}
-                <span className="text-[10px] font-mono text-muted-foreground">({p.blocks.length})</span>
+                Add API key →
               </button>
-            ))}
-            <button onClick={createNewProject} className="p-1 hover:bg-muted rounded text-muted-foreground ml-1">
-              <Plus className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* View tabs */}
-          <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5 flex-shrink-0">
-            {([
-              { v: 'tiling' as View, icon: LayoutGrid, label: 'Tiling' },
-              { v: 'kanban' as View, icon: Columns3,   label: 'Kanban' },
-              { v: 'graph'  as View, icon: Network,    label: 'Graph'  },
-            ] as const).map(({ v, icon: Icon, label }) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  'flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium transition-colors',
-                  view === v ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted'
-                )}
+              <a
+                href="https://openrouter.ai/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="opacity-60 hover:opacity-90 transition-opacity underline underline-offset-2"
               >
-                <Icon className="w-3 h-3" />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Node type pills */}
-          <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
-            {Object.entries(stats.byType).slice(0, 4).map(([type, count]) => {
-              const cfg = CONTENT_TYPES[type as keyof typeof CONTENT_TYPES];
-              if (!cfg) return null;
-              return (
-                <span key={type} className="px-1.5 py-0.5 rounded text-white text-[10px] font-medium"
-                  style={{ backgroundColor: cfg.iconColor }}>
-                  {count} {cfg.label.toUpperCase()}
-                </span>
-              );
-            })}
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-            {showSearch ? (
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-                <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Search..." className="h-6 pl-6 pr-6 text-[11px] border border-border rounded bg-background focus:outline-none focus:border-foreground w-36" />
-                <button onClick={() => { setSearch(''); setShowSearch(false); }} className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                  <X className="w-3 h-3 text-muted-foreground" />
-                </button>
-              </div>
-            ) : (
-              <button onClick={() => setShowSearch(true)} className="p-1.5 hover:bg-muted rounded text-muted-foreground">
-                <Search className="w-3.5 h-3.5" />
-              </button>
-            )}
-            <button onClick={() => setShowSynthesis(true)} className="p-1.5 hover:bg-muted rounded text-muted-foreground" title="Synthesize">
-              <Sparkles className="w-3.5 h-3.5" />
-            </button>
-            <div className="relative group">
-              <button className="p-1.5 hover:bg-muted rounded text-muted-foreground" title="Export">
-                <Download className="w-3.5 h-3.5" />
-              </button>
-              <div className="absolute right-0 top-8 bg-background border border-border rounded-lg shadow-lg w-44 hidden group-hover:block z-50 py-1">
-                {([['codejournal', '.codejournal backup'], ['markdown', 'Markdown'], ['knowledge', 'Knowledge doc']] as const).map(([fmt, label]) => (
-                  <button key={fmt} onClick={() => handleExport(fmt)}
-                    className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-muted text-foreground">{label}</button>
-                ))}
-                <div className="border-t border-border my-1" />
-                <button onClick={loadDemoData} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-muted text-muted-foreground">Load sample data</button>
-              </div>
+                Get a free key ↗
+              </a>
             </div>
-            <button onClick={handleImport} className="p-1.5 hover:bg-muted rounded text-muted-foreground" title="Import">
-              <Upload className="w-3.5 h-3.5" />
-            </button>
           </div>
-        </header>
+        )}
 
-        {/* ── SPLIT CONTENT ───────────────────────────────────────────── */}
-        <div className="flex flex-1 overflow-hidden min-h-0">
-
-          {/* LEFT — canvas */}
-          <div className="flex-1 relative overflow-hidden bg-muted/20 min-w-0">
-            {view === 'graph' && (
-              filteredBlocks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <Network className="w-12 h-12 text-muted-foreground/20 mb-4" />
-                  <p className="text-sm font-medium text-muted-foreground mb-1">No entries yet</p>
-                  <p className="text-xs text-muted-foreground/60">Type something below to get started</p>
-                </div>
-              ) : (
-                <GraphArea blocks={filteredBlocks} onBlockClick={setSelectedBlock} />
-              )
-            )}
-            {view === 'tiling' && (
-              <div className="h-full overflow-y-auto p-6">
+        <div className="flex flex-1 overflow-hidden relative">
+          <main className="relative flex-1 overflow-hidden">
+            {isLoaded ? (
+              viewMode === "tiling" ? (
                 <TilingArea
-                  blocks={filteredBlocks}
-                  collapsedCategories={activeProject.collapsedCategories}
-                  onToggleCategory={toggleCategory}
+                  key={`tiling-${activeProjectId}`}
+                  blocks={activeProject.blocks}
+                  collapsedIds={new Set(activeProject.collapsedIds)}
                   onDelete={deleteBlock}
-                  onTogglePin={togglePin}
-                  onBlockClick={setSelectedBlock}
+                  onEdit={editBlock}
+                  onEditAnnotation={editAnnotation}
+                  onReEnrich={reEnrichBlock}
+                  onChangeType={handleChangeType}
+                  onToggleCollapse={toggleCollapse}
+                  onTogglePin={handleTogglePin}
+                  onToggleSubTask={handleToggleSubTask}
+                  onDeleteSubTask={handleDeleteSubTask}
+                  highlightedBlockId={highlightedBlockId}
+                  onHighlight={setHighlightedBlockId}
+                  workspaces={workspaceOptions}
+                  activeWorkspaceId={activeProjectId}
+                  onMoveToWorkspace={moveBlockToWorkspace}
+                  onCopyToWorkspace={copyBlockToWorkspace}
                 />
-              </div>
-            )}
-            {view === 'kanban' && (
-              <div className="h-full overflow-x-auto overflow-y-auto p-6">
+              ) : viewMode === "kanban" ? (
                 <KanbanArea
-                  blocks={filteredBlocks}
+                  key={`kanban-${activeProjectId}`}
+                  blocks={activeProject.blocks}
                   onDelete={deleteBlock}
-                  onTogglePin={togglePin}
-                  onBlockClick={setSelectedBlock}
+                  onEdit={editBlock}
+                  onEditAnnotation={editAnnotation}
+                  onReEnrich={reEnrichBlock}
+                  onChangeType={handleChangeType}
+                  onToggleCollapse={toggleCollapse}
+                  onTogglePin={handleTogglePin}
+                  onToggleSubTask={handleToggleSubTask}
+                  onDeleteSubTask={handleDeleteSubTask}
+                  collapsedIds={new Set(activeProject.collapsedIds)}
                 />
-              </div>
-            )}
-
-            {/* Graph overlay hint */}
-            {view === 'graph' && filteredBlocks.length > 0 && (
-              <div className="absolute top-3 left-3 text-[10px] text-muted-foreground/60 font-mono pointer-events-none">
-                {filteredBlocks.length} nodes · grab to move · scroll to zoom
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT — detail / entry list panel */}
-          <div className="w-80 xl:w-96 border-l border-border bg-background flex flex-col overflow-hidden flex-shrink-0">
-            {selectedBlock && selectedCfg ? (
-              /* Block detail */
-              <div className="flex flex-col h-full overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: selectedCfg.iconColor }}>
-                      <selectedCfg.Icon className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: selectedCfg.iconColor }}>
-                        {selectedCfg.label}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground ml-2 font-mono">{selectedBlock.category}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => togglePin(selectedBlock.id)} className="p-1 hover:bg-muted rounded text-muted-foreground">
-                      {selectedBlock.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-                    </button>
-                    <button onClick={() => deleteBlock(selectedBlock.id)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-red-500">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => setSelectedBlock(null)} className="p-1 hover:bg-muted rounded text-muted-foreground">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    {new Date(selectedBlock.timestamp).toLocaleString()}
-                  </p>
-                  <p className="text-sm font-semibold leading-relaxed">{selectedBlock.text}</p>
-                  {selectedBlock.confidence && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Confidence</span>
-                      <span className="font-mono text-xs" style={{ color: selectedCfg.iconColor }}>
-                        {'●'.repeat(selectedBlock.confidence)}
-                        <span className="opacity-30">{'●'.repeat(5 - selectedBlock.confidence)}</span>
-                      </span>
-                    </div>
-                  )}
-                  {selectedBlock.annotation && (
-                    <div className="rounded-lg p-3 text-xs leading-relaxed text-muted-foreground border-l-2"
-                      style={{ borderColor: selectedCfg.iconColor, backgroundColor: selectedCfg.iconColor + '0d' }}>
-                      {selectedBlock.annotation}
-                    </div>
-                  )}
-                  {relatedBlocks.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Link2 className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                          Related ({relatedBlocks.length})
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {relatedBlocks.map(b => {
-                          const rcfg = CONTENT_TYPES[b.contentType] ?? CONTENT_TYPES['concept'];
-                          return (
-                            <button key={b.id} onClick={() => setSelectedBlock(b)}
-                              className="w-full text-left p-2.5 rounded-lg border border-border hover:bg-muted/40 transition-colors">
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: rcfg.iconColor }} />
-                                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: rcfg.iconColor }}>{rcfg.label}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2">{b.text}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {selectedBlock.sources && selectedBlock.sources.length > 0 && (
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium block mb-1.5">Sources</span>
-                      {selectedBlock.sources.map((s, i) => (
-                        <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
-                          className="block text-xs text-blue-600 hover:underline truncate">{s.title}</a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              ) : (
+                <GraphArea
+                  key={`graph-${activeProjectId}`}
+                  blocks={activeProject.blocks}
+                  ghostNote={ghostNotes[ghostNotes.length - 1]}
+                  projectName={activeProject.name}
+                  onReEnrich={reEnrichBlock}
+                  onChangeType={handleChangeType}
+                  onTogglePin={handleTogglePin}
+                  onEdit={editBlock}
+                  onEditAnnotation={editAnnotation}
+                  highlightedBlockId={highlightedBlockId}
+                  onHighlight={setHighlightedBlockId}
+                  workspaces={workspaceOptions}
+                  activeWorkspaceId={activeProjectId}
+                  onMoveToWorkspace={moveBlockToWorkspace}
+                  onCopyToWorkspace={copyBlockToWorkspace}
+                  synthesisConnections={synthesis?.connections}
+                />
+              )
             ) : (
-              /* Entry list */
-              <div className="flex flex-col h-full overflow-hidden">
-                <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
-                  <span className="text-xs font-semibold">Entries</span>
-                  <span className="text-[10px] font-mono text-muted-foreground">{filteredBlocks.length}</span>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {filteredBlocks.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                      <p className="text-xs text-muted-foreground">No entries yet. Start typing below.</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border/50">
-                      {filteredBlocks.map(b => {
-                        const cfg = CONTENT_TYPES[b.contentType] ?? CONTENT_TYPES['concept'];
-                        return (
-                          <button key={b.id} onClick={() => setSelectedBlock(b)}
-                            className="w-full text-left px-4 py-3 hover:bg-muted/40 transition-colors">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.iconColor }} />
-                              <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: cfg.iconColor }}>{cfg.label}</span>
-                              {b.isEnriching && <Loader2 className="w-2.5 h-2.5 animate-spin text-muted-foreground ml-auto" />}
-                              <span className="text-[10px] text-muted-foreground/50 font-mono ml-auto">
-                                {new Date(b.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <p className="text-xs text-foreground line-clamp-2 leading-relaxed">{b.text}</p>
-                            {b.annotation && (
-                              <p className="text-[10px] text-muted-foreground line-clamp-1 mt-1 italic">{b.annotation}</p>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <div className="h-full w-full" />
             )}
-          </div>
+          </main>
+
+          <GhostPanel
+            ghostNotes={ghostNotes}
+            isOpen={isGhostPanelOpen}
+            onClose={() => setIsGhostPanelOpen(false)}
+            onClaim={claimGhostNote}
+            onDismiss={dismissGhostNote}
+          />
+
+          <SynthesisPanel
+            isOpen={isSynthesisPanelOpen}
+            onClose={() => setIsSynthesisPanelOpen(false)}
+            synthesis={synthesis}
+            isGenerating={isSynthesisGenerating}
+          />
         </div>
 
-        {/* ── BOTTOM INPUT BAR ──────────────────────────────────────────── */}
-        <div className="border-t border-border bg-background flex-shrink-0">
-          <div className="flex items-center gap-3 px-5 py-3">
-            <span className="text-[11px] font-mono text-muted-foreground flex-shrink-0 select-none">ENTRY</span>
-            <input
-              value={entryText}
-              onChange={e => setEntryText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-              placeholder="what did you learn today? AI will classify and annotate..."
-              disabled={isAdding}
-              className="flex-1 text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground/40 disabled:opacity-50 min-w-0"
-            />
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {isAdding && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-              <button
-                onClick={handleSubmit}
-                disabled={!entryText.trim() || isAdding}
-                className="flex items-center gap-1.5 px-3 h-7 bg-foreground text-background rounded text-[11px] font-medium hover:bg-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="w-3 h-3" />
-                Add
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 px-5 pb-2.5 overflow-x-auto">
-            {CONTENT_TYPE_LIST.slice(0, 6).map(ct => {
-              const cfg = CONTENT_TYPES[ct];
-              return (
-                <button key={ct} onClick={() => setEntryText(`#${ct} `)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors hover:opacity-80 flex-shrink-0"
-                  style={{ borderColor: cfg.iconColor + '50', color: cfg.iconColor, backgroundColor: cfg.iconColor + '12' }}>
-                  <cfg.Icon className="w-2.5 h-2.5" />
-                  #{ct}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Undo toast */}
+        <AnimatePresence>
+          {undoToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="absolute bottom-[72px] left-1/2 -translate-x-1/2 z-[130] pointer-events-none"
+            >
+              <div className="px-3 py-1.5 rounded-sm bg-black/90 border border-white/15 backdrop-blur-md shadow-xl">
+                <span className="font-mono text-[10px] text-white/70 tracking-tight whitespace-nowrap">{undoToast}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <VimInput
+          onSubmit={addBlock}
+          onCommand={handleCommand}
+          isCommandKOpen={isCommandKOpen}
+          setIsCommandKOpen={setIsCommandKOpen}
+        />
       </div>
 
-      {/* Synthesis panel */}
-      {showSynthesis && (
-        <SynthesisPanel
-          synthesis={activeProject.synthesis || null}
-          loading={synthesisLoading}
-          blockCount={activeProject.blocks.filter(b => !b.isEnriching && !b.isError).length}
-          onSynthesize={runSynthesis}
-          onClose={() => setShowSynthesis(false)}
-        />
-      )}
+      <TileIndex 
+        blocks={blocks} 
+        onHighlight={setHighlightedBlockId} 
+        highlightedId={highlightedBlockId}
+        onClose={() => setIsIndexOpen(false)}
+        isOpen={isIndexOpen}
+        viewMode={viewMode}
+      />
+
+      {/* First-visit intro video modal */}
+      <IntroModal open={isIntroOpen} onClose={handleIntroClose} />
     </div>
-  );
+  )
 }
+
+
