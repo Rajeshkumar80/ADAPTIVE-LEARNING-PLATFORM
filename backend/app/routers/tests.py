@@ -2,7 +2,7 @@
 Test endpoints — list, create (admin), take, submit, results.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -121,7 +121,7 @@ def submit_test(
     attempt.answers = payload.answers
     attempt.anti_cheat_flags = payload.anti_cheat_flags
     attempt.score = score
-    attempt.submitted_at = datetime.utcnow()
+    attempt.submitted_at = datetime.now(timezone.utc)
     attempt.is_completed = True
     db.commit()
 

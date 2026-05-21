@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ActivityChart, SubjectMasteryRadar } from '@/components/charts';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockDB } from '@/lib/mockdb';
+import { api } from '@/lib/api';
 import {
   Calendar,
   CheckCircle2,
@@ -30,7 +30,10 @@ import {
 export default function StudentDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [counts, setCounts] = useState({ achievements: 0, certificates: 0 });
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
+  const [upcomingTests, setUpcomingTests] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,42 +44,37 @@ export default function StudentDashboard() {
       router.push('/admin');
       return;
     }
+    
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        const [dash, subs, plan, tests] = await Promise.all([
+          api.getStudentDashboard(),
+          api.getStudentProgress(),
+          api.getTodayPlan(),
+          api.listTests(),
+        ]);
+        setDashboardData(dash);
+        setSubjects(subs);
+        setTodaySchedule(plan.sessions || []);
+        setUpcomingTests(tests.slice(0, 3)); // show first 3
+      } catch (e) {
+        console.error("Failed to fetch dashboard data:", e);
+      }
+    };
+    
     if (user) {
-      setCounts({
-        achievements: mockDB.getAchievements(user.id).length,
-        certificates: mockDB.getCertificates(user.id).length,
-      });
+      fetchData();
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading || !user || !dashboardData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent" />
       </div>
     );
   }
-
-  const upcomingTests = [
-    { id: 1, title: 'OS Mid-Term', subject: 'Operating Systems', date: 'May 18', time: '10:00 AM', difficulty: 'Hard' },
-    { id: 2, title: 'CN Quiz 4', subject: 'Computer Networks', date: 'May 20', time: '2:00 PM', difficulty: 'Medium' },
-    { id: 3, title: 'SE Test', subject: 'Software Engineering', date: 'May 22', time: '11:00 AM', difficulty: 'Easy' },
-  ];
-
-  const todaySchedule = [
-    { time: '09:00', subject: 'Data Structures', topic: 'Trees & Graphs', status: 'completed' },
-    { time: '11:00', subject: 'DBMS', topic: 'Normalization', status: 'in-progress' },
-    { time: '14:00', subject: 'OS', topic: 'Quick Quiz', status: 'pending' },
-    { time: '15:30', subject: 'CN', topic: 'TCP/IP Lab', status: 'pending' },
-  ];
-
-  const subjects = [
-    { name: 'Data Structures', code: 'CS501', progress: 75, mastery: 'Strong' },
-    { name: 'DBMS', code: 'CS502', progress: 85, mastery: 'Strong' },
-    { name: 'Operating Systems', code: 'CS503', progress: 45, mastery: 'Needs work' },
-    { name: 'Computer Networks', code: 'CS504', progress: 60, mastery: 'Average' },
-    { name: 'Software Engineering', code: 'CS505', progress: 70, mastery: 'Average' },
-  ];
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -116,8 +114,8 @@ export default function StudentDashboard() {
                   <Flame className="w-4 h-4 text-orange-500" />
                   <p className="text-xs text-muted-foreground">Study Streak</p>
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">7 <span className="text-sm text-muted-foreground">days</span></p>
-                <p className="text-[11px] text-green-600">+2 from last week</p>
+                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.streak || 0} <span className="text-sm text-muted-foreground">days</span></p>
+                <p className="text-[11px] text-green-600">Active streak</p>
               </CardContent>
             </Card>
             <Card>
@@ -126,8 +124,8 @@ export default function StudentDashboard() {
                   <Target className="w-4 h-4" />
                   <p className="text-xs text-muted-foreground">Topic Mastery</p>
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">23<span className="text-sm text-muted-foreground">/45</span></p>
-                <p className="text-[11px] text-green-600">+3 mastered</p>
+                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.topics_mastered || 0}<span className="text-sm text-muted-foreground">/{dashboardData?.total_topics || 0}</span></p>
+                <p className="text-[11px] text-green-600">Topics covered</p>
               </CardContent>
             </Card>
             <Card>
@@ -136,17 +134,17 @@ export default function StudentDashboard() {
                   <Trophy className="w-4 h-4" />
                   <p className="text-xs text-muted-foreground">Avg Score</p>
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">85.5<span className="text-sm text-muted-foreground">%</span></p>
-                <p className="text-[11px] text-green-600">↑ 5.2% this month</p>
+                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.avg_score || 0}<span className="text-sm text-muted-foreground">%</span></p>
+                <p className="text-[11px] text-green-600">Overall average</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Brain className="w-4 h-4" />
-                  <p className="text-xs text-muted-foreground">AI Queries</p>
+                  <Clock className="w-4 h-4" />
+                  <p className="text-xs text-muted-foreground">Study Hours</p>
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">42</p>
+                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.hours_this_week || 0}</p>
                 <p className="text-[11px] text-muted-foreground">This week</p>
               </CardContent>
             </Card>
@@ -276,11 +274,11 @@ export default function StudentDashboard() {
                       <div className="flex items-start justify-between mb-1">
                         <p className="text-sm font-medium">{test.title}</p>
                         <Badge variant="outline" className="text-[10px] shrink-0 ml-2">
-                          {test.difficulty}
+                          {test.difficulty || "medium"}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mb-1">{test.subject}</p>
-                      <p className="text-[11px] text-muted-foreground font-mono">{test.date} · {test.time}</p>
+                      <p className="text-xs text-muted-foreground mb-1">Subject ID: {test.subject_id}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">{test.duration_minutes} min</p>
                     </div>
                   ))}
                 </div>
@@ -316,12 +314,12 @@ export default function StudentDashboard() {
                           <Badge
                             variant="outline"
                             className={`text-[10px] ${
-                              subject.mastery === 'Strong' ? 'border-green-200 bg-green-50 text-green-700' :
-                              subject.mastery === 'Average' ? 'border-amber-200 bg-amber-50 text-amber-700' :
+                              subject.mastery === 'high' ? 'border-green-200 bg-green-50 text-green-700' :
+                              subject.mastery === 'medium' ? 'border-amber-200 bg-amber-50 text-amber-700' :
                               'border-red-200 bg-red-50 text-red-700'
                             }`}
                           >
-                            {subject.mastery}
+                            {subject.mastery.charAt(0).toUpperCase() + subject.mastery.slice(1)}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
@@ -353,12 +351,12 @@ export default function StudentDashboard() {
             </Link>
             <Link href="/achievements" className="border border-border rounded-md p-4 hover:bg-muted/40 transition-colors">
               <Trophy className="w-4 h-4 mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium">{counts.achievements} Achievements</p>
+              <p className="text-sm font-medium">{dashboardData?.achievements_count || 0} Achievements</p>
               <p className="text-xs text-muted-foreground">Earned badges</p>
             </Link>
             <Link href="/certificates" className="border border-border rounded-md p-4 hover:bg-muted/40 transition-colors">
               <Award className="w-4 h-4 mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium">{counts.certificates} Certificates</p>
+              <p className="text-sm font-medium">{dashboardData?.certificates_count || 0} Certificates</p>
               <p className="text-xs text-muted-foreground">Verified</p>
             </Link>
           </div>

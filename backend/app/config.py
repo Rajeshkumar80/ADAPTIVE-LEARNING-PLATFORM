@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001"
 
-    # Optional services
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4-turbo-preview"
+    # AI services (OpenRouter)
+    OPENROUTER_API_KEY: str = ""
+    OPENAI_MODEL: str = "google/gemini-2.5-pro"
 
     @property
     def cors_origins_list(self) -> List[str]:

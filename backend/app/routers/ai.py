@@ -59,10 +59,13 @@ def ask_ai(
     payload: AIQueryRequest,
     _user: User = Depends(get_current_user),
 ):
-    if settings.OPENAI_API_KEY:
+    if settings.OPENROUTER_API_KEY:
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
+            )
             completion = client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
@@ -84,6 +87,26 @@ def explain_topic(
     payload: AIQueryRequest,
     _user: User = Depends(get_current_user),
 ):
+    if settings.OPENROUTER_API_KEY:
+        try:
+            from openai import OpenAI
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
+            )
+            completion = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a helpful VTU CS tutor. Explain this topic clearly with examples."},
+                    {"role": "user", "content": f"Explain: {payload.query}"},
+                ],
+                max_tokens=800,
+            )
+            answer = completion.choices[0].message.content
+            return {"response": answer, "sources": []}
+        except Exception as e:
+            pass
+            
     return {
         "response": _fallback_response(payload.query),
         "sources": [],
@@ -96,6 +119,44 @@ def generate_quiz(
     difficulty: str = "medium",
     _user: User = Depends(get_current_user),
 ):
+    if settings.OPENROUTER_API_KEY:
+        try:
+            from openai import OpenAI
+            import json
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
+            )
+            completion = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a quiz generator. Output ONLY a valid JSON array containing exactly 1 question object. Format: [{\"question\": \"...\", \"options\": {\"a\": \"...\", \"b\": \"...\", \"c\": \"...\", \"d\": \"...\"}, \"correct_answer\": \"a\"}]"},
+                    {"role": "user", "content": f"Generate a {difficulty} multiple-choice question about: {topic}"},
+                ],
+                max_tokens=400,
+            )
+            answer = completion.choices[0].message.content
+            # Try to parse the JSON
+            try:
+                # Remove any markdown formatting if present
+                clean_answer = answer.strip()
+                if clean_answer.startswith("```json"):
+                    clean_answer = clean_answer[7:]
+                if clean_answer.endswith("```"):
+                    clean_answer = clean_answer[:-3]
+                
+                questions = json.loads(clean_answer.strip())
+                return {
+                    "topic": topic,
+                    "difficulty": difficulty,
+                    "questions": questions,
+                }
+            except json.JSONDecodeError:
+                # Fall back if parsing fails
+                pass
+        except Exception:
+            pass
+
     return {
         "topic": topic,
         "difficulty": difficulty,

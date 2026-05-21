@@ -156,4 +156,4 @@ def seed_database(db: Session):
     db.add_all(notifications)
 
     db.commit()
-    print("✓ Database seeded successfully")
+    print("Database seeded successfully")

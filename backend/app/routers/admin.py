@@ -23,11 +23,15 @@ def get_dashboard(
     active_tests = db.query(Test).filter(Test.is_active == True).count()
     flags_count = db.query(AntiCheatFlag).count()
 
+    from app.models import TestAttempt
+    from sqlalchemy import func
+    avg_perf = db.query(func.avg(TestAttempt.score)).filter(TestAttempt.is_completed == True).scalar()
+    
     return {
         "total_students": total_students,
         "active_tests": active_tests,
         "flags_count": flags_count,
-        "avg_performance": 78.5,  # TODO: compute
+        "avg_performance": round(avg_perf, 1) if avg_perf else 0.0,
     }
 
 
@@ -91,9 +95,16 @@ def class_analytics(
     _admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    from app.models import TestAttempt, User
+    from sqlalchemy import func
+    avg_s = db.query(func.avg(TestAttempt.score)).filter(TestAttempt.is_completed == True).scalar()
+    
+    # Top 5 students based on CGPA
+    top_students = db.query(User).filter(User.role == "student").order_by(User.cgpa.desc()).limit(5).all()
+    
     return {
         "total_students": db.query(User).filter(User.role == "student").count(),
         "total_tests": db.query(Test).count(),
-        "avg_score": 78.5,
-        "top_performers": [],
+        "avg_score": round(avg_s, 1) if avg_s else 0.0,
+        "top_performers": [{"usn": u.usn, "name": u.full_name, "cgpa": u.cgpa} for u in top_students],
     }

@@ -2,7 +2,7 @@
 Study Planner endpoints — schedule, sessions, mastery.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -17,9 +17,9 @@ router = APIRouter()
 def today_plan(
     _user: User = Depends(require_student),
 ):
-    """Static plan for now — RL scheduler comes later."""
+    # MVP: Static plan for now, but use current date
     return {
-        "date": datetime.utcnow().date().isoformat(),
+        "date": datetime.now(timezone.utc).date().isoformat(),
         "sessions": [
             {"id": 1, "time": "09:00", "subject": "Data Structures", "topic": "Trees & Graphs", "duration": 90, "status": "completed"},
             {"id": 2, "time": "11:00", "subject": "DBMS", "topic": "Normalization", "duration": 60, "status": "in-progress"},
@@ -76,7 +76,7 @@ def end_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    session.ended_at = datetime.utcnow()
+    session.ended_at = datetime.now(timezone.utc)
     delta = (session.ended_at - session.started_at).total_seconds() / 60
     session.duration_minutes = int(delta)
     session.focus_score = focus_score

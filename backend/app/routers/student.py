@@ -31,13 +31,30 @@ def get_dashboard(
         TestAttempt.is_completed == True,
     ).all()
     avg_score = sum(a.score for a in attempts) / len(attempts) if attempts else 0.0
+    
+    # Compute topics
+    from app.models import Topic, TopicMastery, StudySession
+    total_topics = db.query(Topic).count()
+    topics_mastered = db.query(TopicMastery).filter(
+        TopicMastery.user_id == current_user.id,
+        TopicMastery.mastery >= 80.0
+    ).count()
+
+    # Compute hours this week
+    from datetime import datetime, timedelta, timezone
+    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    recent_sessions = db.query(StudySession).filter(
+        StudySession.user_id == current_user.id,
+        StudySession.started_at >= one_week_ago
+    ).all()
+    hours_this_week = sum((s.duration_minutes or 0) for s in recent_sessions) / 60.0
 
     return {
-        "streak": 7,  # TODO: compute from study sessions
+        "streak": len(set(s.started_at.date() for s in recent_sessions)) if recent_sessions else 0,
         "avg_score": round(avg_score, 1),
-        "hours_this_week": 38.0,  # TODO: compute
-        "topics_mastered": 23,
-        "total_topics": 45,
+        "hours_this_week": round(hours_this_week, 1),
+        "topics_mastered": topics_mastered,
+        "total_topics": total_topics,
         "achievements_count": achievements_count,
         "certificates_count": certificates_count,
     }
@@ -71,13 +88,32 @@ def get_progress(
 ):
     """Subject progress for the student."""
     subjects = db.query(Subject).all()
-    return [
-        {
+    from app.models import Topic, TopicMastery
+    from sqlalchemy import func
+    
+    result = []
+    for s in subjects:
+        # Get topics for this subject
+        subject_topics = db.query(Topic.id).filter(Topic.subject_id == s.id).subquery()
+        
+        # Get average mastery for these topics
+        avg_mastery = db.query(func.avg(TopicMastery.mastery)).filter(
+            TopicMastery.user_id == current_user.id,
+            TopicMastery.topic_id.in_(subject_topics)
+        ).scalar() or 0.0
+        
+        progress = int(avg_mastery)
+        mastery_level = "low"
+        if progress >= 80:
+            mastery_level = "high"
+        elif progress >= 50:
+            mastery_level = "medium"
+            
+        result.append({
             "id": s.id,
             "code": s.code,
             "name": s.name,
-            "progress": 65,  # TODO: compute from topic mastery
-            "mastery": "medium",
-        }
-        for s in subjects
-    ]
+            "progress": progress,
+            "mastery": mastery_level,
+        })
+    return result
