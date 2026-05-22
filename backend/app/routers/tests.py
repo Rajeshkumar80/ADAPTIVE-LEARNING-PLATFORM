@@ -14,6 +14,61 @@ from app.schemas import TestCreate, TestResponse, TestSubmit
 router = APIRouter()
 
 
+@router.get("/my-attempts")
+def my_attempts(
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """List all test attempts for the current student with test info."""
+    attempts = (
+        db.query(TestAttempt)
+        .filter(TestAttempt.user_id == current_user.id)
+        .order_by(TestAttempt.started_at.desc())
+        .all()
+    )
+    results = []
+    for a in attempts:
+        test = db.query(Test).filter(Test.id == a.test_id).first()
+        results.append({
+            "attempt_id": a.id,
+            "test_id": a.test_id,
+            "test_title": test.title if test else "Unknown",
+            "subject": test.subject.name if test and test.subject else "",
+            "score": a.score,
+            "total_marks": test.total_marks if test else 0,
+            "is_completed": a.is_completed,
+            "started_at": a.started_at,
+            "submitted_at": a.submitted_at,
+            "passed": a.score >= (test.passing_marks if test else 0) if a.is_completed else None,
+        })
+    return results
+
+
+@router.get("/upcoming")
+def upcoming_tests(
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """List tests that are scheduled for the future."""
+    now = datetime.now(timezone.utc)
+    tests = db.query(Test).filter(
+        Test.is_active == True,
+        Test.starts_at > now,
+    ).order_by(Test.starts_at).all()
+    return [
+        {
+            "id": t.id,
+            "title": t.title,
+            "subject": t.subject.name if t.subject else "",
+            "type": t.type,
+            "starts_at": t.starts_at,
+            "ends_at": t.ends_at,
+            "duration_minutes": t.duration_minutes,
+        }
+        for t in tests
+    ]
+
+
 @router.get("/", response_model=list[TestResponse])
 def list_tests(db: Session = Depends(get_db)):
     return db.query(Test).filter(Test.is_active == True).all()
@@ -72,6 +127,39 @@ def start_test(
     if not test:
         raise HTTPException(status_code=404, detail="Test not found")
 
+    # Enforce scheduling window
+    now = datetime.now(timezone.utc)
+    if test.starts_at and now < test.starts_at:
+        raise HTTPException(status_code=400, detail=f"Test hasn't started yet. Opens at {test.starts_at.isoformat()}")
+    if test.ends_at and now > test.ends_at:
+        raise HTTPException(status_code=400, detail="Test window has closed")
+
+    # Check if student already has an incomplete attempt
+    existing = db.query(TestAttempt).filter(
+        TestAttempt.user_id == current_user.id,
+        TestAttempt.test_id == test.id,
+        TestAttempt.is_completed == False,
+    ).first()
+    if existing:
+        # Resume existing attempt
+        questions = db.query(Question).filter(Question.test_id == test.id).all()
+        return {
+            "attempt_id": existing.id,
+            "test_id": test.id,
+            "duration_minutes": test.duration_minutes,
+            "resumed": True,
+            "questions": [
+                {
+                    "id": q.id,
+                    "question_text": q.question_text,
+                    "question_type": q.question_type,
+                    "options": q.options,
+                    "marks": q.marks,
+                }
+                for q in questions
+            ],
+        }
+
     attempt = TestAttempt(user_id=current_user.id, test_id=test.id)
     db.add(attempt)
     db.commit()
@@ -82,6 +170,7 @@ def start_test(
         "attempt_id": attempt.id,
         "test_id": test.id,
         "duration_minutes": test.duration_minutes,
+        "resumed": False,
         "questions": [
             {
                 "id": q.id,
@@ -125,10 +214,16 @@ def submit_test(
     attempt.is_completed = True
     db.commit()
 
+    # Auto-award certificates and achievements
+    from app.services.gamification import check_and_award_after_test
+    check_and_award_after_test(current_user, attempt, db)
+
     return {
         "attempt_id": attempt.id,
         "score": score,
         "total": sum(q.marks for q in questions),
+        "percentage": round(score / sum(q.marks for q in questions) * 100, 1) if questions else 0,
+        "passed": score >= (db.query(Test).filter(Test.id == attempt.test_id).first().passing_marks or 0),
         "submitted_at": attempt.submitted_at,
     }
 

@@ -50,6 +50,11 @@ def create_entry(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+
+    # Check for journal achievements
+    from app.services.gamification import check_journal_achievements
+    check_journal_achievements(current_user, db)
+
     return entry
 
 

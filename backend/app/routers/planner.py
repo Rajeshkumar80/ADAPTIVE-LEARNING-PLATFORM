@@ -187,6 +187,10 @@ def end_session(
             db.add(mastery)
         db.commit()
 
+    # Check for study-related achievements
+    from app.services.gamification import check_study_achievements
+    check_study_achievements(current_user, db)
+
     return {"session_id": session.id, "duration_minutes": session.duration_minutes}
 
 

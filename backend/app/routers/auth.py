@@ -33,7 +33,6 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     )
 
     if role == "student":
-        user.usn = payload.usn or f"1GD23CS{user.id or 'NEW'}"
         user.semester = 6
         user.branch = "Computer Science"
         user.section = "A"
@@ -45,6 +44,12 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Generate USN after commit so we have the real user.id
+    if role == "student" and not user.usn:
+        user.usn = payload.usn or f"1GD23CS{user.id:03d}"
+        db.commit()
+        db.refresh(user)
 
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer", "user": user}

@@ -117,3 +117,75 @@ def get_progress(
             "mastery": mastery_level,
         })
     return result
+
+
+@router.put("/profile")
+def update_profile(
+    semester: int | None = None,
+    section: str | None = None,
+    branch: str | None = None,
+    full_name: str | None = None,
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """Update student profile fields."""
+    if semester is not None:
+        current_user.semester = semester
+    if section is not None:
+        current_user.section = section
+    if branch is not None:
+        current_user.branch = branch
+    if full_name is not None:
+        current_user.full_name = full_name
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "message": "Profile updated",
+        "user": {
+            "id": current_user.id,
+            "full_name": current_user.full_name,
+            "semester": current_user.semester,
+            "section": current_user.section,
+            "branch": current_user.branch,
+            "usn": current_user.usn,
+        },
+    }
+
+
+@router.get("/leaderboard")
+def leaderboard(
+    db: Session = Depends(get_db),
+):
+    """Top students by CGPA and test scores."""
+    from sqlalchemy import func
+    
+    # Top by CGPA
+    top_cgpa = db.query(User).filter(
+        User.role == "student", User.cgpa > 0
+    ).order_by(User.cgpa.desc()).limit(10).all()
+
+    # Top by average test score
+    top_scores = (
+        db.query(
+            User.id, User.full_name, User.usn,
+            func.avg(TestAttempt.score).label("avg_score"),
+            func.count(TestAttempt.id).label("tests_taken"),
+        )
+        .join(TestAttempt, TestAttempt.user_id == User.id)
+        .filter(TestAttempt.is_completed == True)
+        .group_by(User.id)
+        .order_by(func.avg(TestAttempt.score).desc())
+        .limit(10)
+        .all()
+    )
+
+    return {
+        "by_cgpa": [
+            {"rank": i + 1, "name": u.full_name, "usn": u.usn, "cgpa": u.cgpa}
+            for i, u in enumerate(top_cgpa)
+        ],
+        "by_test_score": [
+            {"rank": i + 1, "name": r.full_name, "usn": r.usn, "avg_score": round(r.avg_score, 1), "tests_taken": r.tests_taken}
+            for i, r in enumerate(top_scores)
+        ],
+    }

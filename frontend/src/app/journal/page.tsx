@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { Sidebar } from "@/components/sidebar"
 import { TilingArea } from "@/components/codejournal-v2/tiling-area"
 import { KanbanArea } from "@/components/codejournal-v2/kanban-area"
 import { GraphArea } from "@/components/codejournal-v2/graph-area"
@@ -1039,6 +1040,9 @@ export default function Page() {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
+      {/* Platform navigation sidebar */}
+      <Sidebar />
+
       {/* Hidden file input for .codejournal import */}
       <input
         ref={importInputRef}
