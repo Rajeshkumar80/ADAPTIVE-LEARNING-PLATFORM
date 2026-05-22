@@ -247,3 +247,13 @@ def chatbot(message: str, history: list[dict] = None) -> str:
 def is_available() -> bool:
     """Check if any AI service is configured."""
     return bool(settings.GEMINI_API_KEY or settings.OPENROUTER_API_KEY)
+
+
+def is_gemini_available() -> bool:
+    """Check if Gemini is configured (for AI Tutor)."""
+    return bool(settings.GEMINI_API_KEY)
+
+
+def is_openrouter_available() -> bool:
+    """Check if OpenRouter is configured (for CodeJournal synthesis)."""
+    return bool(settings.OPENROUTER_API_KEY)

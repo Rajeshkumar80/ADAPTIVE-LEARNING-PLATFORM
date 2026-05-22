@@ -6,13 +6,16 @@ import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
 
 interface Message {
   id: number;
   role: 'user' | 'assistant';
   content: string;
-  time: string;
+  timestamp: number;
+}
+
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function AITutorPage() {
@@ -22,8 +25,8 @@ export default function AITutorPage() {
     {
       id: 1,
       role: 'assistant',
-      content: "Hi! I'm your AI tutor. Ask me anything about your subjects, debug code, or get study tips.",
-      time: 'Just now',
+      content: "Hi! I'm your AI tutor powered by Gemini. Ask me anything about your subjects — DSA, DBMS, OS, Networks, or any programming topic.",
+      timestamp: Date.now(),
     },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,31 +35,9 @@ export default function AITutorPage() {
     'Explain DBMS normalization',
     'How does binary search work?',
     'What is process scheduling?',
-    'Tips for studying effectively',
+    'Explain closures in JavaScript',
+    'Difference between TCP and UDP',
   ];
-
-  const recent = [
-    { id: 1, topic: 'Binary Search Trees', subject: 'DSA' },
-    { id: 2, topic: 'SQL Joins', subject: 'DBMS' },
-    { id: 3, topic: 'Process Synchronization', subject: 'OS' },
-    { id: 4, topic: 'OSI Model', subject: 'CN' },
-  ];
-
-  const fallbackResponses: Record<string, string> = {
-    binary: "Binary Search is an efficient algorithm for finding a target value in a sorted array.\n\n1. Compare target with middle element\n2. If equal, you've found it\n3. If target is smaller, search left half\n4. If larger, search right half\n5. Repeat until found\n\nTime Complexity: O(log n)",
-    sort: "Common sorting algorithms:\n\n• Bubble Sort — O(n²), simple\n• Quick Sort — O(n log n) avg\n• Merge Sort — O(n log n), stable\n• Heap Sort — O(n log n), in-place",
-    normal: "Database normalization reduces redundancy.\n\n• 1NF — atomic values\n• 2NF — 1NF + no partial dependencies\n• 3NF — 2NF + no transitive dependencies\n• BCNF — stricter 3NF",
-    process: "Process scheduling determines which process runs next on the CPU.\n\nCommon algorithms:\n• FCFS (First Come First Served)\n• SJF (Shortest Job First)\n• Round Robin\n• Priority Scheduling\n• Multilevel Queue",
-    osi: "The OSI Model has 7 layers:\n\n7. Application — User interface\n6. Presentation — Data format/encryption\n5. Session — Connections\n4. Transport — TCP/UDP\n3. Network — Routing (IP)\n2. Data Link — Frames (MAC)\n1. Physical — Bits over wire",
-  };
-
-  const generateFallback = (query: string): string => {
-    const q = query.toLowerCase();
-    for (const [key, response] of Object.entries(fallbackResponses)) {
-      if (q.includes(key)) return response;
-    }
-    return `That's an interesting question about "${query}".\n\nI'm currently running in offline mode. To get full AI responses, the backend needs to be configured with an OpenAI API key. I can still help with common topics like binary search, sorting, normalization, process scheduling, and the OSI model.`;
-  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -70,27 +51,43 @@ export default function AITutorPage() {
       id: Date.now(),
       role: 'user',
       content: query,
-      time: 'Just now',
+      timestamp: Date.now(),
     };
     setMessages(prev => [...prev, userMsg]);
     setMessage('');
     setLoading(true);
 
     try {
-      const response = await api.askAI(query);
+      // Build history from last 10 messages for context
+      const history = messages.slice(-10).map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/ai/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: query, history }),
+      });
+
+      const data = await res.json();
+
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: response.response || generateFallback(query),
-        time: 'Just now',
+        content: data.response || 'Sorry, I could not generate a response.',
+        timestamp: Date.now(),
       }]);
-    } catch {
-      // Fallback when backend unavailable
+    } catch (err) {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: generateFallback(query),
-        time: 'Just now',
+        content: 'Unable to reach the AI service. Make sure the backend is running at localhost:8000.',
+        timestamp: Date.now(),
       }]);
     } finally {
       setLoading(false);
@@ -121,22 +118,6 @@ export default function AITutorPage() {
                   ))}
                 </div>
               </div>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2 mt-6">Recent</p>
-                <div className="space-y-1">
-                  {recent.map((r) => (
-                    <button
-                      key={r.id}
-                      onClick={() => handleSend(`Tell me about ${r.topic}`)}
-                      className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors"
-                    >
-                      <p className="text-sm font-medium truncate">{r.topic}</p>
-                      <p className="text-xs text-muted-foreground">{r.subject}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Chat */}
@@ -147,7 +128,7 @@ export default function AITutorPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold">AI Tutor</p>
-                  <p className="text-xs text-muted-foreground">Always here to help</p>
+                  <p className="text-xs text-muted-foreground">Powered by Gemini · Always here to help</p>
                 </div>
               </div>
 
@@ -165,7 +146,9 @@ export default function AITutorPage() {
                       }`}>
                         {msg.content}
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-1 px-1">{msg.time}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 px-1">
+                        {formatTime(msg.timestamp)}
+                      </p>
                     </div>
                   </div>
                 ))}
