@@ -1,50 +1,107 @@
 """
-AI Service — centralized OpenRouter integration.
-Handles all LLM calls with retry logic, streaming support, and structured output.
+AI Service — Google Gemini direct + OpenRouter fallback.
+Handles all LLM calls for the platform (tutor, quiz, planner).
 """
 
 import json
 import logging
 from typing import Optional
 
-from openai import OpenAI
-
 from app.config import settings
 
 logger = logging.getLogger("adaptlearn.ai")
 
-# Singleton client (reuses connection pool)
-_client: Optional[OpenAI] = None
+# ── Google Gemini Client ────────────────────────────────────────────────────────
+
+_gemini_client = None
 
 
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        if not settings.OPENROUTER_API_KEY:
-            raise RuntimeError("OPENROUTER_API_KEY not configured")
-        _client = OpenAI(
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        from google import genai
+        _gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _gemini_client
+
+
+def _gemini_chat(messages: list[dict], max_tokens: int = 800, temperature: float = 0.7) -> str:
+    """Call Google Gemini directly."""
+    client = _get_gemini_client()
+
+    # Convert messages to Gemini format (system + user content)
+    system_instruction = ""
+    contents = []
+    for msg in messages:
+        if msg["role"] == "system":
+            system_instruction += msg["content"] + "\n"
+        else:
+            contents.append(msg["content"])
+
+    user_prompt = "\n".join(contents)
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=user_prompt,
+        config={
+            "system_instruction": system_instruction,
+            "max_output_tokens": max_tokens,
+            "temperature": temperature,
+        },
+    )
+    return response.text or ""
+
+
+# ── OpenRouter Client (fallback) ────────────────────────────────────────────────
+
+_openrouter_client = None
+
+
+def _get_openrouter_client():
+    global _openrouter_client
+    if _openrouter_client is None:
+        from openai import OpenAI
+        _openrouter_client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=settings.OPENROUTER_API_KEY,
         )
-    return _client
+    return _openrouter_client
 
 
-def chat(
-    messages: list[dict],
-    max_tokens: int = 800,
-    temperature: float = 0.7,
-    model: Optional[str] = None,
-) -> str:
-    """Send a chat completion request to OpenRouter. Returns the text response."""
-    client = _get_client()
+def _openrouter_chat(messages: list[dict], max_tokens: int = 800, temperature: float = 0.7) -> str:
+    """Call OpenRouter as fallback."""
+    client = _get_openrouter_client()
     completion = client.chat.completions.create(
-        model=model or settings.OPENAI_MODEL,
+        model=settings.OPENAI_MODEL,
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
     )
     return completion.choices[0].message.content or ""
 
+
+# ── Unified chat function ───────────────────────────────────────────────────────
+
+def chat(
+    messages: list[dict],
+    max_tokens: int = 800,
+    temperature: float = 0.7,
+) -> str:
+    """Send a chat request. Tries Gemini first, falls back to OpenRouter."""
+    # Try Gemini first
+    if settings.GEMINI_API_KEY:
+        try:
+            return _gemini_chat(messages, max_tokens, temperature)
+        except Exception as e:
+            logger.warning(f"Gemini failed, trying OpenRouter: {e}")
+
+    # Fallback to OpenRouter
+    if settings.OPENROUTER_API_KEY:
+        return _openrouter_chat(messages, max_tokens, temperature)
+
+    raise RuntimeError("No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY)")
+
+
+# ── Public API ──────────────────────────────────────────────────────────────────
 
 def ask_tutor(query: str, context: Optional[str] = None) -> str:
     """AI Tutor — answer a student's question."""
@@ -98,7 +155,7 @@ def generate_quiz(topic: str, difficulty: str = "medium", count: int = 3) -> lis
     ]
     raw = chat(messages, max_tokens=1200, temperature=0.8)
 
-    # Parse JSON from response (handle markdown fences)
+    # Parse JSON from response
     clean = raw.strip()
     if clean.startswith("```"):
         clean = clean.split("\n", 1)[1] if "\n" in clean else clean[3:]
@@ -113,12 +170,11 @@ def generate_quiz(topic: str, difficulty: str = "medium", count: int = 3) -> lis
     except json.JSONDecodeError:
         logger.warning(f"Failed to parse quiz JSON: {raw[:200]}")
 
-    # Fallback single question
     return [{
         "question": f"Sample question about {topic}",
         "options": {"a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D"},
         "correct_answer": "a",
-        "explanation": "This is a fallback question. AI response could not be parsed.",
+        "explanation": "AI response could not be parsed.",
     }]
 
 
@@ -168,6 +224,26 @@ def generate_study_plan(
     return []
 
 
+def chatbot(message: str, history: list[dict] = None) -> str:
+    """General chatbot for conversational AI tutor with history support."""
+    system = (
+        "You are AdaptLearn AI — a friendly, knowledgeable tutor for VTU Computer Science students. "
+        "You help with programming, algorithms, databases, OS, networks, and software engineering. "
+        "Be conversational but educational. Use markdown for code and formatting. "
+        "If the student seems confused, break things down step by step. "
+        "Keep responses concise (2-4 paragraphs max) unless they ask for detail."
+    )
+    messages = [{"role": "system", "content": system}]
+
+    # Add conversation history
+    if history:
+        for h in history[-10:]:  # Keep last 10 messages for context
+            messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+
+    messages.append({"role": "user", "content": message})
+    return chat(messages, max_tokens=800)
+
+
 def is_available() -> bool:
-    """Check if AI service is configured and reachable."""
-    return bool(settings.OPENROUTER_API_KEY)
+    """Check if any AI service is configured."""
+    return bool(settings.GEMINI_API_KEY or settings.OPENROUTER_API_KEY)

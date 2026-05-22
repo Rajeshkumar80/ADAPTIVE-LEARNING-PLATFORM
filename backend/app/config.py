@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENAI_MODEL: str = "google/gemini-2.5-pro"
 
+    # Google Gemini Direct API
+    GEMINI_API_KEY: str = ""
+
     @property
     def cors_origins_list(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, str):

@@ -1,15 +1,44 @@
 """
-AI Tutor endpoints — chat, explain, generate quiz.
-Uses OpenRouter via the centralized AI service.
+AI Tutor endpoints — chat, explain, generate quiz, chatbot.
+Uses Google Gemini (primary) + OpenRouter (fallback) via the centralized AI service.
 """
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+from typing import Optional
 from app.auth import get_current_user
 from app.models import User
 from app.schemas import AIQueryRequest, AIQueryResponse
 from app.services import ai_service
 
 router = APIRouter()
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[list[ChatMessage]] = []
+
+
+@router.post("/chat")
+def chat_with_ai(
+    payload: ChatRequest,
+    _user: User = Depends(get_current_user),
+):
+    """Conversational AI chatbot with history support."""
+    if not ai_service.is_available():
+        return {"response": "AI service not configured. Contact admin.", "model": "none"}
+
+    try:
+        history = [{"role": m.role, "content": m.content} for m in (payload.history or [])]
+        answer = ai_service.chatbot(payload.message, history)
+        return {"response": answer, "model": "gemini-2.5-flash"}
+    except Exception as e:
+        return {"response": f"Sorry, I encountered an error: {str(e)}", "model": "error"}
 
 
 @router.post("/ask", response_model=AIQueryResponse)
