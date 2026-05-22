@@ -73,7 +73,7 @@ export function StatusBar({
   }, [blocks])
 
   return (
-    <header className="flex h-10 items-center justify-between border-b border-border bg-card/80 backdrop-blur-md px-3 py-1.5 z-50">
+    <header className="flex h-10 items-center justify-between border-b border-border bg-white backdrop-blur-md px-3 py-1.5 z-50">
       <div className="flex items-center gap-1.5">
         <button 
           onClick={onMenuClick}
@@ -150,7 +150,7 @@ export function StatusBar({
             )}
           </div>
         )}
-        <div className="flex items-center gap-2 border-l border-white/5 pl-4 ml-4">
+        <div className="flex items-center gap-2 border-l border-gray-100 pl-4 ml-4">
           {/* Model indicator */}
           {modelLabel && (
             <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-wider px-1.5">
@@ -231,6 +231,8 @@ export function StatusBar({
     </header>
   )
 }
+
+
 
 
 

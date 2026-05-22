@@ -26,11 +26,11 @@ export function GhostPanel({ ghostNotes, isOpen, onClose, onClaim, onDismiss }: 
         opacity: isOpen ? 1 : 0,
         visibility: isOpen ? "visible" : "hidden",
       }}
-      className="flex flex-col h-full bg-black/20 backdrop-blur-3xl border-l border-border shrink-0 overflow-hidden relative z-50 transition-all duration-200 ease-in-out"
+      className="flex flex-col h-full bg-gray-100 shadow-sm border-l border-border shrink-0 overflow-hidden relative z-50 transition-all duration-200 ease-in-out"
     >
       <div className="w-[272px] flex flex-col h-full">
         {/* Header */}
-        <div className="flex h-10 items-center justify-between border-b border-border bg-card/5 px-3 py-1.5 shrink-0">
+        <div className="flex h-10 items-center justify-between border-b border-border bg-white px-3 py-1.5 shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center h-5 w-5 bg-primary/10 rounded-sm">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -46,7 +46,7 @@ export function GhostPanel({ ghostNotes, isOpen, onClose, onClaim, onDismiss }: 
           </div>
           <button
             onClick={onClose}
-            className="p-1 px-1.5 hover:bg-white/5 rounded-sm transition-colors text-muted-foreground/30 hover:text-white"
+            className="p-1 px-1.5 hover:bg-gray-50 rounded-sm transition-colors text-muted-foreground/30 hover:text-gray-900"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -136,5 +136,7 @@ export function GhostPanel({ ghostNotes, isOpen, onClose, onClaim, onDismiss }: 
     </div>
   )
 }
+
+
 
 

@@ -36,7 +36,7 @@ export function IntroModal({ open, onClose }: IntroModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[500] flex items-center justify-center bg-white border-t border-border backdrop-blur-sm p-4"
           onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
         >
           <motion.div
@@ -44,7 +44,7 @@ export function IntroModal({ open, onClose }: IntroModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative w-full max-w-xl bg-[#0d0d0d] border border-white/10 rounded-sm shadow-2xl overflow-hidden"
+            className="relative w-full max-w-xl bg-[#0d0d0d] border border-gray-200 rounded-sm shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
@@ -59,7 +59,7 @@ export function IntroModal({ open, onClose }: IntroModalProps) {
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-sm text-muted-foreground/40 hover:text-foreground hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-sm text-muted-foreground/40 hover:text-foreground hover:bg-gray-100 transition-colors"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function IntroModal({ open, onClose }: IntroModalProps) {
                 </div>
               </div>
 
-              <div className="p-3 rounded-sm bg-white/[0.03] border border-white/[0.06]">
+              <div className="p-3 rounded-sm bg-gray-50 border border-white/[0.06]">
                 <p className="text-xs text-muted-foreground/70">
                   <strong className="text-muted-foreground">To start:</strong> Add your OpenRouter API key in the ☰ sidebar → Settings (free models available), then type your first entry below.
                 </p>
@@ -124,5 +124,7 @@ export function IntroModal({ open, onClose }: IntroModalProps) {
     </AnimatePresence>
   )
 }
+
+
 
 

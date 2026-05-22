@@ -49,7 +49,7 @@ export function SynthesisPanel({ isOpen, onClose, synthesis, isGenerating }: Syn
             className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-card border-l border-border z-[101] overflow-y-auto"
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-card/95 backdrop-blur-sm">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-white backdrop-blur-sm">
               <div>
                 <h2 className="font-mono text-sm font-bold text-foreground uppercase tracking-wider">
                   Knowledge Synthesis
@@ -173,5 +173,7 @@ export function SynthesisPanel({ isOpen, onClose, synthesis, isGenerating }: Syn
     </AnimatePresence>
   )
 }
+
+
 
 

@@ -459,7 +459,7 @@ export function GraphArea({
                 ))}
               </div>
 
-              <p className="text-[13px] text-white uppercase tracking-[0.15em] whitespace-nowrap">
+              <p className="text-[13px] text-gray-900 uppercase tracking-[0.15em] whitespace-nowrap">
                 {`type anything · #type to classify · ${mod}K for commands`}
               </p>
             </div>
@@ -747,7 +747,7 @@ export function GraphArea({
               style={{ left: tipX, top: tipY, transform: "translateY(-100%)" }}
             >
               <div
-                className="rounded-sm shadow-[0_4px_24px_rgba(0,0,0,0.55)] border border-white/10 overflow-hidden"
+                className="rounded-sm shadow-[0_4px_24px_rgba(0,0,0,0.55)] border border-gray-200 overflow-hidden"
                 style={{ minWidth: 190, maxWidth: 300 }}
               >
                 <div className="flex items-center gap-2 px-2.5 py-1.5" style={{ background: accent }}>
@@ -769,12 +769,12 @@ export function GraphArea({
                     </span>
                   )}
                 </div>
-                <div className="bg-card/95 backdrop-blur-sm px-3 py-2.5">
+                <div className="bg-white backdrop-blur-sm px-3 py-2.5">
                   <p className="text-sm font-semibold leading-snug text-foreground">{text}</p>
                 </div>
               </div>
               <div
-                className="mx-4 h-2 w-2 rotate-45 border-b border-r border-white/10 bg-card/95"
+                className="mx-4 h-2 w-2 rotate-45 border-b border-r border-gray-200 bg-white"
                 style={{ marginTop: -1 }}
               />
             </div>
@@ -826,5 +826,7 @@ export function GraphArea({
     </div>
   )
 }
+
+
 
 

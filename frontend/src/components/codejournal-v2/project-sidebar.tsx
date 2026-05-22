@@ -144,11 +144,11 @@ export function ProjectSidebar({
         opacity: isOpen ? 1 : 0,
         visibility: isOpen ? "visible" : "hidden"
       }}
-      className="relative z-50 transition-all duration-200 ease-in-out overflow-hidden border-r border-border bg-black/20 backdrop-blur-3xl flex flex-col h-full"
+      className="relative z-50 transition-all duration-200 ease-in-out overflow-hidden border-r border-border bg-gray-100 shadow-sm flex flex-col h-full"
     >
       <div className="w-[240px] flex flex-col h-full">
         {/* Header */}
-        <div className="flex h-10 items-center justify-between border-b border-border bg-card/5 backdrop-blur-md px-3 py-1.5 shrink-0">
+        <div className="flex h-10 items-center justify-between border-b border-border bg-white backdrop-blur-md px-3 py-1.5 shrink-0">
           <div className="flex items-center gap-2.5">
             {showSettings ? (
               <button
@@ -171,7 +171,7 @@ export function ProjectSidebar({
           </div>
           <button
             onClick={handleClose}
-            className="p-1 px-1.5 hover:bg-white/5 rounded-sm transition-colors text-muted-foreground hover:text-foreground"
+            className="p-1 px-1.5 hover:bg-gray-50 rounded-sm transition-colors text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -195,7 +195,7 @@ export function ProjectSidebar({
                     className={`group relative rounded-sm transition-all duration-150 ${
                       activeProjectId === project.id 
                         ? "bg-primary/10 shadow-[inset_0_1px_0px_rgba(255,255,255,0.05)]" 
-                        : "hover:bg-white/5"
+                        : "hover:bg-gray-50"
                     }`}
                   >
                     <div className="flex items-center p-2 px-2.5">
@@ -236,7 +236,7 @@ export function ProjectSidebar({
                                 setEditName(project.name)
                                 setEditingId(project.id)
                               }}
-                              className="p-1 hover:bg-white/10 rounded-sm text-muted-foreground hover:text-primary transition-colors"
+                              className="p-1 hover:bg-gray-100 rounded-sm text-muted-foreground hover:text-primary transition-colors"
                             >
                               <Edit3 className="h-3 w-3" />
                             </button>
@@ -266,19 +266,19 @@ export function ProjectSidebar({
                           transition={{ duration: 0 }}
                           className="absolute inset-0 z-10 bg-destructive/95 backdrop-blur-md rounded-sm flex items-center justify-between px-3"
                         >
-                          <span className="font-mono text-[8px] font-bold text-white uppercase tracking-tighter">
+                          <span className="font-mono text-[8px] font-bold text-gray-900 uppercase tracking-tighter">
                             Delete Space?
                           </span>
                           <div className="flex items-center gap-1">
                             <button 
                               onClick={() => handleDelete(project.id)}
-                              className="p-1 bg-white/20 hover:bg-white/30 rounded-full text-white transition-colors"
+                              className="p-1 bg-gray-200 hover:bg-white/30 rounded-full text-gray-900 transition-colors"
                             >
                               <Check className="h-3 w-3" />
                             </button>
                             <button 
                               onClick={() => setDeletingId(null)}
-                              className="p-1 bg-black/30 hover:bg-black/40 rounded-full text-white transition-colors"
+                              className="p-1 bg-gray-100 hover:bg-black/40 rounded-full text-gray-900 transition-colors"
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -306,7 +306,7 @@ export function ProjectSidebar({
                   <div className="relative">
                     <button
                       onClick={() => setProviderOpen(v => !v)}
-                      className="flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 text-left hover:bg-white/[0.07] focus:outline-none transition-colors"
+                      className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 text-left hover:bg-gray-100 focus:outline-none transition-colors"
                     >
                       <span className="font-mono text-[11px] font-bold text-foreground">{currentPreset.label}</span>
                       <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${providerOpen ? "rotate-180" : ""}`} />
@@ -318,7 +318,7 @@ export function ProjectSidebar({
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -4 }}
                           transition={{ duration: 0.1 }}
-                          className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden rounded-md border border-white/10 bg-[#0d0d10] shadow-xl"
+                          className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white shadow-xl"
                         >
                           {AI_PROVIDER_PRESETS.map(preset => (
                             <button
@@ -337,10 +337,10 @@ export function ProjectSidebar({
                                 }))
                                 setProviderOpen(false)
                               }}
-                              className="flex w-full items-center gap-2.5 px-2.5 py-2 text-left hover:bg-white/5 transition-colors"
+                              className="flex w-full items-center gap-2.5 px-2.5 py-2 text-left hover:bg-gray-50 transition-colors"
                             >
                               <div className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
-                                draft.provider === preset.id ? "border-primary bg-primary/20" : "border-white/10"
+                                draft.provider === preset.id ? "border-primary bg-primary/20" : "border-gray-200"
                               }`}>
                                 {draft.provider === preset.id && <Check className="h-2.5 w-2.5 text-primary" />}
                               </div>
@@ -358,7 +358,7 @@ export function ProjectSidebar({
                   <label className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                     API Key
                   </label>
-                  <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 focus-within:border-primary/50 transition-colors">
+                  <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 focus-within:border-primary/50 transition-colors">
                     <Key className="h-3 w-3 shrink-0 text-muted-foreground" />
                     <input
                       type="text"
@@ -390,7 +390,7 @@ export function ProjectSidebar({
                   <label className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                     Custom Base URL
                   </label>
-                  <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 focus-within:border-primary/50 transition-colors">
+                  <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 focus-within:border-primary/50 transition-colors">
                     <input
                       type="text"
                       value={draft.customBaseUrl ?? ""}
@@ -412,7 +412,7 @@ export function ProjectSidebar({
                     Model
                   </label>
                   {models.length === 0 ? (
-                    <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 focus-within:border-primary/50 transition-colors">
+                    <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 focus-within:border-primary/50 transition-colors">
                       <input
                         type="text"
                         value={draft.modelId}
@@ -427,7 +427,7 @@ export function ProjectSidebar({
                     <div className="relative">
                       <button
                         onClick={() => setModelOpen(v => !v)}
-                        className="flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 text-left hover:bg-white/[0.07] focus:outline-none transition-colors"
+                        className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 text-left hover:bg-gray-100 focus:outline-none transition-colors"
                       >
                         <div>
                           <div className="font-mono text-[11px] font-bold text-foreground">{selectedModel?.label ?? draft.modelId}</div>
@@ -442,7 +442,7 @@ export function ProjectSidebar({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -4 }}
                             transition={{ duration: 0.1 }}
-                            className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden rounded-md border border-white/10 bg-[#0d0d10] shadow-xl"
+                            className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white shadow-xl"
                           >
                             {models.map(model => (
                               <button
@@ -451,10 +451,10 @@ export function ProjectSidebar({
                                   setDraft(d => ({ ...d, modelId: model.id, webGrounding: model.supportsGrounding ? d.webGrounding : false }))
                                   setModelOpen(false)
                                 }}
-                                className="flex w-full items-center gap-2.5 px-2.5 py-2 text-left hover:bg-white/5 transition-colors"
+                                className="flex w-full items-center gap-2.5 px-2.5 py-2 text-left hover:bg-gray-50 transition-colors"
                               >
                                 <div className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
-                                  draft.modelId === model.id ? "border-primary bg-primary/20" : "border-white/10"
+                                  draft.modelId === model.id ? "border-primary bg-primary/20" : "border-gray-200"
                                 }`}>
                                   {draft.modelId === model.id && <Check className="h-2.5 w-2.5 text-primary" />}
                                 </div>
@@ -474,7 +474,7 @@ export function ProjectSidebar({
 
                 {/* Web Grounding (OpenRouter + OpenAI) */}
                 {(draft.provider === "openrouter" || draft.provider === "openai") && selectedModel && (
-                  <div className="flex items-start justify-between gap-3 rounded-md border border-white/5 bg-white/[0.02] px-2.5 py-2.5">
+                  <div className="flex items-start justify-between gap-3 rounded-md border border-gray-100 bg-white/[0.02] px-2.5 py-2.5">
                     <div className="flex items-start gap-2">
                       <Globe className="h-3.5 w-3.5 mt-0.5 text-primary/60 shrink-0" />
                       <div>
@@ -492,7 +492,7 @@ export function ProjectSidebar({
                       onClick={() => selectedModel.supportsGrounding && setDraft(d => ({ ...d, webGrounding: !d.webGrounding }))}
                       disabled={!selectedModel.supportsGrounding}
                       className={`relative shrink-0 h-5 w-9 rounded-full transition-all duration-200 ${
-                        draft.webGrounding && selectedModel.supportsGrounding ? "bg-primary" : "bg-white/10"
+                        draft.webGrounding && selectedModel.supportsGrounding ? "bg-primary" : "bg-gray-100"
                       } disabled:opacity-30 disabled:cursor-not-allowed`}
                     >
                       <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-200 ${
@@ -506,7 +506,7 @@ export function ProjectSidebar({
                 <div className={`flex items-center gap-2 rounded-md px-2.5 py-2 font-mono text-[9px] ${
                   draft.apiKey
                     ? "bg-primary/10 border border-primary/20 text-primary"
-                    : "bg-white/5 border border-white/5 text-muted-foreground"
+                    : "bg-gray-50 border border-gray-100 text-muted-foreground"
                 }`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${draft.apiKey ? "bg-primary animate-pulse" : "bg-white/30"}`} />
                   {draft.apiKey ? `${currentPreset.label} — API key configured` : "No API key — AI disabled"}
@@ -517,7 +517,7 @@ export function ProjectSidebar({
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-white/5 bg-black/10 shrink-0">
+        <div className="p-3 border-t border-gray-100 bg-gray-50 shrink-0">
           {showSettings ? (
             <div className="flex flex-col gap-1.5">
               <button
@@ -529,7 +529,7 @@ export function ProjectSidebar({
               </button>
               <button
                 onClick={() => setShowSettings(false)}
-                className="flex items-center justify-center w-full h-8 px-2.5 rounded-sm bg-white/5 hover:bg-white/10 text-muted-foreground font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-all active:scale-[0.98] border border-white/5"
+                className="flex items-center justify-center w-full h-8 px-2.5 rounded-sm bg-gray-50 hover:bg-gray-100 text-muted-foreground font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-all active:scale-[0.98] border border-gray-100"
               >
                 Cancel
               </button>
@@ -557,7 +557,7 @@ export function ProjectSidebar({
               </button>
               <button
                 onClick={onImportProject}
-                className="flex items-center justify-between w-full h-8 px-2.5 rounded-sm bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-all active:scale-[0.98] border border-white/5"
+                className="flex items-center justify-between w-full h-8 px-2.5 rounded-sm bg-gray-50 hover:bg-gray-100 text-muted-foreground hover:text-foreground font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-all active:scale-[0.98] border border-gray-100"
                 title="Import a .codejournal file"
               >
                 <span>Import .codejournal</span>
@@ -565,7 +565,7 @@ export function ProjectSidebar({
               </button>
               <button
                 onClick={() => setShowSettings(true)}
-                className="flex items-center justify-between w-full h-8 px-2.5 rounded-sm bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-all active:scale-[0.98] border border-white/5"
+                className="flex items-center justify-between w-full h-8 px-2.5 rounded-sm bg-gray-50 hover:bg-gray-100 text-muted-foreground hover:text-foreground font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-all active:scale-[0.98] border border-gray-100"
               >
                 <span>Settings</span>
                 <Settings className="h-3.5 w-3.5" />
@@ -577,5 +577,7 @@ export function ProjectSidebar({
     </div>
   )
 }
+
+
 
 

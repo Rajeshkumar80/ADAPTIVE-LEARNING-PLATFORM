@@ -129,7 +129,7 @@ export function GraphDetailPanel({
 
   if (!block) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center border-l border-border/60 bg-card/60">
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center border-l border-border/60 bg-gray-50">
         <div className="flex items-center gap-0.5 opacity-20">
           <span className="inline-block h-2 w-2 rounded-sm bg-foreground" />
           <span className="inline-block h-2 w-2 rounded-sm bg-foreground opacity-60" />
@@ -190,7 +190,7 @@ export function GraphDetailPanel({
             {config.label}
           </span>
           {/* Category tag — read-only, updated by AI on enrichment */}
-          <span className="rounded-sm bg-black/10 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-tighter opacity-60">
+          <span className="rounded-sm bg-gray-50 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-tighter opacity-60">
             #{block.category || "no-topic"}
           </span>
         </div>
@@ -205,7 +205,7 @@ export function GraphDetailPanel({
               }
               setIsTypePickerOpen(v => !v)
             }}
-            className={`p-1 rounded-sm transition-opacity ${isTypePickerOpen ? "opacity-100 bg-black/20" : "opacity-40 hover:opacity-90"}`}
+            className={`p-1 rounded-sm transition-opacity ${isTypePickerOpen ? "opacity-100 bg-gray-100" : "opacity-40 hover:opacity-90"}`}
             title="Change type"
           >
             <Tag className="h-3 w-3" />
@@ -381,5 +381,7 @@ export function GraphDetailPanel({
     </div>
   )
 }
+
+
 
 
