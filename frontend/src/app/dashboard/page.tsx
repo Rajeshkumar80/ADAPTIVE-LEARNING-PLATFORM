@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ActivityChart, SubjectMasteryRadar } from '@/components/charts';
+import { ScrollReveal } from '@/components/scroll-reveal';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import {
@@ -68,7 +69,7 @@ export default function StudentDashboard() {
     }
   }, [user, loading, router]);
 
-  if (loading || !user || !dashboardData) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent" />
@@ -81,8 +82,15 @@ export default function StudentDashboard() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
+        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-page-enter">
+
+          {/* Show skeleton while loading, real content when ready */}
+          {!dashboardData ? (
+            <DashboardSkeleton userName={user.full_name?.split(' ')[0] || 'Student'} />
+          ) : (
+          <>
           {/* Greeting */}
+          <ScrollReveal>
           <div className="flex items-end justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Hi, {user.full_name?.split(' ')[0]}</h1>
@@ -105,9 +113,11 @@ export default function StudentDashboard() {
               </Link>
             </div>
           </div>
+          </ScrollReveal>
 
           {/* Hero stats — education focused */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <ScrollReveal delay={100}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
             <Card>
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-3">
@@ -174,8 +184,10 @@ export default function StudentDashboard() {
               </div>
             </CardContent>
           </Card>
+          </ScrollReveal>
 
           {/* Engagement chart + Mastery radar */}
+          <ScrollReveal delay={200}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3">
@@ -205,8 +217,10 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
           </div>
+          </ScrollReveal>
 
           {/* Schedule + Tests */}
+          <ScrollReveal delay={300}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3">
@@ -336,8 +350,10 @@ export default function StudentDashboard() {
               </div>
             </CardContent>
           </Card>
+          </ScrollReveal>
 
           {/* Quick links */}
+          <ScrollReveal delay={400}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Link href="/journal" className="border border-border rounded-md p-4 hover:bg-muted/40 transition-colors">
               <BookOpen className="w-4 h-4 mb-2 text-muted-foreground" />
@@ -360,7 +376,72 @@ export default function StudentDashboard() {
               <p className="text-xs text-muted-foreground">Verified</p>
             </Link>
           </div>
+          </ScrollReveal>
+          </>
+          )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+function DashboardSkeleton({ userName }: { userName: string }) {
+  return (
+    <div className="space-y-6 animate-page-enter">
+      {/* Greeting */}
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Hi, {userName}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Loading your dashboard...</p>
+        </div>
+      </div>
+
+      {/* Stat cards skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="border border-border rounded-lg p-5 space-y-3">
+            <div className="h-3 w-20 bg-muted rounded animate-pulse" />
+            <div className="h-7 w-16 bg-muted rounded animate-pulse" />
+            <div className="h-2 w-24 bg-muted/60 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+
+      {/* Charts skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 border border-border rounded-lg p-6">
+          <div className="h-4 w-32 bg-muted rounded animate-pulse mb-4" />
+          <div className="h-48 bg-muted/30 rounded animate-pulse" />
+        </div>
+        <div className="border border-border rounded-lg p-6">
+          <div className="h-4 w-28 bg-muted rounded animate-pulse mb-4" />
+          <div className="h-48 bg-muted/30 rounded animate-pulse" />
+        </div>
+      </div>
+
+      {/* Schedule skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 border border-border rounded-lg p-6 space-y-3">
+          <div className="h-4 w-36 bg-muted rounded animate-pulse" />
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-center gap-3 py-2">
+              <div className="h-8 w-14 bg-muted rounded animate-pulse" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 w-40 bg-muted rounded animate-pulse" />
+                <div className="h-2 w-24 bg-muted/60 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border border-border rounded-lg p-6 space-y-3">
+          <div className="h-4 w-28 bg-muted rounded animate-pulse" />
+          {[1, 2].map(i => (
+            <div key={i} className="py-2 space-y-1.5">
+              <div className="h-3 w-32 bg-muted rounded animate-pulse" />
+              <div className="h-2 w-20 bg-muted/60 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

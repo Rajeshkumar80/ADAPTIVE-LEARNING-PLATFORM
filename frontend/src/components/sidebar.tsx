@@ -123,15 +123,16 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     className={cn(
-                      'flex items-center gap-2.5 px-2 h-8 rounded-md text-sm transition-colors',
+                      'flex items-center gap-2.5 px-2 h-8 rounded-md text-sm transition-all duration-150 press-effect',
                       isActive
                         ? 'bg-muted text-foreground font-medium'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <Icon className={cn(
-                      "w-4 h-4 shrink-0",
+                      "w-4 h-4 shrink-0 transition-colors",
                       isActive ? "text-foreground" : "text-muted-foreground"
                     )} />
                     <span>{item.label}</span>
