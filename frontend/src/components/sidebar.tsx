@@ -52,7 +52,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       section: 'Practice',
       items: [
         { icon: GraduationCap, label: 'Tests', href: '/tests' },
-        { icon: Code2, label: 'Code Journal', href: '/journal' },
       ],
     },
     {
