@@ -92,7 +92,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
   const menuSections = isAdmin ? adminMenu : studentMenu;
 
   return (
-    <aside className="w-60 h-screen border-r border-border bg-background flex flex-col sticky top-0 shrink-0">
+    <aside className="w-60 h-screen border-r border-border bg-background flex flex-col sticky top-0 shrink-0" suppressHydrationWarning>
       {/* Brand */}
       <div className="px-5 h-14 flex items-center border-b border-border">
         <Link href={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-2.5 group">
@@ -161,6 +161,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
             onClick={logout}
             className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground"
             title="Sign out"
+            suppressHydrationWarning
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
