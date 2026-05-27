@@ -1,15 +1,38 @@
 """
 AI Service — Google Gemini direct + OpenRouter fallback.
 Handles all LLM calls for the platform (tutor, quiz, planner).
+Includes retry logic with exponential backoff.
 """
 
 import json
 import logging
+import time
 from typing import Optional
 
 from app.config import settings
 
 logger = logging.getLogger("adaptlearn.ai")
+
+# Retry configuration
+MAX_RETRIES = 3
+RETRY_DELAY_BASE = 1.0  # seconds
+
+
+def _retry_with_backoff(func, *args, max_retries=MAX_RETRIES, **kwargs):
+    """Execute a function with exponential backoff retry."""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                delay = RETRY_DELAY_BASE * (2 ** attempt)
+                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                logger.error(f"All {max_retries} attempts failed. Last error: {e}")
+    raise last_error
 
 # ── Google Gemini Client ────────────────────────────────────────────────────────
 
@@ -86,19 +109,27 @@ def chat(
     max_tokens: int = 800,
     temperature: float = 0.7,
 ) -> str:
-    """Send a chat request. Tries Gemini first, falls back to OpenRouter."""
-    # Try Gemini first
-    if settings.GEMINI_API_KEY:
-        try:
-            return _gemini_chat(messages, max_tokens, temperature)
-        except Exception as e:
-            logger.warning(f"Gemini failed, trying OpenRouter: {e}")
+    """Send a chat request. Tries Gemini first, falls back to OpenRouter. Includes retry logic."""
 
-    # Fallback to OpenRouter
-    if settings.OPENROUTER_API_KEY:
-        return _openrouter_chat(messages, max_tokens, temperature)
+    def _attempt_chat():
+        # Try Gemini first
+        if settings.GEMINI_API_KEY:
+            try:
+                return _gemini_chat(messages, max_tokens, temperature)
+            except Exception as e:
+                logger.warning(f"Gemini failed: {e}")
+                if settings.OPENROUTER_API_KEY:
+                    logger.info("Falling back to OpenRouter...")
+                else:
+                    raise
 
-    raise RuntimeError("No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY)")
+        # Fallback to OpenRouter
+        if settings.OPENROUTER_API_KEY:
+            return _openrouter_chat(messages, max_tokens, temperature)
+
+        raise RuntimeError("No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY)")
+
+    return _retry_with_backoff(_attempt_chat, max_retries=MAX_RETRIES)
 
 
 # ── Public API ──────────────────────────────────────────────────────────────────

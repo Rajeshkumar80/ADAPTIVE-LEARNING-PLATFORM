@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, Bell } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -25,21 +25,6 @@ export function Header({ title, subtitle }: HeaderProps) {
               {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
             </div>
           )}
-        </div>
-
-        {/* Center: Search */}
-        <div className="flex-1 max-w-sm mx-auto">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-8 pr-12 h-8 bg-muted/50 border border-transparent rounded-md text-xs placeholder:text-muted-foreground focus:outline-none focus:bg-background focus:border-border transition-colors"
-            />
-            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 px-1 py-0.5 text-[9px] font-mono bg-background border border-border rounded text-muted-foreground">
-              ⌘K
-            </kbd>
-          </div>
         </div>
 
         {/* Right: Actions */}
