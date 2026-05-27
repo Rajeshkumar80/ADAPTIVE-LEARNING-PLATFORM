@@ -4,8 +4,9 @@ uvicorn[standard]
 python-multipart
 python-dotenv
 
-# Database (SQLite is built-in to Python — no setup needed)
+# Database
 sqlalchemy
+# psycopg2-binary  # Uncomment for PostgreSQL
 
 # Auth
 python-jose[cryptography]
@@ -19,5 +20,27 @@ email-validator
 # HTTP
 httpx
 
-# Optional AI (only loaded if API key is set)
-# openai
+# AI Services
+google-genai
+
+# PDF Processing (optional)
+# PyMuPDF
+
+# NLP & Embeddings (optional — install for full ML features)
+# sentence-transformers
+# numpy
+
+# ML / RL (optional — install for adaptive scheduler)
+# torch
+# numpy
+
+# Background Tasks (optional — install for async processing)
+# celery[redis]
+# redis
+
+# Email (optional)
+# resend
+
+# Testing
+pytest
+pytest-asyncio

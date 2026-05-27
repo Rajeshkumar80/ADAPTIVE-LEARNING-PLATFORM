@@ -14,6 +14,9 @@ from app.database import Base, SessionLocal, engine
 from app.routers import admin, ai, auth, journal, notifications, planner, student, tests
 from app.seed import seed_database
 
+# Ensure all models are imported for table creation
+import app.models  # noqa: F401
+
 # Logging
 logging.basicConfig(
     level=logging.INFO,
