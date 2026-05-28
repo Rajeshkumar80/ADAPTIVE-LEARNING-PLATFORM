@@ -108,8 +108,8 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       {/* Brand */}
       <div className="px-5 h-14 flex items-center border-b border-border">
         <Link href={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
-            <span className="text-background text-xs font-bold">A</span>
+          <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
+            <span className="text-primary-foreground text-xs font-bold">A</span>
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="font-semibold text-sm tracking-tight">AdaptLearn</span>
@@ -139,13 +139,13 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
                     className={cn(
                       'flex items-center gap-2.5 px-2 h-8 rounded-md text-sm transition-all duration-150 press-effect',
                       isActive
-                        ? 'bg-muted text-foreground font-medium'
+                        ? 'bg-primary/10 text-foreground font-medium border-l-2 border-primary'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <Icon className={cn(
                       "w-4 h-4 shrink-0 transition-colors",
-                      isActive ? "text-foreground" : "text-muted-foreground"
+                      isActive ? "text-primary" : "text-muted-foreground"
                     )} />
                     <span>{item.label}</span>
                   </Link>
@@ -159,7 +159,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       {/* User Profile */}
       <div className="border-t border-border p-3">
         <div className="group flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer">
-          <div className="w-7 h-7 rounded-md bg-foreground text-background flex items-center justify-center text-[10px] font-semibold shrink-0">
+          <div className="w-7 h-7 rounded-md bg-primary/20 text-primary flex items-center justify-center text-[10px] font-semibold shrink-0">
             {user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || (isAdmin ? 'AD' : 'ST')}
           </div>
           <div className="flex-1 min-w-0">
