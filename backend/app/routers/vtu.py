@@ -454,7 +454,7 @@ def get_subject_details(
     subject_code: str,
     _user: User = Depends(get_current_user),
 ):
-    """Get detailed info for a VTU subject including CO/PO mapping."""
+    """Get detailed info for a VTU subject including CO/PO mapping and modules."""
     subject = None
     subject_semester = None
     for sem, subjects in VTU_CSE_22_SCHEME.items():
@@ -469,6 +469,11 @@ def get_subject_details(
 
     cos = VTU_COURSE_OUTCOMES.get(subject_code.upper(), [])
 
+    # Get module data if available
+    from app.data.vtu_modules import VTU_SUBJECT_MODULES
+    module_data = VTU_SUBJECT_MODULES.get(subject_code.upper(), {})
+    modules = module_data.get("modules", {}) if module_data else {}
+
     return {
         **subject,
         "semester": subject_semester,
@@ -477,6 +482,7 @@ def get_subject_details(
         "university": "VTU Belagavi",
         "course_outcomes": cos,
         "program_outcomes": VTU_PROGRAM_OUTCOMES,
+        "modules": modules,
     }
 
 

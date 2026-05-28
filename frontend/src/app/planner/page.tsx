@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ActivityChart } from '@/components/charts';
-import { Plus, Sparkles, CheckCircle2, Play, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+import {
+  CheckCircle2, Circle, Play, Clock, Target,
+  Calendar, Sparkles, BookOpen, Brain,
+} from 'lucide-react';
 
 interface ScheduleItem {
   id: number;
@@ -15,7 +18,8 @@ interface ScheduleItem {
   subject: string;
   topic: string;
   duration: number;
-  status: 'completed' | 'in-progress' | 'pending';
+  activity: string;
+  status: 'completed' | 'active' | 'pending';
 }
 
 interface Goal {
@@ -26,286 +30,227 @@ interface Goal {
 }
 
 export default function PlannerPage() {
-  const [aiVisible, setAiVisible] = useState(true);
-  const [aiApplied, setAiApplied] = useState(false);
-
+  const { user } = useAuth();
   const [schedule, setSchedule] = useState<ScheduleItem[]>([
-    { id: 1, time: '09:00', subject: 'Data Structures', topic: 'Trees & Graphs', duration: 90, status: 'completed' },
-    { id: 2, time: '11:00', subject: 'DBMS', topic: 'Normalization', duration: 60, status: 'in-progress' },
-    { id: 3, time: '14:00', subject: 'Operating Systems', topic: 'Quick Quiz', duration: 30, status: 'pending' },
-    { id: 4, time: '15:30', subject: 'Computer Networks', topic: 'TCP/IP Lab', duration: 90, status: 'pending' },
-    { id: 5, time: '18:00', subject: 'Software Engineering', topic: 'Review', duration: 45, status: 'pending' },
+    { id: 1, time: '09:00', subject: 'Cloud Computing', topic: 'Virtualization Concepts', duration: 60, activity: 'study', status: 'completed' },
+    { id: 2, time: '10:00', subject: 'Machine Learning', topic: 'Linear Regression', duration: 45, activity: 'practice', status: 'completed' },
+    { id: 3, time: '11:00', subject: 'Software Testing', topic: 'White-Box Testing', duration: 60, activity: 'study', status: 'active' },
+    { id: 4, time: '14:00', subject: 'Cryptography', topic: 'RSA Algorithm', duration: 45, activity: 'study', status: 'pending' },
+    { id: 5, time: '15:00', subject: 'Cloud Computing', topic: 'Cloud Security Quiz', duration: 30, activity: 'quiz', status: 'pending' },
+    { id: 6, time: '16:00', subject: 'Machine Learning', topic: 'Decision Trees Practice', duration: 60, activity: 'practice', status: 'pending' },
   ]);
 
-  const [goals, setGoals] = useState<Goal[]>([
-    { id: 1, title: 'Complete DSA Module 5', progress: 75, deadline: 'May 18' },
-    { id: 2, title: 'Practice 50 Coding Problems', progress: 60, deadline: 'May 20' },
-    { id: 3, title: 'Read OS Chapters 6-8', progress: 40, deadline: 'May 19' },
-    { id: 4, title: 'Submit SE Project', progress: 90, deadline: 'May 22' },
+  const [goals] = useState<Goal[]>([
+    { id: 1, title: 'Complete Cloud Computing Module 3', progress: 75, deadline: 'Jun 02' },
+    { id: 2, title: 'ML Assignment Submission', progress: 40, deadline: 'Jun 05' },
+    { id: 3, title: 'CNS Module 2 Revision', progress: 60, deadline: 'Jun 03' },
+    { id: 4, title: 'Software Testing Lab', progress: 90, deadline: 'Jun 01' },
   ]);
 
-  const [showAddSession, setShowAddSession] = useState(false);
-  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'day' | 'week' | 'month'>('day');
 
-  const handleStartSession = (id: number) => {
-    setSchedule(prev =>
-      prev.map(s => s.id === id ? { ...s, status: 'in-progress' as const } : s)
-    );
+  const completedCount = schedule.filter(s => s.status === 'completed').length;
+  const totalMinutes = schedule.reduce((sum, s) => sum + s.duration, 0);
+  const completedMinutes = schedule.filter(s => s.status === 'completed').reduce((sum, s) => sum + s.duration, 0);
+  const progressPct = Math.round((completedCount / schedule.length) * 100);
+
+  const handleStart = (id: number) => {
+    setSchedule(prev => prev.map(s =>
+      s.id === id ? { ...s, status: 'active' as const } : s
+    ));
   };
 
-  const handleCompleteSession = (id: number) => {
-    setSchedule(prev =>
-      prev.map(s => s.id === id ? { ...s, status: 'completed' as const } : s)
-    );
+  const handleComplete = (id: number) => {
+    setSchedule(prev => prev.map(s =>
+      s.id === id ? { ...s, status: 'completed' as const } : s
+    ));
   };
 
-  const handleApplyAI = () => {
-    // Reorder schedule to put OS earlier
-    setAiApplied(true);
-    setTimeout(() => setAiVisible(false), 1500);
-  };
+  // Get current day info
+  const today = new Date();
+  const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const currentDay = today.getDay();
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - currentDay + i);
+    return d.getDate();
+  });
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Study Planner</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">AI-powered scheduling that adapts to your patterns</p>
+      <div className="flex-1 flex flex-col overflow-auto">
+        <Header title="Study Planner" subtitle="AI-powered daily schedule" />
+        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+          {/* Stat cards row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Sessions Done</p>
+                <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{completedCount}/{schedule.length}</p>
+              <p className="text-[11px] text-green-600">+{completedCount} today</p>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Study Time</p>
+                <Clock className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{Math.round(completedMinutes / 60)}h</p>
+              <p className="text-[11px] text-muted-foreground">of {Math.round(totalMinutes / 60)}h planned</p>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Progress</p>
+                <Target className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{progressPct}%</p>
+              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">AI Generated</p>
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">Yes</p>
+              <p className="text-[11px] text-muted-foreground">Optimized for you</p>
+            </div>
           </div>
 
-          {/* AI Recommendation */}
-          {aiVisible && (
-            <Card className="bg-muted/30 relative">
-              <button
-                onClick={() => setAiVisible(false)}
-                className="absolute top-3 right-3 p-1 hover:bg-muted rounded text-muted-foreground"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4 text-background" />
-                  </div>
-                  <div className="flex-1 pr-6">
-                    <p className="text-sm font-semibold mb-1">AI Recommendation</p>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Focus on Operating Systems tomorrow morning. Your retention is 23% higher in morning sessions.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleApplyAI} disabled={aiApplied}>
-                        {aiApplied ? (
-                          <>
-                            <CheckCircle2 className="w-3 h-3" />
-                            Applied
-                          </>
-                        ) : (
-                          'Apply'
-                        )}
-                      </Button>
-                      <Link href="/learn-more">
-                        <Button size="sm" variant="outline">Learn more</Button>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Today</p><p className="text-2xl font-semibold tracking-tight">5.5h</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">This week</p><p className="text-2xl font-semibold tracking-tight">38h</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Goal completion</p><p className="text-2xl font-semibold tracking-tight">{Math.round(goals.reduce((a, g) => a + g.progress, 0) / goals.length)}%</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Focus score</p><p className="text-2xl font-semibold tracking-tight">92%</p></CardContent></Card>
-          </div>
-
-          {/* Schedule + Goals */}
+          {/* Main 3-column grid — OptiFlow style */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2">
+            {/* Column 1: Schedule Timeline (Process Tracking style) */}
+            <Card className="lg:col-span-1">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Today's Schedule</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">Friday, May 15</p>
+                  <CardTitle className="text-sm">Today's Schedule</CardTitle>
+                  <div className="tab-switcher">
+                    {(['day', 'week', 'month'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        className={activeTab === tab ? 'active' : ''}
+                        onClick={() => setActiveTab(tab)}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
+                    ))}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddSession(true)}>
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {schedule.map((s) => (
-                    <div key={s.id} className="flex items-center px-6 py-3 hover:bg-muted/40 transition-colors">
-                      <div className="w-14 text-xs text-muted-foreground font-mono">{s.time}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{s.topic}</p>
-                        <p className="text-xs text-muted-foreground">{s.subject} · {s.duration}m</p>
+              <CardContent>
+                <div className="space-y-0">
+                  {schedule.map((item) => (
+                    <div key={item.id} className="timeline-item">
+                      <div className="flex flex-col items-center">
+                        <div className={`timeline-dot ${item.status}`} />
                       </div>
-                      {s.status === 'completed' ? (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                          Done
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className={`text-sm font-medium ${item.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                            {item.subject}
+                          </p>
+                          <span className="text-[11px] text-muted-foreground font-mono">{item.time}</span>
                         </div>
-                      ) : s.status === 'in-progress' ? (
-                        <Button size="sm" className="h-7" onClick={() => handleCompleteSession(s.id)}>
-                          <CheckCircle2 className="w-3 h-3" />
-                          Mark done
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleStartSession(s.id)}>
-                          <Play className="w-3 h-3" />
-                          Start
-                        </Button>
-                      )}
+                        <p className="text-xs text-muted-foreground">{item.topic}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-muted-foreground">{item.duration} min · {item.activity}</span>
+                          {item.status === 'pending' && (
+                            <button
+                              onClick={() => handleStart(item.id)}
+                              className="text-[10px] font-medium text-foreground hover:underline"
+                            >
+                              Start →
+                            </button>
+                          )}
+                          {item.status === 'active' && (
+                            <button
+                              onClick={() => handleComplete(item.id)}
+                              className="text-[10px] font-medium text-green-600 hover:underline"
+                            >
+                              Complete ✓
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Column 2: Goals Progress */}
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle>Weekly Goals</CardTitle>
-                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowAddGoal(true)}>
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
+                <CardTitle className="text-sm">Goals</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {goals.map((g) => (
-                  <div key={g.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">{g.title}</p>
-                      <span className="text-xs text-muted-foreground font-mono">{g.progress}%</span>
+              <CardContent className="space-y-3">
+                {goals.map(goal => (
+                  <div key={goal.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{goal.title}</p>
+                      <span className="text-xs text-muted-foreground">{goal.deadline}</span>
                     </div>
-                    <div className="h-1 bg-muted rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-foreground transition-all" style={{ width: `${g.progress}%` }} />
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-foreground rounded-full transition-all"
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium">{goal.progress}%</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Due {g.deadline}</p>
                   </div>
                 ))}
               </CardContent>
             </Card>
+
+            {/* Column 3: Upcoming — Calendar + Events (OptiFlow style) */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Upcoming</CardTitle>
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Mini calendar row */}
+                <div className="flex justify-between mb-4">
+                  {dayNames.map((day, i) => (
+                    <div key={i} className="text-center">
+                      <p className="text-[10px] text-muted-foreground mb-1">{day}</p>
+                      <div className={`calendar-day ${i === currentDay ? 'today' : ''}`}>
+                        {weekDates[i]}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Event cards */}
+                <div className="space-y-2">
+                  {[
+                    { icon: Brain, title: 'ML Lab Submission', time: '10:00 AM', color: 'bg-orange-50' },
+                    { icon: BookOpen, title: 'Cloud Computing Test', time: '02:00 PM', color: 'bg-blue-50' },
+                    { icon: Target, title: 'CNS Assignment Due', time: '05:00 PM', color: 'bg-green-50' },
+                    { icon: Sparkles, title: 'AI Tutor Session', time: '06:30 PM', color: 'bg-purple-50' },
+                  ].map((event, i) => (
+                    <div key={i} className="event-card">
+                      <div className={`event-icon ${event.color}`}>
+                        <event.icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{event.title}</p>
+                        <p className="text-xs text-muted-foreground">{event.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-
-          {/* Activity */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle>Weekly Activity</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">Your study time distribution</p>
-            </CardHeader>
-            <CardContent>
-              <ActivityChart />
-            </CardContent>
-          </Card>
         </main>
-      </div>
-
-      {showAddSession && (
-        <SimpleFormModal
-          title="Add session"
-          fields={[
-            { name: 'time', label: 'Time', placeholder: '20:00' },
-            { name: 'subject', label: 'Subject', placeholder: 'Mathematics' },
-            { name: 'topic', label: 'Topic', placeholder: 'Calculus' },
-            { name: 'duration', label: 'Duration (min)', placeholder: '60', type: 'number' },
-          ]}
-          onSubmit={(data) => {
-            setSchedule(prev => [...prev, {
-              id: Date.now(),
-              time: data.time || '20:00',
-              subject: data.subject || 'New',
-              topic: data.topic || 'Topic',
-              duration: parseInt(data.duration || '60'),
-              status: 'pending',
-            }]);
-            setShowAddSession(false);
-          }}
-          onCancel={() => setShowAddSession(false)}
-        />
-      )}
-
-      {showAddGoal && (
-        <SimpleFormModal
-          title="Add goal"
-          fields={[
-            { name: 'title', label: 'Goal', placeholder: 'Read OS Chapter 9' },
-            { name: 'deadline', label: 'Deadline', placeholder: 'May 25' },
-          ]}
-          onSubmit={(data) => {
-            setGoals(prev => [...prev, {
-              id: Date.now(),
-              title: data.title || 'New goal',
-              progress: 0,
-              deadline: data.deadline || 'TBD',
-            }]);
-            setShowAddGoal(false);
-          }}
-          onCancel={() => setShowAddGoal(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-interface FormField {
-  name: string;
-  label: string;
-  placeholder: string;
-  type?: string;
-}
-
-function SimpleFormModal({
-  title,
-  fields,
-  onSubmit,
-  onCancel,
-}: {
-  title: string;
-  fields: FormField[];
-  onSubmit: (data: Record<string, string>) => void;
-  onCancel: () => void;
-}) {
-  const [data, setData] = useState<Record<string, string>>({});
-
-  return (
-    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onCancel}>
-      <div
-        className="bg-background rounded-lg max-w-md w-full overflow-hidden border border-border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-          <button onClick={onCancel} className="p-1 hover:bg-muted rounded">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="p-6 space-y-3">
-          {fields.map(f => (
-            <div key={f.name}>
-              <label className="text-xs font-medium block mb-1.5">{f.label}</label>
-              <input
-                type={f.type || 'text'}
-                placeholder={f.placeholder}
-                value={data[f.name] || ''}
-                onChange={(e) => setData({ ...data, [f.name]: e.target.value })}
-                className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-              />
-            </div>
-          ))}
-        </div>
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={() => onSubmit(data)}>Add</Button>
-        </div>
       </div>
     </div>
   );
