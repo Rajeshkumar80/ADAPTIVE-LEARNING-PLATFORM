@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   BookOpen,
-  Code2,
   GraduationCap,
   Calendar,
   Brain,

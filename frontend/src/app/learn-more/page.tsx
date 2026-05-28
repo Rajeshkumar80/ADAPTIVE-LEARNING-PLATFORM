@@ -56,9 +56,9 @@ export default function LearnMorePage() {
     },
     {
       icon: Code2,
-      title: 'Code Journal',
-      description: 'Document your coding journey with syntax-highlighted snippets, tags, and version history.',
-      tech: ['Monaco Editor', 'Multi-language support', 'Markdown notes'],
+      title: 'Document Upload & RAG',
+      description: 'Upload PDFs, DOCX, or notes and ask AI questions about your study material.',
+      tech: ['PDF Processing', 'RAG Q&A', 'Multi-format support'],
     },
     {
       icon: Target,
@@ -97,7 +97,7 @@ export default function LearnMorePage() {
     { title: 'Authentication', desc: 'Dual-role JWT auth with bcrypt password hashing' },
     { title: 'Student Portal', desc: 'Dashboard, subjects, planner, progress tracking' },
     { title: 'Teacher Portal', desc: 'Student management, test creation, analytics, anti-cheat monitoring' },
-    { title: 'Code Journal', desc: 'Syntax-highlighted code snippets with tags and search' },
+    { title: 'VTU Subjects', desc: 'Complete CSE 22 Scheme with CO/PO mapping and resources' },
     { title: 'Assessment Engine', desc: 'Question bank, randomization, anti-cheat, auto-grading' },
     { title: 'AI Intelligence Layer', desc: 'RL scheduler, learning state tracker, LLM tutor' },
     { title: 'Content Processing', desc: 'PDF parsing, topic extraction, vector embeddings' },
@@ -229,7 +229,7 @@ export default function LearnMorePage() {
             { step: '01', title: 'Onboarding', desc: 'Sign up, select your branch and semester. Choose your subjects from the VTU curriculum.' },
             { step: '02', title: 'Initial Assessment', desc: 'Take a diagnostic test. Our system maps your current knowledge against the topic graph.' },
             { step: '03', title: 'Personalized Plan', desc: 'The RL scheduler creates a daily study plan optimized for your goals, schedule, and weak areas.' },
-            { step: '04', title: 'Continuous Adaptation', desc: 'Every quiz, journal entry, and study session updates your learning state. The plan adapts daily.' },
+            { step: '04', title: 'Continuous Adaptation', desc: 'Every quiz, study session, and interaction updates your learning state. The plan adapts daily.' },
           ].map((s) => (
             <div key={s.step} className="flex gap-5">
               <div className="text-3xl font-semibold tracking-tighter text-muted-foreground/40 shrink-0 w-12">

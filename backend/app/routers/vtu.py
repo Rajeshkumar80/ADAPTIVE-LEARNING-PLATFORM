@@ -1,5 +1,7 @@
 """
 VTU Data Integration — CSE 22 Scheme subjects, CO/PO, notes, resources.
+Data sourced from VTU official syllabus and VTU Circle.
+Subject codes follow VTU 2022 scheme format: BCS3XX, BCS4XX, BCS5XX, BCS6XX, BCS7XX
 """
 
 import logging
@@ -14,117 +16,144 @@ from app.models import User, Subject, Topic
 logger = logging.getLogger("adaptlearn.vtu")
 router = APIRouter()
 
-# ── VTU CSE 22 Scheme Data ───────────────────────────────────────────────────
+# ── VTU CSE 22 Scheme Data (Accurate) ────────────────────────────────────────
+# Source: VTU Official Syllabus + VTU Circle (vtucircle.com)
+# Code format: B<DEPT><SEM><SERIAL> e.g. BCS301 = B.E CSE Sem3 Subject01
 
 VTU_CSE_22_SCHEME = {
-    1: [
-        {"code": "22MAT11", "name": "Calculus and Linear Algebra", "credits": 4},
-        {"code": "22PHY12", "name": "Engineering Physics", "credits": 4},
-        {"code": "22ELE13", "name": "Basic Electrical Engineering", "credits": 3},
-        {"code": "22EME14", "name": "Elements of Mechanical Engineering", "credits": 3},
-        {"code": "22CIV15", "name": "Engineering Drawing", "credits": 3},
-    ],
-    2: [
-        {"code": "22MAT21", "name": "Advanced Calculus and Numerical Methods", "credits": 4},
-        {"code": "22CHE22", "name": "Engineering Chemistry", "credits": 4},
-        {"code": "22CS23", "name": "Introduction to C Programming", "credits": 3},
-        {"code": "22CS24", "name": "Digital Design and Computer Organization", "credits": 3},
-        {"code": "22ME25", "name": "Introduction to IoT", "credits": 3},
-    ],
     3: [
-        {"code": "22CS31", "name": "Mathematics for Computer Science", "credits": 4},
-        {"code": "22CS32", "name": "Data Structures and Applications", "credits": 4},
-        {"code": "22CS33", "name": "Analog and Digital Electronics", "credits": 3},
-        {"code": "22CS34", "name": "Computer Organization and Architecture", "credits": 3},
-        {"code": "22CS35", "name": "Object Oriented Programming with Java", "credits": 3},
+        {"code": "BCS301", "name": "Mathematics for Computer Science", "credits": 4, "type": "theory"},
+        {"code": "BCS302", "name": "Digital Design and Computer Organization", "credits": 4, "type": "theory"},
+        {"code": "BCS303", "name": "Operating Systems", "credits": 4, "type": "theory"},
+        {"code": "BCS304", "name": "Data Structures and Applications", "credits": 3, "type": "theory"},
+        {"code": "BCS306A", "name": "Object Oriented Programming with Java", "credits": 3, "type": "theory"},
+        {"code": "BCSL305", "name": "Data Structures Laboratory", "credits": 1, "type": "lab"},
+        {"code": "BSCK307", "name": "Social Connect and Responsibility", "credits": 1, "type": "ncmc"},
     ],
     4: [
-        {"code": "22CS41", "name": "Analysis and Design of Algorithms", "credits": 4},
-        {"code": "22CS42", "name": "Microcontrollers and Embedded Systems", "credits": 4},
-        {"code": "22CS43", "name": "Operating Systems", "credits": 3},
-        {"code": "22CS44", "name": "Database Management Systems", "credits": 3},
-        {"code": "22CS45", "name": "Discrete Mathematical Structures", "credits": 3},
+        {"code": "BCS401", "name": "Mathematics for Computer Science - IV", "credits": 4, "type": "theory"},
+        {"code": "BCS402", "name": "Computer Networks", "credits": 4, "type": "theory"},
+        {"code": "BCS403", "name": "Design and Analysis of Algorithms", "credits": 3, "type": "theory"},
+        {"code": "BCS404", "name": "Microcontrollers and Embedded Systems", "credits": 3, "type": "theory"},
+        {"code": "BCS405B", "name": "Database Management Systems", "credits": 3, "type": "theory"},
+        {"code": "BCSL404", "name": "Design and Analysis of Algorithms Laboratory", "credits": 1, "type": "lab"},
+        {"code": "BSCK407", "name": "Social Connect and Responsibility", "credits": 1, "type": "ncmc"},
     ],
     5: [
-        {"code": "22CS51", "name": "Computer Networks", "credits": 4},
-        {"code": "22CS52", "name": "Automata Theory and Computability", "credits": 4},
-        {"code": "22CS53", "name": "Software Engineering", "credits": 3},
-        {"code": "22CS54", "name": "Machine Learning", "credits": 3},
-        {"code": "22CS55", "name": "Full Stack Development", "credits": 3},
+        {"code": "BCS501", "name": "Software Engineering and Project Management", "credits": 4, "type": "theory"},
+        {"code": "BCS502", "name": "Computer Networks - II", "credits": 4, "type": "theory"},
+        {"code": "BCS503", "name": "Theory of Computation", "credits": 3, "type": "theory"},
+        {"code": "BCS504", "name": "Artificial Intelligence and Machine Learning", "credits": 3, "type": "theory"},
+        {"code": "BCS515A", "name": "Full Stack Development", "credits": 3, "type": "theory"},
+        {"code": "BCSL505", "name": "DBMS Laboratory with Mini Project", "credits": 1, "type": "lab"},
+        {"code": "BCS586", "name": "Mini Project", "credits": 2, "type": "project"},
     ],
     6: [
-        {"code": "22CS61", "name": "Data Structures & Algorithms", "credits": 4},
-        {"code": "22CS62", "name": "Database Management Systems", "credits": 4},
-        {"code": "22CS63", "name": "Operating Systems", "credits": 4},
-        {"code": "22CS64", "name": "Computer Networks", "credits": 3},
-        {"code": "22CS65", "name": "Software Engineering", "credits": 3},
-        {"code": "22CS66", "name": "Artificial Intelligence", "credits": 4},
+        {"code": "BCS601", "name": "System Software and Compiler Design", "credits": 4, "type": "theory"},
+        {"code": "BCS602", "name": "Computer Graphics and Visualization", "credits": 4, "type": "theory"},
+        {"code": "BCS603", "name": "Data Science and its Applications", "credits": 3, "type": "theory"},
+        {"code": "BCS604", "name": "Cryptography and Network Security", "credits": 3, "type": "theory"},
+        {"code": "BCS613D", "name": "Cloud Computing", "credits": 3, "type": "theory"},
+        {"code": "BCSL606", "name": "System Software and OS Laboratory", "credits": 1, "type": "lab"},
+        {"code": "BAT601", "name": "Research Methodology and IPR", "credits": 2, "type": "theory"},
     ],
     7: [
-        {"code": "22CS71", "name": "Cryptography and Network Security", "credits": 4},
-        {"code": "22CS72", "name": "Cloud Computing", "credits": 3},
-        {"code": "22CS73", "name": "Big Data Analytics", "credits": 3},
-        {"code": "22CS74", "name": "Deep Learning", "credits": 3},
+        {"code": "BCS701", "name": "Artificial Intelligence and Machine Learning", "credits": 4, "type": "theory"},
+        {"code": "BCS702", "name": "Parallel Computing", "credits": 3, "type": "theory"},
+        {"code": "BCS703", "name": "Information and Network Security", "credits": 3, "type": "theory"},
+        {"code": "BCS714A", "name": "Deep Learning", "credits": 3, "type": "theory"},
+        {"code": "BCS755A", "name": "Internet of Things", "credits": 3, "type": "theory"},
+        {"code": "BCSL708", "name": "AI/ML Laboratory", "credits": 1, "type": "lab"},
+        {"code": "BCS709", "name": "Project Work Phase - I", "credits": 2, "type": "project"},
     ],
     8: [
-        {"code": "22CS81", "name": "Internet of Things", "credits": 3},
-        {"code": "22CS82", "name": "Project Work", "credits": 10},
+        {"code": "BCS801", "name": "Project Work Phase - II", "credits": 10, "type": "project"},
+        {"code": "BCS802", "name": "Technical Seminar", "credits": 1, "type": "seminar"},
+        {"code": "BCS803", "name": "Internship / Professional Practice", "credits": 3, "type": "internship"},
     ],
 }
 
-# Course Outcomes for key subjects
+# Course Outcomes for key subjects (accurate per VTU syllabus)
 VTU_COURSE_OUTCOMES = {
-    "22CS61": [
+    "BCS303": [
+        "CO1: Explain the structure and functions of an operating system",
+        "CO2: Apply CPU scheduling algorithms and evaluate their performance",
+        "CO3: Implement process synchronization using semaphores and monitors",
+        "CO4: Analyze deadlock prevention, avoidance, and detection strategies",
+        "CO5: Describe memory management techniques including paging and segmentation",
+    ],
+    "BCS304": [
         "CO1: Explain different data structures and their applications",
-        "CO2: Apply linear and non-linear data structures to solve problems",
-        "CO3: Implement searching and sorting algorithms",
-        "CO4: Analyze time and space complexity of algorithms",
-        "CO5: Design solutions using trees, graphs, and hashing",
+        "CO2: Apply arrays, stacks, and queues to solve computational problems",
+        "CO3: Implement linked list variations and their operations",
+        "CO4: Construct and traverse trees and graphs using appropriate algorithms",
+        "CO5: Apply hashing and indexing techniques for efficient data retrieval",
     ],
-    "22CS62": [
-        "CO1: Explain the fundamentals of database systems",
-        "CO2: Design ER diagrams and relational schemas",
-        "CO3: Write SQL queries for data manipulation",
-        "CO4: Apply normalization techniques",
-        "CO5: Understand transaction management and concurrency",
+    "BCS403": [
+        "CO1: Analyze the asymptotic performance of algorithms",
+        "CO2: Apply divide and conquer strategy to solve problems",
+        "CO3: Apply greedy method for optimization problems",
+        "CO4: Solve problems using dynamic programming approach",
+        "CO5: Understand NP-completeness and approximation algorithms",
     ],
-    "22CS63": [
-        "CO1: Explain OS concepts: processes, threads, scheduling",
-        "CO2: Implement process synchronization mechanisms",
-        "CO3: Analyze deadlock detection and prevention",
-        "CO4: Explain memory management techniques",
-        "CO5: Understand file systems and I/O management",
+    "BCS405B": [
+        "CO1: Explain the fundamentals of database systems and ER modeling",
+        "CO2: Design relational database schemas using normalization",
+        "CO3: Write SQL queries for data definition and manipulation",
+        "CO4: Apply transaction management and concurrency control",
+        "CO5: Understand indexing, hashing, and query optimization",
     ],
-    "22CS64": [
-        "CO1: Explain network architectures and protocols",
-        "CO2: Analyze data link layer protocols",
-        "CO3: Implement network layer routing algorithms",
-        "CO4: Understand transport layer protocols (TCP/UDP)",
-        "CO5: Explain application layer protocols",
+    "BCS402": [
+        "CO1: Explain network models, protocols, and architectures",
+        "CO2: Analyze data link layer protocols and error detection",
+        "CO3: Apply network layer routing algorithms",
+        "CO4: Understand transport layer protocols TCP and UDP",
+        "CO5: Describe application layer protocols and services",
     ],
-    "22CS66": [
-        "CO1: Explain AI problem-solving techniques",
-        "CO2: Implement search algorithms (BFS, DFS, A*)",
-        "CO3: Apply knowledge representation methods",
-        "CO4: Understand machine learning fundamentals",
-        "CO5: Implement basic neural network architectures",
+    "BCS501": [
+        "CO1: Apply software engineering principles to project development",
+        "CO2: Perform requirements analysis and create SRS documents",
+        "CO3: Design software using UML diagrams and design patterns",
+        "CO4: Apply software testing techniques and quality assurance",
+        "CO5: Understand project management, estimation, and scheduling",
+    ],
+    "BCS504": [
+        "CO1: Explain fundamental concepts of AI and intelligent agents",
+        "CO2: Implement search algorithms (BFS, DFS, A*, Hill Climbing)",
+        "CO3: Apply knowledge representation and reasoning techniques",
+        "CO4: Understand supervised and unsupervised machine learning",
+        "CO5: Implement basic classification and regression algorithms",
+    ],
+    "BCS601": [
+        "CO1: Explain the design of assemblers, loaders, and linkers",
+        "CO2: Describe the phases of a compiler",
+        "CO3: Implement lexical analysis using finite automata",
+        "CO4: Apply parsing techniques (top-down and bottom-up)",
+        "CO5: Generate intermediate code and perform code optimization",
+    ],
+    "BCS604": [
+        "CO1: Explain classical encryption techniques and modern ciphers",
+        "CO2: Apply symmetric key algorithms (DES, AES)",
+        "CO3: Understand public key cryptography (RSA, Diffie-Hellman)",
+        "CO4: Implement message authentication and digital signatures",
+        "CO5: Analyze network security protocols and firewalls",
     ],
 }
 
-# Program Outcomes
+# Program Outcomes (VTU standard PO1-PO12)
 VTU_PROGRAM_OUTCOMES = [
-    "PO1: Engineering Knowledge - Apply knowledge of mathematics, science, and engineering",
+    "PO1: Engineering Knowledge - Apply mathematics, science, and engineering fundamentals",
     "PO2: Problem Analysis - Identify, formulate, and analyze complex engineering problems",
-    "PO3: Design/Development - Design solutions for complex engineering problems",
-    "PO4: Investigation - Use research-based knowledge for complex problems",
-    "PO5: Modern Tool Usage - Create, select, and apply appropriate techniques and tools",
-    "PO6: Engineer and Society - Apply reasoning for societal context",
-    "PO7: Environment and Sustainability - Understand impact of solutions",
-    "PO8: Ethics - Apply ethical principles and professional responsibilities",
-    "PO9: Individual and Team Work - Function effectively as individual and team member",
+    "PO3: Design/Development - Design solutions for complex problems meeting specifications",
+    "PO4: Conduct Investigations - Use research-based knowledge including design of experiments",
+    "PO5: Modern Tool Usage - Create, select, and apply appropriate techniques and IT tools",
+    "PO6: Engineer and Society - Apply reasoning informed by contextual knowledge",
+    "PO7: Environment and Sustainability - Understand impact of engineering solutions",
+    "PO8: Ethics - Apply ethical principles and commit to professional ethics",
+    "PO9: Individual and Team Work - Function effectively as individual, member, or leader",
     "PO10: Communication - Communicate effectively on complex engineering activities",
-    "PO11: Project Management - Apply engineering and management principles",
-    "PO12: Life-long Learning - Recognize the need for independent and life-long learning",
+    "PO11: Project Management and Finance - Apply engineering and management principles",
+    "PO12: Life-long Learning - Recognize the need for and engage in independent learning",
 ]
 
 
@@ -132,18 +161,18 @@ VTU_PROGRAM_OUTCOMES = [
 
 @router.get("/subjects")
 def get_vtu_subjects(
-    semester: Optional[int] = Query(None, ge=1, le=8),
+    semester: Optional[int] = Query(None, ge=3, le=8),
     _user: User = Depends(get_current_user),
 ):
     """Get VTU CSE 22 Scheme subjects, optionally filtered by semester."""
     if semester:
         subjects = VTU_CSE_22_SCHEME.get(semester, [])
-        return {"semester": semester, "scheme": "22", "subjects": subjects}
+        return {"semester": semester, "scheme": "22", "branch": "CSE", "subjects": subjects}
 
-    # Return all semesters
     return {
         "scheme": "22",
         "branch": "CSE",
+        "university": "Visvesvaraya Technological University, Belagavi",
         "semesters": {
             str(sem): subjects for sem, subjects in VTU_CSE_22_SCHEME.items()
         },
@@ -157,18 +186,17 @@ def get_subject_details(
     _user: User = Depends(get_current_user),
 ):
     """Get detailed info for a VTU subject including CO/PO mapping."""
-    # Find subject
     subject = None
     subject_semester = None
     for sem, subjects in VTU_CSE_22_SCHEME.items():
         for s in subjects:
-            if s["code"] == subject_code.upper():
+            if s["code"].upper() == subject_code.upper():
                 subject = s
                 subject_semester = sem
                 break
 
     if not subject:
-        raise HTTPException(status_code=404, detail=f"Subject {subject_code} not found")
+        raise HTTPException(status_code=404, detail=f"Subject {subject_code} not found in CSE 22 Scheme")
 
     cos = VTU_COURSE_OUTCOMES.get(subject_code.upper(), [])
 
@@ -177,6 +205,7 @@ def get_subject_details(
         "semester": subject_semester,
         "scheme": "22",
         "branch": "CSE",
+        "university": "VTU Belagavi",
         "course_outcomes": cos,
         "program_outcomes": VTU_PROGRAM_OUTCOMES,
     }
@@ -185,12 +214,17 @@ def get_subject_details(
 @router.get("/program-outcomes")
 def get_program_outcomes(_user: User = Depends(get_current_user)):
     """Get VTU CSE Program Outcomes (PO1-PO12)."""
-    return {"program_outcomes": VTU_PROGRAM_OUTCOMES, "branch": "CSE", "scheme": "22"}
+    return {
+        "program_outcomes": VTU_PROGRAM_OUTCOMES,
+        "branch": "CSE",
+        "scheme": "22",
+        "university": "Visvesvaraya Technological University, Belagavi",
+    }
 
 
 @router.post("/import")
 def import_vtu_subjects(
-    semester: Optional[int] = Query(None, ge=1, le=8),
+    semester: Optional[int] = Query(None, ge=3, le=8),
     _admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -200,7 +234,6 @@ def import_vtu_subjects(
 
     for sem in semesters_to_import:
         for subj_data in VTU_CSE_22_SCHEME.get(sem, []):
-            # Check if already exists
             existing = db.query(Subject).filter(Subject.code == subj_data["code"]).first()
             if existing:
                 continue
@@ -210,9 +243,10 @@ def import_vtu_subjects(
                 name=subj_data["name"],
                 semester=sem,
                 credits=subj_data["credits"],
-                description=f"VTU CSE 22 Scheme - Semester {sem}",
+                description=f"VTU CSE 22 Scheme - Semester {sem} - {subj_data['type'].title()}",
             )
             db.add(subject)
+            db.flush()
             imported += 1
 
             # Add topics from COs if available
@@ -220,7 +254,7 @@ def import_vtu_subjects(
             for i, co in enumerate(cos):
                 topic_name = co.split(": ", 1)[1] if ": " in co else co
                 db.add(Topic(
-                    subject_id=subject.id if subject.id else None,
+                    subject_id=subject.id,
                     name=topic_name,
                     difficulty="medium",
                     order_index=i + 1,

@@ -92,7 +92,7 @@ export default function Home() {
         <div className="grid md:grid-cols-2 gap-px bg-border rounded-lg overflow-hidden border border-border">
           {[
             { title: 'Smart Subjects', description: 'AI-curated content tailored to your learning pace and style.' },
-            { title: 'Code Journal', description: 'Document and track your coding journey with rich snippets.' },
+            { title: 'VTU Integration', description: 'Complete CSE 22 Scheme subjects with CO/PO mapping.' },
             { title: 'Adaptive Tests', description: 'Smart assessments that adjust to your level in real-time.' },
             { title: 'AI Tutor', description: 'Get instant help on any topic, available 24/7.' },
             { title: 'Study Planner', description: 'RL-powered scheduler that learns your patterns.' },
