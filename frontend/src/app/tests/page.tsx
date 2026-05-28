@@ -84,6 +84,9 @@ export default function TestsPage() {
                       <Link href="/ai-tutor">
                         <Button size="sm" variant="outline">Prepare</Button>
                       </Link>
+                      <Link href="/tests/take">
+                        <Button size="sm">Take Test</Button>
+                      </Link>
                     </div>
                   ))}
                 </div>

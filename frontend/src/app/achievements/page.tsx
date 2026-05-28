@@ -14,7 +14,24 @@ export default function AchievementsPage() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) setAchievements(mockDB.getAchievements(user.id));
+    const mockAch = user ? mockDB.getAchievements(user.id) : [];
+    if (mockAch.length > 0) {
+      setAchievements(mockAch);
+    } else {
+      // Dummy achievements to show how it looks
+      setAchievements([
+        { id: 1, user_id: 1, title: '7-Day Streak', description: 'Studied for 7 consecutive days', icon: '🔥', rarity: 'common', earned_date: '2026-05-25T10:00:00Z' },
+        { id: 2, user_id: 1, title: 'Perfect Score', description: 'Got 100% on a test', icon: '⭐', rarity: 'rare', earned_date: '2026-05-20T10:00:00Z' },
+        { id: 3, user_id: 1, title: 'Quiz Master', description: 'Completed 10 quizzes', icon: '🧠', rarity: 'common', earned_date: '2026-05-18T10:00:00Z' },
+        { id: 4, user_id: 1, title: 'Night Owl', description: 'Studied past midnight', icon: '🌙', rarity: 'common', earned_date: '2026-05-15T10:00:00Z' },
+        { id: 5, user_id: 1, title: 'Speed Demon', description: 'Finished test in record time', icon: '⚡', rarity: 'rare', earned_date: '2026-05-10T10:00:00Z' },
+        { id: 6, user_id: 1, title: 'Code Warrior', description: 'Solved 20 coding problems', icon: '⚔️', rarity: 'epic', earned_date: '2026-04-28T10:00:00Z' },
+        { id: 7, user_id: 1, title: 'Top of Class', description: 'Ranked #1 in semester', icon: '🏆', rarity: 'legendary', earned_date: '2026-04-15T10:00:00Z' },
+        { id: 8, user_id: 1, title: 'AI Whisperer', description: 'Asked AI 50+ questions', icon: '🤖', rarity: 'epic', earned_date: '2026-04-01T10:00:00Z' },
+        { id: 9, user_id: 1, title: 'Early Bird', description: 'Started studying before 6 AM', icon: '🌅', rarity: 'common', earned_date: '2026-03-20T10:00:00Z' },
+        { id: 10, user_id: 1, title: 'Dedicated Learner', description: '10+ hours of total study', icon: '📚', rarity: 'common', earned_date: '2026-03-10T10:00:00Z' },
+      ]);
+    }
   }, [user]);
 
   const locked = [
@@ -56,18 +73,26 @@ export default function AchievementsPage() {
           <div>
             <h2 className="text-sm font-semibold tracking-tight mb-3">Earned</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {achievements.map((ach) => (
-                <Card key={ach.id} className="hover:border-foreground transition-colors">
-                  <CardContent className="p-5 text-center">
-                    <div className="text-4xl mb-3">{ach.icon}</div>
-                    <p className="text-sm font-semibold mb-1">{ach.title}</p>
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{ach.description}</p>
-                    <Badge variant="outline" className={`text-[10px] ${rarityLabels[ach.rarity].class}`}>
-                      {rarityLabels[ach.rarity].label}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
+              {achievements.map((ach) => {
+                const bgColors: Record<string, string> = {
+                  common: 'bg-gradient-to-br from-slate-50 to-gray-50',
+                  rare: 'bg-gradient-to-br from-blue-50 to-sky-50',
+                  epic: 'bg-gradient-to-br from-violet-50 to-purple-50',
+                  legendary: 'bg-gradient-to-br from-amber-50 to-yellow-50',
+                };
+                return (
+                  <Card key={ach.id} className={`hover:border-foreground transition-colors hover-lift overflow-hidden`}>
+                    <CardContent className={`p-5 text-center ${bgColors[ach.rarity] || ''}`}>
+                      <div className="text-4xl mb-3">{ach.icon}</div>
+                      <p className="text-sm font-semibold mb-1">{ach.title}</p>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{ach.description}</p>
+                      <Badge variant="outline" className={`text-[10px] ${rarityLabels[ach.rarity].class}`}>
+                        {rarityLabels[ach.rarity].label}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
 

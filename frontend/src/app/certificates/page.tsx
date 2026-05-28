@@ -11,29 +11,109 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Award, Download, Share2 } from 'lucide-react';
 
 function downloadCertificate(cert: Certificate) {
-  const content = `CERTIFICATE OF ${cert.type.toUpperCase()}
+  const studentName = (typeof window !== 'undefined' && JSON.parse(localStorage.getItem('adaptlearn_current_user') || '{}').full_name) || 'Rajesh Kumar';
+  const dateStr = new Date(cert.issued_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-This certifies that
-${(typeof window !== 'undefined' && JSON.parse(localStorage.getItem('adaptlearn_current_user') || '{}').full_name) || 'Student'}
+  // Generate PDF using canvas-based approach
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 850;
+  const ctx = canvas.getContext('2d')!;
 
-has successfully completed
-${cert.title}
+  // Background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 1200, 850);
 
-Subject: ${cert.subject}
-Score: ${cert.score}%
-Issued: ${new Date(cert.issued_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+  // Border
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(30, 30, 1140, 790);
+  ctx.strokeStyle = '#5c7f63';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(45, 45, 1110, 760);
 
-— AdaptLearn 2026 —`;
+  // Header
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('VISVESVARAYA TECHNOLOGICAL UNIVERSITY, BELAGAVI', 600, 100);
 
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${cert.title.replace(/\s+/g, '_')}_Certificate.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  ctx.fillStyle = '#5c7f63';
+  ctx.font = '12px Arial';
+  ctx.fillText('ADAPTIVE LEARNING PLATFORM', 600, 125);
+
+  // Certificate type
+  ctx.fillStyle = '#b8956b';
+  ctx.font = '16px Arial';
+  ctx.fillText(`CERTIFICATE OF ${cert.type.toUpperCase()}`, 600, 200);
+
+  // Decorative line
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(350, 220);
+  ctx.lineTo(850, 220);
+  ctx.stroke();
+
+  // Title
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 36px Georgia';
+  ctx.fillText(cert.title, 600, 290);
+
+  // Awarded to
+  ctx.fillStyle = '#666666';
+  ctx.font = '14px Arial';
+  ctx.fillText('This is to certify that', 600, 360);
+
+  // Student name
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 28px Georgia';
+  ctx.fillText(studentName, 600, 410);
+
+  // Description
+  ctx.fillStyle = '#666666';
+  ctx.font = '14px Arial';
+  ctx.fillText(`has successfully completed ${cert.subject}`, 600, 470);
+  ctx.fillText(`with a score of ${cert.score}%`, 600, 500);
+
+  // Date
+  ctx.fillStyle = '#888888';
+  ctx.font = 'italic 13px Arial';
+  ctx.fillText(dateStr, 600, 570);
+
+  // Footer
+  ctx.strokeStyle = '#d4a574';
+  ctx.beginPath();
+  ctx.moveTo(200, 650);
+  ctx.lineTo(500, 650);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(700, 650);
+  ctx.lineTo(1000, 650);
+  ctx.stroke();
+
+  ctx.fillStyle = '#666666';
+  ctx.font = '11px Arial';
+  ctx.fillText('Platform Director', 350, 680);
+  ctx.fillText('Head of Department', 850, 680);
+
+  // AdaptLearn branding
+  ctx.fillStyle = '#999999';
+  ctx.font = '10px Arial';
+  ctx.fillText('AdaptLearn © 2026 | Powered by AI', 600, 780);
+
+  // Convert to PDF-like blob and download
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${cert.title.replace(/\s+/g, '_')}_Certificate.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
 }
 
 function shareCertificate(cert: Certificate) {
@@ -63,7 +143,23 @@ export default function CertificatesPage() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) setCertificates(mockDB.getCertificates(user.id));
+    // Load from mockDB or use dummy data for display
+    const mockCerts = user ? mockDB.getCertificates(user.id) : [];
+    if (mockCerts.length > 0) {
+      setCertificates(mockCerts);
+    } else {
+      // Dummy certificates to show how it looks
+      setCertificates([
+        { id: 1, user_id: 1, title: 'Cloud Computing Mastery', subject: 'BCS601 - Cloud Computing', type: 'excellence', score: 94, issued_date: '2026-05-20T10:00:00Z' },
+        { id: 2, user_id: 1, title: 'Machine Learning Foundations', subject: 'BCS602 - Machine Learning', type: 'achievement', score: 88, issued_date: '2026-05-15T10:00:00Z' },
+        { id: 3, user_id: 1, title: 'Data Structures Expert', subject: 'BCS304 - DSA', type: 'excellence', score: 96, issued_date: '2026-04-28T10:00:00Z' },
+        { id: 4, user_id: 1, title: 'Operating Systems', subject: 'BCS303 - Operating Systems', type: 'completion', score: 78, issued_date: '2026-04-10T10:00:00Z' },
+        { id: 5, user_id: 1, title: 'Algorithm Design', subject: 'BCS401 - ADA', type: 'achievement', score: 85, issued_date: '2026-03-22T10:00:00Z' },
+        { id: 6, user_id: 1, title: 'Database Systems', subject: 'BCS403 - DBMS', type: 'excellence', score: 92, issued_date: '2026-03-05T10:00:00Z' },
+        { id: 7, user_id: 1, title: 'Computer Networks', subject: 'BCS502 - CN', type: 'completion', score: 75, issued_date: '2026-02-18T10:00:00Z' },
+        { id: 8, user_id: 1, title: 'Cryptography & Security', subject: 'BCS604 - CNS', type: 'achievement', score: 82, issued_date: '2026-02-01T10:00:00Z' },
+      ]);
+    }
   }, [user]);
 
   return (
@@ -92,13 +188,21 @@ export default function CertificatesPage() {
             {certificates.map((cert) => (
               <Card
                 key={cert.id}
-                className="cursor-pointer hover:border-foreground transition-colors overflow-hidden"
+                className="cursor-pointer hover:border-foreground transition-colors overflow-hidden hover-lift"
                 onClick={() => setSelected(cert)}
               >
-                <div className="bg-foreground text-background p-6 relative">
+                <div className={`p-6 relative ${
+                  cert.type === 'excellence' ? 'bg-gradient-to-br from-amber-50 to-orange-50 text-amber-900' :
+                  cert.type === 'achievement' ? 'bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-900' :
+                  'bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-900'
+                }`}>
                   <div className="flex items-center justify-between mb-2">
                     <Award className="w-5 h-5" />
-                    <Badge variant="outline" className="text-[10px] border-background/20 bg-background/10 text-background">
+                    <Badge variant="outline" className={`text-[10px] ${
+                      cert.type === 'excellence' ? 'border-amber-200 bg-amber-100/50 text-amber-700' :
+                      cert.type === 'achievement' ? 'border-emerald-200 bg-emerald-100/50 text-emerald-700' :
+                      'border-blue-200 bg-blue-100/50 text-blue-700'
+                    }`}>
                       {cert.type}
                     </Badge>
                   </div>
@@ -123,7 +227,7 @@ export default function CertificatesPage() {
       {/* Modal */}
       {selected && (
         <div
-          className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in"
+          className="fixed inset-0 bg-white/50 backdrop-blur-[3px] flex items-center justify-center z-50 p-4 animate-fade-in"
           onClick={() => setSelected(null)}
         >
           <div

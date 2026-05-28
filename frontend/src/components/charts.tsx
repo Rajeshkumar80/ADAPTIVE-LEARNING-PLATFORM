@@ -26,12 +26,12 @@ import {
 } from 'recharts';
 
 const tooltipStyle = {
-  backgroundColor: 'white',
-  border: '1px solid hsl(240 6% 92%)',
+  backgroundColor: '#fffdf9',
+  border: '1px solid hsl(40 10% 88%)',
   borderRadius: '8px',
   fontSize: '12px',
   padding: '8px 12px',
-  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.06)',
+  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.04)',
 };
 
 const axisStyle = {
@@ -63,21 +63,21 @@ export function ActivityChart() {
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="hoursGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(240 10% 4%)" stopOpacity={0.2} />
-            <stop offset="100%" stopColor="hsl(240 10% 4%)" stopOpacity={0} />
+            <stop offset="0%" stopColor="#6b8f71" stopOpacity={0.25} />
+            <stop offset="100%" stopColor="#6b8f71" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="aiGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(240 5% 45%)" stopOpacity={0.15} />
-            <stop offset="100%" stopColor="hsl(240 5% 45%)" stopOpacity={0} />
+            <stop offset="0%" stopColor="#b8956b" stopOpacity={0.2} />
+            <stop offset="100%" stopColor="#b8956b" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 6% 92%)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(40 10% 88%)" vertical={false} />
         <XAxis dataKey="week" {...axisStyle} />
         <YAxis {...axisStyle} />
         <Tooltip contentStyle={tooltipStyle} />
         <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} iconType="circle" iconSize={6} />
-        <Area type="monotone" dataKey="studyHours" stroke="hsl(240 10% 4%)" strokeWidth={2} fill="url(#hoursGrad)" name="Study hours" />
-        <Area type="monotone" dataKey="aiQueries" stroke="hsl(240 5% 45%)" strokeWidth={1.5} fill="url(#aiGrad)" name="AI queries" />
+        <Area type="monotone" dataKey="studyHours" stroke="#6b8f71" strokeWidth={2} fill="url(#hoursGrad)" name="Study hours" />
+        <Area type="monotone" dataKey="aiQueries" stroke="#b8956b" strokeWidth={1.5} fill="url(#aiGrad)" name="AI queries" />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -120,14 +120,20 @@ export function PerformanceChart() {
     { subject: 'AI', score: 82 },
   ];
 
+  const barColors = ['#6b8f71', '#8faa91', '#7c9a82', '#5c7f63', '#9ab89e', '#4a6e50'];
+
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 6% 92%)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(40 10% 88%)" vertical={false} />
         <XAxis dataKey="subject" {...axisStyle} />
-        <YAxis {...axisStyle} />
-        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(240 5% 96%)' }} />
-        <Bar dataKey="score" fill="hsl(240 10% 4%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <YAxis {...axisStyle} domain={[0, 100]} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(40 12% 93%)' }} />
+        <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={40}>
+          {data.map((_, i) => (
+            <Cell key={i} fill={barColors[i]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
@@ -175,17 +181,17 @@ export function TestTrendsChart() {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 6% 92%)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(40 10% 88%)" vertical={false} />
         <XAxis dataKey="month" {...axisStyle} />
-        <YAxis {...axisStyle} />
+        <YAxis {...axisStyle} domain={[60, 100]} />
         <Tooltip contentStyle={tooltipStyle} />
         <Line
           type="monotone"
           dataKey="score"
-          stroke="hsl(240 10% 4%)"
-          strokeWidth={2}
-          dot={{ fill: 'hsl(240 10% 4%)', r: 3, strokeWidth: 2, stroke: 'white' }}
-          activeDot={{ r: 5, strokeWidth: 2 }}
+          stroke="#5c7f63"
+          strokeWidth={2.5}
+          dot={{ fill: '#5c7f63', r: 4, strokeWidth: 2, stroke: 'white' }}
+          activeDot={{ r: 6, strokeWidth: 2, fill: '#4a6e50' }}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -195,27 +201,40 @@ export function TestTrendsChart() {
 // ===== Topic Distribution =====
 export function SubjectDistribution() {
   const data = [
-    { name: 'DSA', value: 25 },
-    { name: 'DBMS', value: 20 },
-    { name: 'OS', value: 18 },
-    { name: 'CN', value: 15 },
-    { name: 'SE', value: 12 },
-    { name: 'AI', value: 10 },
+    { name: 'DSA', value: 25, hours: '62h' },
+    { name: 'DBMS', value: 20, hours: '50h' },
+    { name: 'OS', value: 18, hours: '45h' },
+    { name: 'CN', value: 15, hours: '38h' },
+    { name: 'SE', value: 12, hours: '30h' },
+    { name: 'AI', value: 10, hours: '25h' },
   ];
 
-  const colors = ['hsl(240 10% 4%)', 'hsl(240 6% 25%)', 'hsl(240 5% 45%)', 'hsl(240 4% 65%)', 'hsl(240 4% 80%)', 'hsl(240 6% 92%)'];
+  const colors = ['#5c7f63', '#8faa91', '#b8956b', '#d4a574', '#7c9a82', '#a3c4a8'];
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <PieChart>
-        <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value">
-          {data.map((_, index) => (
-            <Cell key={index} fill={colors[index % colors.length]} stroke="white" strokeWidth={2} />
-          ))}
-        </Pie>
-        <Tooltip contentStyle={tooltipStyle} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="flex items-center gap-4">
+      <ResponsiveContainer width="55%" height={240}>
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={85} paddingAngle={2} dataKey="value">
+            {data.map((_, index) => (
+              <Cell key={index} fill={colors[index]} stroke="white" strokeWidth={2} />
+            ))}
+          </Pie>
+          <Tooltip contentStyle={tooltipStyle} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="flex-1 space-y-2">
+        {data.map((item, i) => (
+          <div key={item.name} className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[i] }} />
+            <div className="flex-1 flex items-center justify-between">
+              <span className="text-xs font-medium">{item.name}</span>
+              <span className="text-[11px] text-muted-foreground">{item.hours}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

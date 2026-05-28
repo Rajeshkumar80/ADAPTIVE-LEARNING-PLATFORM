@@ -45,7 +45,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         { icon: Brain, label: 'AI Tutor', href: '/ai-tutor' },
         { icon: Calendar, label: 'Planner', href: '/planner' },
         { icon: Target, label: 'Mastery', href: '/mastery' },
-        { icon: GraduationCap, label: 'VTU Subjects', href: '/vtu-subjects' },
       ],
     },
     {

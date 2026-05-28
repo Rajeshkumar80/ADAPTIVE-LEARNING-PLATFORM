@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell } from 'lucide-react';
+import { NotificationDialog } from '@/components/notification-dialog';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -29,10 +29,7 @@ export function Header({ title, subtitle }: HeaderProps) {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1">
-          <button className="relative h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-foreground rounded-full"></span>
-          </button>
+          <NotificationDialog />
           {!isAuthenticated && (
             <Link
               href="/login"

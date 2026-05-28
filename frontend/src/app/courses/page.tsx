@@ -1,114 +1,210 @@
 'use client';
 
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BookOpen, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+import { BookOpen, GraduationCap, ChevronRight, Target, Layers } from 'lucide-react';
 
-export default function CoursesPage() {
-  const subjects = [
-    { id: 1, name: 'Data Structures & Algorithms', code: 'CS501', progress: 75, topics: 9, totalTopics: 12, hours: 45 },
-    { id: 2, name: 'Database Management Systems', code: 'CS502', progress: 85, topics: 8, totalTopics: 10, hours: 38 },
-    { id: 3, name: 'Operating Systems', code: 'CS503', progress: 45, topics: 6, totalTopics: 14, hours: 28 },
-    { id: 4, name: 'Computer Networks', code: 'CS504', progress: 60, topics: 7, totalTopics: 11, hours: 32 },
-    { id: 5, name: 'Software Engineering', code: 'CS505', progress: 70, topics: 9, totalTopics: 13, hours: 40 },
-    { id: 6, name: 'Artificial Intelligence', code: 'CS506', progress: 35, topics: 5, totalTopics: 15, hours: 22 },
-  ];
+interface VTUSubject {
+  code: string;
+  name: string;
+  credits: number;
+  type: string;
+}
+
+interface SubjectDetail {
+  code: string;
+  name: string;
+  credits: number;
+  semester: number;
+  type: string;
+  course_outcomes: string[];
+  program_outcomes: string[];
+  modules: Record<string, { title: string; topics: string[] }>;
+}
+
+export default function SubjectsPage() {
+  const { user } = useAuth();
+  const [semester, setSemester] = useState(user?.semester || 6);
+  const [subjects, setSubjects] = useState<VTUSubject[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSubjects();
+  }, [semester]);
+
+  const loadSubjects = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getVTUSubjects(semester);
+      setSubjects(data.subjects || []);
+    } catch {
+      setSubjects([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSubjectDetail = async (code: string) => {
+    try {
+      const data = await api.getVTUSubjectDetails(code);
+      setSelectedSubject(data);
+    } catch {
+      setSelectedSubject(null);
+    }
+  };
+
+  const typeLabel: Record<string, string> = {
+    theory: 'Theory',
+    lab: 'Lab',
+    project: 'Project',
+    elective: 'Elective',
+    ncmc: 'NCMC',
+    seminar: 'Seminar',
+    internship: 'Internship',
+  };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">My Subjects</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              6th Semester · Computer Science · {subjects.length} active subjects
-            </p>
+      <div className="flex-1 flex flex-col overflow-auto">
+        <Header title="Subjects" subtitle="VTU CSE 22 Scheme" />
+        <main className="flex-1 p-6 max-w-6xl w-full mx-auto space-y-6">
+          {/* Semester Selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+              <Button
+                key={s}
+                size="sm"
+                variant={semester === s ? 'default' : 'outline'}
+                onClick={() => { setSemester(s); setSelectedSubject(null); }}
+              >
+                Sem {s}
+              </Button>
+            ))}
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Total Subjects</p>
-                <p className="text-2xl font-semibold tracking-tight">{subjects.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Hours Studied</p>
-                <p className="text-2xl font-semibold tracking-tight">205h</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Avg Progress</p>
-                <p className="text-2xl font-semibold tracking-tight">62%</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Topics Done</p>
-                <p className="text-2xl font-semibold tracking-tight">44/75</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Subjects List */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {subjects.map((subject) => (
-                  <div
-                    key={subject.id}
-                    className="group flex items-center px-6 py-4 hover:bg-muted/40 transition-colors cursor-pointer"
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Subject List */}
+            <div className="lg:col-span-1 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
+                Semester {semester} · {subjects.length} subjects
+              </p>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-foreground border-t-transparent" />
+                </div>
+              ) : (
+                subjects.map(s => (
+                  <Card
+                    key={s.code}
+                    className={`cursor-pointer transition-colors hover:bg-muted/50 ${selectedSubject?.code === s.code ? 'border-foreground' : ''}`}
+                    onClick={() => loadSubjectDetail(s.code)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs text-muted-foreground font-mono">{subject.code}</span>
-                        <h3 className="text-sm font-medium">{subject.name}</h3>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="w-3 h-3" />
-                          {subject.topics}/{subject.totalTopics} topics
-                        </span>
-                        <span>·</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {subject.hours}h
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 ml-6">
-                      <div className="hidden md:flex items-center gap-2 w-48">
-                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-foreground"
-                            style={{ width: `${subject.progress}%` }}
-                          />
+                    <CardContent className="p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{s.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{s.code}</span>
+                          <span className="text-xs text-muted-foreground">·</span>
+                          <span className="text-xs text-muted-foreground">{s.credits} cr</span>
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{typeLabel[s.type] || s.type}</Badge>
                         </div>
-                        <span className="text-xs text-muted-foreground font-mono w-9 text-right">
-                          {subject.progress}%
-                        </span>
                       </div>
-                      <Link href="/ai-tutor">
-                        <Button variant="ghost" size="sm" className="h-7">
-                          Continue
-                          <ArrowRight className="w-3 h-3" />
-                        </Button>
-                      </Link>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+
+            {/* Subject Detail */}
+            <div className="lg:col-span-2">
+              {selectedSubject ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      {selectedSubject.name}
+                    </CardTitle>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      <Badge variant="outline">{selectedSubject.code}</Badge>
+                      <Badge variant="outline">{selectedSubject.credits} Credits</Badge>
+                      <Badge variant="outline">Semester {selectedSubject.semester}</Badge>
+                      <Badge variant="outline">{typeLabel[selectedSubject.type] || selectedSubject.type}</Badge>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Modules */}
+                    {selectedSubject.modules && Object.keys(selectedSubject.modules).length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <Layers className="w-4 h-4" /> Modules & Topics
+                        </h3>
+                        <div className="space-y-3">
+                          {Object.entries(selectedSubject.modules).map(([num, mod]) => (
+                            <div key={num} className="p-3 bg-muted/40 rounded-lg">
+                              <p className="text-sm font-medium mb-1">Module {num}: {mod.title}</p>
+                              <div className="space-y-0.5 pl-3">
+                                {mod.topics.map((topic, i) => (
+                                  <p key={i} className="text-xs text-muted-foreground">• {topic}</p>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Course Outcomes */}
+                    {selectedSubject.course_outcomes.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <Target className="w-4 h-4" /> Course Outcomes
+                        </h3>
+                        <div className="space-y-2">
+                          {selectedSubject.course_outcomes.map((co, i) => (
+                            <div key={i} className="flex items-start gap-2 p-2 bg-muted/30 rounded-md">
+                              <Badge variant="outline" className="shrink-0 text-[10px]">CO{i + 1}</Badge>
+                              <p className="text-xs">{co.replace(/^CO\d+:\s*/, '')}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Program Outcomes */}
+                    <div>
+                      <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                        <GraduationCap className="w-4 h-4" /> Program Outcomes (PO)
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {selectedSubject.program_outcomes.slice(0, 6).map((po, i) => (
+                          <div key={i} className="text-xs p-2 bg-muted/20 rounded-md">
+                            {po}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-sm text-muted-foreground">Select a subject to view details</p>
+                    <p className="text-xs text-muted-foreground mt-1">Modules, topics, course outcomes & program outcomes</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         </main>
       </div>
     </div>
