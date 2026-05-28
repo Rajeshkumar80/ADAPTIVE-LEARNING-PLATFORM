@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ActivityChart, PerformanceChart, TestTrendsChart, SubjectDistribution } from '@/components/charts';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { ChevronRight, ChevronDown, BookOpen, CheckCircle2, Circle } from 'lucide-react';
+import { ChevronRight, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 
 interface ModuleData {
   title: string;
@@ -156,11 +156,11 @@ export default function AnalyticsPage() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════
-              PROGRESS TRACKER — Subject → Module → Topic (expandable)
+              PROGRESS TRACKER — Subject → Module Timeline → Topic Timeline
               ═══════════════════════════════════════════════════════════════ */}
           <div>
             <h2 className="text-lg font-semibold tracking-tight mb-1">Subject Progress Tracker</h2>
-            <p className="text-sm text-muted-foreground mb-4">Click a subject to expand modules, click a module to see topics</p>
+            <p className="text-sm text-muted-foreground mb-4">Click a subject to see module flowchart, click a module to see topics</p>
           </div>
 
           {loading ? (
@@ -168,102 +168,128 @@ export default function AnalyticsPage() {
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-foreground border-t-transparent" />
             </div>
           ) : (
-            <div className="space-y-3">
-              {subjects.map(subject => {
-                const isExpanded = expandedSubject === subject.code;
-                const pct = getSubjectProgress(subject.code);
-                const moduleCount = Object.keys(subject.modules).length;
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Column 1: Subject List */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Subjects</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {subjects.map(subject => {
+                    const pct = getSubjectProgress(subject.code);
+                    const isSelected = expandedSubject === subject.code;
+                    return (
+                      <button
+                        key={subject.code}
+                        onClick={() => { setExpandedSubject(subject.code); setExpandedModule(null); }}
+                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors text-left ${isSelected ? 'bg-muted' : 'hover:bg-muted/50'}`}
+                      >
+                        <div>
+                          <p className={`text-sm font-medium ${isSelected ? '' : 'text-muted-foreground'}`}>{subject.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{subject.code}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{pct}%</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </CardContent>
+              </Card>
 
-                return (
-                  <Card key={subject.code} className="overflow-hidden">
-                    {/* Subject header */}
-                    <button
-                      onClick={() => setExpandedSubject(isExpanded ? null : subject.code)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                          <BookOpen className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-sm font-medium">{subject.name}</p>
-                          <p className="text-xs text-muted-foreground">{subject.code} · {moduleCount} Modules · {subject.credits} Credits</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <p className="text-sm font-semibold">{pct}%</p>
-                          <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${pct}%` }} />
+              {/* Column 2: Module Timeline (flowchart style) */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">
+                    {expandedSubject ? subjects.find(s => s.code === expandedSubject)?.name || 'Modules' : 'Select a subject'}
+                  </CardTitle>
+                  {expandedSubject && <p className="text-xs text-muted-foreground">Module progress flowchart</p>}
+                </CardHeader>
+                <CardContent>
+                  {!expandedSubject ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">← Click a subject to see modules</p>
+                  ) : (
+                    <div className="space-y-0">
+                      {Object.entries(subjects.find(s => s.code === expandedSubject)?.modules || {}).map(([modNum, mod]) => {
+                        const modPct = getModuleProgress(expandedSubject, modNum);
+                        const modKey = `${expandedSubject}-${modNum}`;
+                        const isSelected = expandedModule === modKey;
+                        return (
+                          <div key={modNum} className="timeline-item">
+                            <div className="flex flex-col items-center">
+                              <div className={`timeline-dot ${modPct === 100 ? 'completed' : modPct > 0 ? 'active' : 'pending'}`} />
+                            </div>
+                            <button
+                              onClick={() => setExpandedModule(modKey)}
+                              className={`flex-1 min-w-0 text-left p-2 rounded-md transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted/50'}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <p className={`text-sm font-medium ${isSelected ? '' : ''}`}>Module {modNum}</p>
+                                <span className="text-xs text-muted-foreground">{modPct}%</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{mod.title}</p>
+                              <div className="w-full h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
+                                <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${modPct}%` }} />
+                              </div>
+                            </button>
                           </div>
-                        </div>
-                        {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-                    </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                    {/* Expanded modules */}
-                    {isExpanded && (
-                      <div className="border-t border-border">
-                        {Object.entries(subject.modules).map(([modNum, mod]) => {
-                          const modKey = `${subject.code}-${modNum}`;
-                          const isModExpanded = expandedModule === modKey;
-                          const modPct = getModuleProgress(subject.code, modNum);
-                          const topics = progress[subject.code]?.[modNum] || [];
+              {/* Column 3: Topic Timeline (flowchart style) */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">
+                    {expandedModule
+                      ? `Module ${expandedModule.split('-')[1]}: ${subjects.find(s => s.code === expandedSubject)?.modules[expandedModule.split('-')[1]]?.title || ''}`
+                      : 'Topics'
+                    }
+                  </CardTitle>
+                  {expandedModule && <p className="text-xs text-muted-foreground">Click to mark complete</p>}
+                </CardHeader>
+                <CardContent>
+                  {!expandedModule ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">← Click a module to see topics</p>
+                  ) : (() => {
+                    const modNum = expandedModule.split('-')[1];
+                    const subjectCode = expandedModule.split('-')[0];
+                    const mod = subjects.find(s => s.code === subjectCode)?.modules[modNum];
+                    const topics = progress[subjectCode]?.[modNum] || [];
+                    if (!mod) return null;
 
+                    return (
+                      <div className="space-y-0">
+                        {mod.topics.map((topic, idx) => {
+                          const isDone = topics[idx] || false;
                           return (
-                            <div key={modNum} className="border-b border-border last:border-b-0">
-                              {/* Module header */}
+                            <div key={idx} className="timeline-item">
+                              <div className="flex flex-col items-center">
+                                <div className={`timeline-dot ${isDone ? 'completed' : 'pending'}`} />
+                              </div>
                               <button
-                                onClick={() => setExpandedModule(isModExpanded ? null : modKey)}
-                                className="w-full flex items-center justify-between px-6 py-3 hover:bg-muted/30 transition-colors"
+                                onClick={() => toggleTopic(subjectCode, modNum, idx)}
+                                className="flex-1 min-w-0 text-left p-2 rounded-md hover:bg-muted/50 transition-colors"
                               >
-                                <div className="flex items-center gap-3">
-                                  <div className={`timeline-dot ${modPct === 100 ? 'completed' : modPct > 0 ? 'active' : 'pending'}`} />
-                                  <div className="text-left">
-                                    <p className="text-sm font-medium">Module {modNum}: {mod.title}</p>
-                                    <p className="text-xs text-muted-foreground">{mod.topics.length} topics · {modPct}% done</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${modPct}%` }} />
-                                  </div>
-                                  {isModExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-                                </div>
+                                <p className={`text-sm ${isDone ? 'line-through text-muted-foreground' : 'font-medium'}`}>
+                                  {topic}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                  {isDone ? '✓ Completed' : 'Click to mark done'}
+                                </p>
                               </button>
-
-                              {/* Expanded topics */}
-                              {isModExpanded && (
-                                <div className="px-6 pb-3 pl-14 space-y-1">
-                                  {mod.topics.map((topic, idx) => {
-                                    const isDone = topics[idx] || false;
-                                    return (
-                                      <button
-                                        key={idx}
-                                        onClick={() => toggleTopic(subject.code, modNum, idx)}
-                                        className="w-full flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors text-left"
-                                      >
-                                        {isDone ? (
-                                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                                        ) : (
-                                          <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
-                                        )}
-                                        <span className={`text-xs ${isDone ? 'line-through text-muted-foreground' : ''}`}>
-                                          {topic}
-                                        </span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
                             </div>
                           );
                         })}
                       </div>
-                    )}
-                  </Card>
-                );
-              })}
+                    );
+                  })()}
+                </CardContent>
+              </Card>
             </div>
           )}
 

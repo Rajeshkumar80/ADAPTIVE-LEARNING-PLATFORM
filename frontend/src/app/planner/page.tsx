@@ -47,7 +47,7 @@ export default function PlannerPage() {
     { id: 4, title: 'Software Testing Lab', progress: 90, deadline: 'Jun 01' },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'day' | 'week' | 'month'>('day');
+  const [activeTab, setActiveTab] = useState<'day'>('day');
 
   const completedCount = schedule.filter(s => s.status === 'completed').length;
   const totalMinutes = schedule.reduce((sum, s) => sum + s.duration, 0);
@@ -83,6 +83,12 @@ export default function PlannerPage() {
         <Header title="Study Planner" subtitle="AI-powered daily schedule" />
         <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
           {/* Stat cards row */}
+          <div className="flex items-center justify-between">
+            <div />
+            <Button onClick={() => alert('AI plan generation will use /api/planner/today endpoint')} size="sm">
+              <Sparkles className="w-3.5 h-3.5 mr-1" /> Generate AI Plan
+            </Button>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="stat-card">
               <div className="flex items-center justify-between">
@@ -126,18 +132,7 @@ export default function PlannerPage() {
             <Card className="lg:col-span-1">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Today's Schedule</CardTitle>
-                  <div className="tab-switcher">
-                    {(['day', 'week', 'month'] as const).map(tab => (
-                      <button
-                        key={tab}
-                        className={activeTab === tab ? 'active' : ''}
-                        onClick={() => setActiveTab(tab)}
-                      >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+                  <CardTitle className="text-sm">Today&apos;s Schedule</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
