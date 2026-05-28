@@ -15,7 +15,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="flex items-center justify-between h-14 px-6">
         {/* Left: Title or breadcrumb */}
         <div className="flex items-center">
@@ -31,7 +31,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         <div className="flex items-center gap-1">
           <button className="relative h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-foreground rounded-full"></span>
           </button>
           {!isAuthenticated && (
             <Link
