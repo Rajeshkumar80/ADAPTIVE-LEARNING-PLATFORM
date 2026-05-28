@@ -71,11 +71,11 @@ export default function AnalyticsPage() {
 
   const toggleTopic = (subjectCode: string, moduleNum: string, topicIdx: number) => {
     setProgress(prev => {
-      const updated = { ...prev };
-      if (!updated[subjectCode]) updated[subjectCode] = {};
-      if (!updated[subjectCode][moduleNum]) updated[subjectCode][moduleNum] = [];
-      updated[subjectCode][moduleNum][topicIdx] = !updated[subjectCode][moduleNum][topicIdx];
-      return { ...updated };
+      const newProgress = JSON.parse(JSON.stringify(prev));
+      if (!newProgress[subjectCode]) newProgress[subjectCode] = {};
+      if (!newProgress[subjectCode][moduleNum]) newProgress[subjectCode][moduleNum] = [];
+      newProgress[subjectCode][moduleNum][topicIdx] = !newProgress[subjectCode][moduleNum][topicIdx];
+      return newProgress;
     });
   };
 
