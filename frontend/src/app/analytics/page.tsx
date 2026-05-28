@@ -211,51 +211,28 @@ export default function AnalyticsPage() {
                     <p className="text-sm text-muted-foreground text-center py-8">← Click a subject to see modules</p>
                   ) : (
                     <div className="space-y-0">
-                      {Object.entries(subjects.find(s => s.code === expandedSubject)?.modules || {}).map(([modNum, mod], idx, arr) => {
+                      {Object.entries(subjects.find(s => s.code === expandedSubject)?.modules || {}).map(([modNum, mod], idx) => {
                         const modPct = getModuleProgress(expandedSubject, modNum);
                         const modKey = `${expandedSubject}-${modNum}`;
                         const isSelected = expandedModule === modKey;
 
-                        // Sequential lock: previous module must be 100% to unlock this one
-                        const prevModNum = String(Number(modNum) - 1);
-                        const prevModPct = idx === 0 ? 100 : getModuleProgress(expandedSubject, prevModNum);
-                        const isLocked = idx > 0 && prevModPct < 100;
-
                         return (
                           <div key={modNum} className="timeline-item">
                             <div className="flex flex-col items-center">
-                              <div className={`timeline-dot ${modPct === 100 ? 'completed' : (!isLocked && modPct > 0) ? 'active' : 'pending'}`} />
+                              <div className={`timeline-dot ${modPct === 100 ? 'completed' : modPct > 0 ? 'active' : 'pending'}`} />
                             </div>
                             <button
-                              onClick={() => !isLocked && setExpandedModule(modKey)}
-                              disabled={isLocked}
-                              className={`flex-1 min-w-0 text-left p-2.5 rounded-lg transition-colors ${
-                                isLocked
-                                  ? 'opacity-40 cursor-not-allowed'
-                                  : isSelected
-                                    ? 'bg-muted'
-                                    : 'hover:bg-muted/50'
-                              }`}
+                              onClick={() => setExpandedModule(modKey)}
+                              className={`flex-1 min-w-0 text-left p-2.5 rounded-lg transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted/50'}`}
                             >
                               <div className="flex items-center justify-between">
-                                <p className={`text-sm font-medium ${isLocked ? 'text-muted-foreground' : ''}`}>
-                                  Module {modNum}
-                                </p>
-                                <span className="text-xs text-muted-foreground">
-                                  {isLocked ? '🔒' : `${modPct}%`}
-                                </span>
+                                <p className="text-sm font-medium">Module {modNum}</p>
+                                <span className="text-xs text-muted-foreground">{modPct}%</span>
                               </div>
-                              <p className={`text-xs ${isLocked ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>
-                                {mod.title}
-                              </p>
-                              {!isLocked && (
-                                <div className="w-full h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
-                                  <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${modPct}%` }} />
-                                </div>
-                              )}
-                              {isLocked && (
-                                <p className="text-[10px] text-muted-foreground/50 mt-1">Complete Module {Number(modNum) - 1} first</p>
-                              )}
+                              <p className="text-xs text-muted-foreground">{mod.title}</p>
+                              <div className="w-full h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
+                                <div className="h-full bg-foreground rounded-full transition-all" style={{ width: `${modPct}%` }} />
+                              </div>
                             </button>
                           </div>
                         );
@@ -274,7 +251,7 @@ export default function AnalyticsPage() {
                       : 'Topics'
                     }
                   </CardTitle>
-                  {expandedModule && <p className="text-xs text-muted-foreground">Click to mark complete</p>}
+                  {expandedModule && <p className="text-xs text-muted-foreground">Mark topics as done one by one</p>}
                 </CardHeader>
                 <CardContent>
                   {!expandedModule ? (
@@ -286,24 +263,28 @@ export default function AnalyticsPage() {
                     const topics = progress[subjectCode]?.[modNum] || [];
                     if (!mod) return null;
 
+                    // Find the first incomplete topic — only that one can be marked done
+                    const firstIncompleteIdx = topics.findIndex(t => !t);
+
                     return (
                       <div className="space-y-0">
                         {mod.topics.map((topic, idx) => {
                           const isDone = topics[idx] || false;
+                          const canMarkDone = idx === firstIncompleteIdx;
                           return (
                             <div key={idx} className="timeline-item">
                               <div className="flex flex-col items-center">
-                                <div className={`timeline-dot ${isDone ? 'completed' : 'pending'}`} />
+                                <div className={`timeline-dot ${isDone ? 'completed' : canMarkDone ? 'active' : 'pending'}`} />
                               </div>
                               <button
-                                onClick={() => toggleTopic(subjectCode, modNum, idx)}
-                                className="flex-1 min-w-0 text-left p-2 rounded-md hover:bg-muted/50 transition-colors"
+                                onClick={() => canMarkDone && toggleTopic(subjectCode, modNum, idx)}
+                                className={`flex-1 min-w-0 text-left p-2 rounded-md transition-colors ${canMarkDone ? 'hover:bg-muted/50 cursor-pointer' : 'cursor-default'}`}
                               >
                                 <p className={`text-sm ${isDone ? 'line-through text-muted-foreground' : 'font-medium'}`}>
                                   {topic}
                                 </p>
                                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                                  {isDone ? '✓ Completed' : 'Click to mark done'}
+                                  {isDone ? '✓ Completed' : canMarkDone ? 'Click to mark done →' : ''}
                                 </p>
                               </button>
                             </div>
