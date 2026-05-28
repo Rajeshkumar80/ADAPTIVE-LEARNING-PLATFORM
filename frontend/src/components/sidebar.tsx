@@ -46,6 +46,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         { icon: Brain, label: 'AI Tutor', href: '/ai-tutor' },
         { icon: Calendar, label: 'Planner', href: '/planner' },
         { icon: Target, label: 'Mastery', href: '/mastery' },
+        { icon: GraduationCap, label: 'VTU Subjects', href: '/vtu-subjects' },
       ],
     },
     {
@@ -59,6 +60,12 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       items: [
         { icon: Award, label: 'Certificates', href: '/certificates' },
         { icon: Trophy, label: 'Badges', href: '/achievements' },
+      ],
+    },
+    {
+      section: 'Account',
+      items: [
+        { icon: Users, label: 'Profile', href: '/profile' },
       ],
     },
   ];
@@ -85,6 +92,12 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         { icon: GraduationCap, label: 'All Tests', href: '/admin/tests' },
         { icon: ShieldCheck, label: 'Anti-Cheat', href: '/admin/anti-cheat' },
         { icon: FileText, label: 'Reports', href: '/admin/reports' },
+      ],
+    },
+    {
+      section: 'Communicate',
+      items: [
+        { icon: Award, label: 'Notifications', href: '/admin/notifications' },
       ],
     },
   ];

@@ -239,6 +239,86 @@ class APIClient {
   async markAllRead() {
     return this.request('/api/notifications/read-all', { method: 'PUT' });
   }
+
+  // ============= Documents (Phase 2B) =============
+  async uploadDocument(file: File, subject?: string, description?: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (subject) formData.append('subject', subject);
+    if (description) formData.append('description', description);
+
+    const headers: Record<string, string> = {};
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+
+    const response = await fetch(`${this.baseURL}/api/documents/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async listDocuments() {
+    return this.request('/api/documents/');
+  }
+
+  async deleteDocument(docId: string) {
+    return this.request(`/api/documents/${docId}`, { method: 'DELETE' });
+  }
+
+  async askDocument(docId: string, question: string) {
+    const formData = new URLSearchParams();
+    formData.append('doc_id', docId);
+    formData.append('question', question);
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+
+    const response = await fetch(`${this.baseURL}/api/documents/ask`, {
+      method: 'POST',
+      headers,
+      body: formData.toString(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Query failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  // ============= VTU (Phase 2D) =============
+  async getVTUSubjects(semester?: number) {
+    const qs = semester ? `?semester=${semester}` : '';
+    return this.request(`/api/vtu/subjects${qs}`);
+  }
+
+  async getVTUSubjectDetails(code: string) {
+    return this.request(`/api/vtu/subjects/${code}`);
+  }
+
+  async getVTUProgramOutcomes() {
+    return this.request('/api/vtu/program-outcomes');
+  }
+
+  // ============= Student Profile (Phase 2C) =============
+  async getStudentProfile() {
+    return this.request('/api/student/profile');
+  }
+
+  async updateStudentProfile(data: { semester?: number; section?: string; branch?: string; full_name?: string }) {
+    const params = new URLSearchParams();
+    if (data.semester) params.append('semester', String(data.semester));
+    if (data.section) params.append('section', data.section);
+    if (data.branch) params.append('branch', data.branch);
+    if (data.full_name) params.append('full_name', data.full_name);
+    return this.request(`/api/student/profile?${params.toString()}`, { method: 'PUT' });
+  }
 }
 
 export const api = new APIClient(API_URL);

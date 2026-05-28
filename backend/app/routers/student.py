@@ -152,6 +152,50 @@ def update_profile(
     }
 
 
+@router.get("/profile")
+def get_profile(
+    current_user: User = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    """Get full student profile with academic details and selected subjects."""
+    from app.models import Topic, TopicMastery, StudySession, Certificate, Achievement
+    from sqlalchemy import func
+
+    subjects = db.query(Subject).filter(Subject.semester == (current_user.semester or 6)).all()
+
+    total_study_minutes = db.query(func.sum(StudySession.duration_minutes)).filter(
+        StudySession.user_id == current_user.id
+    ).scalar() or 0
+
+    attempts = db.query(TestAttempt).filter(
+        TestAttempt.user_id == current_user.id,
+        TestAttempt.is_completed == True,
+    ).all()
+    avg_score = sum(a.score for a in attempts) / len(attempts) if attempts else 0
+
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "usn": current_user.usn,
+        "semester": current_user.semester,
+        "branch": current_user.branch,
+        "section": current_user.section,
+        "cgpa": current_user.cgpa,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at,
+        "subjects": [{"id": s.id, "code": s.code, "name": s.name, "credits": s.credits} for s in subjects],
+        "stats": {
+            "total_study_hours": round(total_study_minutes / 60, 1),
+            "tests_taken": len(attempts),
+            "avg_score": round(avg_score, 1),
+            "certificates": db.query(Certificate).filter(Certificate.user_id == current_user.id).count(),
+            "achievements": db.query(Achievement).filter(Achievement.user_id == current_user.id).count(),
+        },
+    }
+
+
 @router.get("/leaderboard")
 def leaderboard(
     db: Session = Depends(get_db),
