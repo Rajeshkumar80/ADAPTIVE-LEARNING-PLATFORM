@@ -430,9 +430,13 @@ export default function AdminStudentsPage() {
 
 function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-white/50 backdrop-blur-[3px] flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
+    <div
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
+      onClick={onClose}
+    >
       <div
-        className="bg-background rounded-lg max-w-lg w-full overflow-hidden border border-border"
+        className="bg-background rounded-lg max-w-lg w-full overflow-hidden border border-border shadow-2xl mx-4"
+        style={{ maxHeight: '85vh', overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
