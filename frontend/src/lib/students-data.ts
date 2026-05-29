@@ -175,7 +175,7 @@ const sortedStudents = [...RAW_STUDENTS].sort((a, b) => {
 export const ALL_STUDENTS: StudentRecord[] = sortedStudents.map((s, i) => {
   const rng = seededRandom(i * 7 + 42);
   let cgpa = +(6.5 + rng() * 3.5).toFixed(2);
-  let attendance = Math.round(65 + rng() * 35);
+  let attendance = Math.round(72 + rng() * 28);
   let testsCompleted = Math.round(3 + rng() * 10);
   let avgScore = Math.round(50 + rng() * 45);
 

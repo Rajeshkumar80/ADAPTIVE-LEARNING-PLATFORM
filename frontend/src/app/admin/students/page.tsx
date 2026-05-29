@@ -435,8 +435,7 @@ function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: 
       onClick={onClose}
     >
       <div
-        className="bg-background rounded-lg max-w-lg w-full overflow-hidden border border-border shadow-2xl mx-4"
-        style={{ maxHeight: '85vh', overflowY: 'auto' }}
+        style={{ maxHeight: '85vh', overflowY: 'auto', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e2dc', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', margin: '0 16px', width: '100%', maxWidth: '500px' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
