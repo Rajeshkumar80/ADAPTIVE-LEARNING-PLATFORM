@@ -431,7 +431,7 @@ export default function AdminStudentsPage() {
 
 function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 bg-white/50 backdrop-blur-[3px] flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
       <div
         className="bg-background rounded-lg max-w-lg w-full overflow-hidden border border-border"
         onClick={(e) => e.stopPropagation()}

@@ -155,7 +155,6 @@ const RAW_STUDENTS: { usn: string; name: string; section: 'A' | 'B' }[] = [
   { usn: "1GD24CS401", name: "Chandushree D S", section: "B" },
   { usn: "1GD24CS404", name: "Keerthana A", section: "B" },
   { usn: "1GD24CS405", name: "Kumari N", section: "B" },
-  { usn: "1GD24CS406", name: "Manoj Kumar", section: "B" },
 ];
 
 // Seed for consistent random values
@@ -164,8 +163,16 @@ function seededRandom(seed: number) {
   return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 }
 
-// Generate full student records from raw data
-export const ALL_STUDENTS: StudentRecord[] = RAW_STUDENTS.map((s, i) => {
+// Generate full student records from raw data (sorted: regular USNs first, then lateral entry)
+const sortedStudents = [...RAW_STUDENTS].sort((a, b) => {
+  const aIsLateral = a.usn.includes('24CS4');
+  const bIsLateral = b.usn.includes('24CS4');
+  if (aIsLateral && !bIsLateral) return 1;
+  if (!aIsLateral && bIsLateral) return -1;
+  return a.usn.localeCompare(b.usn);
+});
+
+export const ALL_STUDENTS: StudentRecord[] = sortedStudents.map((s, i) => {
   const rng = seededRandom(i * 7 + 42);
   const cgpa = +(6.5 + rng() * 3.5).toFixed(2);
   const attendance = Math.round(65 + rng() * 35);
