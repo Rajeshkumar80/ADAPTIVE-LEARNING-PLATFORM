@@ -35,6 +35,7 @@ export default function AdminStudentsPage() {
   const [selected, setSelected] = useState<StudentRecord | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [quickFilter, setQuickFilter] = useState<'all' | 'active' | 'top' | 'risk'>('all');
+  const [listDialog, setListDialog] = useState<'active' | 'top' | 'risk' | 'avg' | null>(null);
   const [addedStudents, setAddedStudents] = useState<StudentRecord[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -217,33 +218,33 @@ export default function AdminStudentsPage() {
             </div>
           )}
 
-          {/* Stats — clickable to filter */}
+          {/* Stats — clickable to open list dialog */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Card className={`cursor-pointer transition-colors ${quickFilter === 'all' ? 'border-foreground' : 'hover:border-foreground/50'}`} onClick={() => setQuickFilter('all')}>
+            <Card className="cursor-pointer transition-colors hover:border-foreground/50" onClick={() => setQuickFilter('all')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Showing</p>
                 <p className="text-2xl font-semibold tracking-tight">{stats.total}</p>
               </CardContent>
             </Card>
-            <Card className={`cursor-pointer transition-colors ${quickFilter === 'active' ? 'border-green-500' : 'hover:border-green-300'}`} onClick={() => setQuickFilter(quickFilter === 'active' ? 'all' : 'active')}>
+            <Card className="cursor-pointer transition-colors hover:border-green-300" onClick={() => setListDialog('active')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Active</p>
                 <p className="text-2xl font-semibold tracking-tight text-green-700">{stats.active}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer transition-colors hover:border-foreground/50" onClick={() => setListDialog('avg')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Avg CGPA</p>
                 <p className="text-2xl font-semibold tracking-tight">{stats.avgCgpa}</p>
               </CardContent>
             </Card>
-            <Card className={`cursor-pointer transition-colors ${quickFilter === 'top' ? 'border-foreground' : 'hover:border-foreground/50'}`} onClick={() => setQuickFilter(quickFilter === 'top' ? 'all' : 'top')}>
+            <Card className="cursor-pointer transition-colors hover:border-foreground/50" onClick={() => setListDialog('top')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Top performers</p>
                 <p className="text-2xl font-semibold tracking-tight">{stats.topPerformers}</p>
               </CardContent>
             </Card>
-            <Card className={`cursor-pointer transition-colors ${quickFilter === 'risk' ? 'border-amber-500' : 'hover:border-amber-300'}`} onClick={() => setQuickFilter(quickFilter === 'risk' ? 'all' : 'risk')}>
+            <Card className="cursor-pointer transition-colors hover:border-amber-300" onClick={() => setListDialog('risk')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">At risk</p>
                 <p className="text-2xl font-semibold tracking-tight text-amber-700">{stats.atRisk}</p>
@@ -396,6 +397,16 @@ export default function AdminStudentsPage() {
       {/* Student Detail Modal */}
       {selected && <StudentDetail student={selected} onClose={() => setSelected(null)} />}
 
+      {/* Student List Dialog (from stat cards) */}
+      {listDialog && (
+        <StudentListDialog
+          type={listDialog}
+          students={filtered}
+          onClose={() => setListDialog(null)}
+          onSelect={(s) => { setListDialog(null); setSelected(s); }}
+        />
+      )}
+
       {/* Add Student Modal */}
       {showAddForm && (
         <AddStudentForm
@@ -428,6 +439,91 @@ export default function AdminStudentsPage() {
     </div>
   );
 }
+
+function StudentListDialog({
+  type,
+  students,
+  onClose,
+  onSelect,
+}: {
+  type: 'active' | 'top' | 'risk' | 'avg';
+  students: StudentRecord[];
+  onClose: () => void;
+  onSelect: (s: StudentRecord) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const config = {
+    active: { title: 'Active Students', filter: (s: StudentRecord) => s.status === 'active', color: '#16a34a' },
+    top: { title: 'Top Performers', filter: (s: StudentRecord) => s.cgpa >= 9.0, color: '#5c7f63' },
+    risk: { title: 'At Risk Students', filter: (s: StudentRecord) => s.cgpa < 6.0 || s.attendance < 75, color: '#d97706' },
+    avg: { title: 'All Students by CGPA', filter: () => true, color: '#5c7f63' },
+  }[type];
+
+  let list = students.filter(config.filter);
+  if (type === 'top' || type === 'avg') list = [...list].sort((a, b) => b.cgpa - a.cgpa);
+  if (type === 'risk') list = [...list].sort((a, b) => a.cgpa - b.cgpa);
+
+  const content = (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e2dc', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', width: '100%', maxWidth: '560px', maxHeight: '75vh', margin: '0 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div>
+            <h2 className="text-base font-semibold">{config.title}</h2>
+            <p className="text-xs text-muted-foreground">{list.length} students</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {list.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">No students in this category</p>
+          ) : (
+            list.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => onSelect(s)}
+                className="w-full flex items-center gap-3 px-6 py-3 hover:bg-muted/40 transition-colors text-left border-b border-border/50"
+              >
+                <span className="text-xs text-muted-foreground font-mono w-6 shrink-0">{i + 1}</span>
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold shrink-0">
+                  {s.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{s.name}</p>
+                  <p className="text-[11px] text-muted-foreground font-mono">{s.usn} · Sec {s.section}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-semibold" style={{ color: config.color }}>
+                    {type === 'risk' ? `${s.attendance}%` : s.cgpa}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {type === 'risk' ? 'attendance' : 'CGPA'}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!mounted) return null;
+  return createPortal(content, document.body);
+}
+
 
 function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: () => void }) {
   const [mounted, setMounted] = useState(false);
