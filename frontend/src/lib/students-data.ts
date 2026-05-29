@@ -198,7 +198,7 @@ export const ALL_STUDENTS: StudentRecord[] = sortedStudents.map((s, i) => {
     email: `${s.usn.toLowerCase()}@gcem.edu`,
     cgpa,
     attendance,
-    status: (rng() > 0.05 ? 'active' : 'inactive') as 'active' | 'inactive',
+    status: 'active' as 'active' | 'inactive',
     lastActive: new Date(Date.now() - Math.round(rng() * 7 * 86400000)).toISOString().split('T')[0],
     testsCompleted,
     avgScore,

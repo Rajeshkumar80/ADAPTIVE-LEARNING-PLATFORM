@@ -317,7 +317,7 @@ export default function AdminStudentsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.slice(0, 100).map((s) => (
+                      {filtered.map((s) => (
                         <tr
                           key={s.id}
                           className="border-b last:border-0 border-border hover:bg-muted/40 transition-colors cursor-pointer"
@@ -385,14 +385,6 @@ export default function AdminStudentsPage() {
                       ))}
                     </tbody>
                   </table>
-
-                  {filtered.length > 100 && (
-                    <div className="px-6 py-3 border-t border-border bg-muted/30 text-center">
-                      <p className="text-xs text-muted-foreground">
-                        Showing first 100 of {filtered.length} students. Use filters to narrow down.
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
