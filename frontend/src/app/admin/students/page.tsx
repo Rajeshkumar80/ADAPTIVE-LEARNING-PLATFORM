@@ -33,6 +33,7 @@ export default function AdminStudentsPage() {
   const [status, setStatus] = useState<'active' | 'inactive' | 'all'>('all');
   const [selected, setSelected] = useState<StudentRecord | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [quickFilter, setQuickFilter] = useState<'all' | 'active' | 'top' | 'risk'>('all');
   const [addedStudents, setAddedStudents] = useState<StudentRecord[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -47,8 +48,7 @@ export default function AdminStudentsPage() {
   const allStudents = useMemo(() => [...addedStudents, ...ALL_STUDENTS], [addedStudents]);
 
   const filtered = useMemo(() => {
-    // Manual filtering since we now have augmented list
-    return allStudents.filter(s => {
+    let result = allStudents.filter(s => {
       if (branch !== 'all' && s.branch !== branch) return false;
       if (section !== 'all' && s.section !== section) return false;
       if (semester !== 'all' && s.semester !== semester) return false;
@@ -59,7 +59,14 @@ export default function AdminStudentsPage() {
       }
       return true;
     });
-  }, [allStudents, branch, section, semester, status, search]);
+
+    // Apply quick filter from stat cards
+    if (quickFilter === 'active') result = result.filter(s => s.status === 'active');
+    else if (quickFilter === 'top') result = result.filter(s => s.cgpa >= 9.0);
+    else if (quickFilter === 'risk') result = result.filter(s => s.cgpa < 6.0 || s.attendance < 75);
+
+    return result;
+  }, [allStudents, branch, section, semester, status, search, quickFilter]);
 
   const stats = useMemo(() => getStudentStats(filtered), [filtered]);
 
@@ -209,15 +216,15 @@ export default function AdminStudentsPage() {
             </div>
           )}
 
-          {/* Stats — recalculated based on filter */}
+          {/* Stats — clickable to filter */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Card>
+            <Card className={`cursor-pointer transition-colors ${quickFilter === 'all' ? 'border-foreground' : 'hover:border-foreground/50'}`} onClick={() => setQuickFilter('all')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Showing</p>
                 <p className="text-2xl font-semibold tracking-tight">{stats.total}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className={`cursor-pointer transition-colors ${quickFilter === 'active' ? 'border-green-500' : 'hover:border-green-300'}`} onClick={() => setQuickFilter(quickFilter === 'active' ? 'all' : 'active')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Active</p>
                 <p className="text-2xl font-semibold tracking-tight text-green-700">{stats.active}</p>
@@ -229,13 +236,13 @@ export default function AdminStudentsPage() {
                 <p className="text-2xl font-semibold tracking-tight">{stats.avgCgpa}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className={`cursor-pointer transition-colors ${quickFilter === 'top' ? 'border-foreground' : 'hover:border-foreground/50'}`} onClick={() => setQuickFilter(quickFilter === 'top' ? 'all' : 'top')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">Top performers</p>
                 <p className="text-2xl font-semibold tracking-tight">{stats.topPerformers}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className={`cursor-pointer transition-colors ${quickFilter === 'risk' ? 'border-amber-500' : 'hover:border-amber-300'}`} onClick={() => setQuickFilter(quickFilter === 'risk' ? 'all' : 'risk')}>
               <CardContent className="p-5">
                 <p className="text-xs text-muted-foreground mb-1">At risk</p>
                 <p className="text-2xl font-semibold tracking-tight text-amber-700">{stats.atRisk}</p>
