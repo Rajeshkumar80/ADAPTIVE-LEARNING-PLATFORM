@@ -95,7 +95,7 @@ const RAW_STUDENTS: { usn: string; name: string; section: 'A' | 'B' }[] = [
   { usn: "1GD24CS407", name: "Rajesh G", section: "A" },
   { usn: "1GD24CS408", name: "Shivannda Swamy", section: "A" },
   { usn: "1GD24CS409", name: "Supriya", section: "A" },
-  // Section B
+  // Section B (1GD23CS063 to 1GD23CS126 + lateral 1GD24CS401, 404, 405, 406)
   { usn: "1GD23CS063", name: "Maria Anushka S", section: "B" },
   { usn: "1GD23CS064", name: "Mohith S", section: "B" },
   { usn: "1GD23CS065", name: "Monalisha Nayak", section: "B" },
@@ -155,6 +155,7 @@ const RAW_STUDENTS: { usn: string; name: string; section: 'A' | 'B' }[] = [
   { usn: "1GD24CS401", name: "Chandushree D S", section: "B" },
   { usn: "1GD24CS404", name: "Keerthana A", section: "B" },
   { usn: "1GD24CS405", name: "Kumari N", section: "B" },
+  { usn: "1GD24CS406", name: "Manoj Kumar", section: "B" },
 ];
 
 // Seed for consistent random values
