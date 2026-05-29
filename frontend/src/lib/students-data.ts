@@ -174,10 +174,19 @@ const sortedStudents = [...RAW_STUDENTS].sort((a, b) => {
 
 export const ALL_STUDENTS: StudentRecord[] = sortedStudents.map((s, i) => {
   const rng = seededRandom(i * 7 + 42);
-  const cgpa = +(6.5 + rng() * 3.5).toFixed(2);
-  const attendance = Math.round(65 + rng() * 35);
-  const testsCompleted = Math.round(3 + rng() * 10);
-  const avgScore = Math.round(50 + rng() * 45);
+  let cgpa = +(6.5 + rng() * 3.5).toFixed(2);
+  let attendance = Math.round(65 + rng() * 35);
+  let testsCompleted = Math.round(3 + rng() * 10);
+  let avgScore = Math.round(50 + rng() * 45);
+
+  // Boost stats for specific students
+  if (s.usn === '1GD24CS407') { // Rajesh G
+    cgpa = 8.75; attendance = 92; testsCompleted = 12; avgScore = 88;
+  } else if (s.usn === '1GD23CS044') { // K S Bhavana
+    cgpa = 9.52; attendance = 97; testsCompleted = 14; avgScore = 95;
+  } else if (s.usn === '1GD23CS040') { // Janani B M
+    cgpa = 9.21; attendance = 95; testsCompleted = 13; avgScore = 91;
+  }
 
   return {
     id: `std_${i + 1}`,
