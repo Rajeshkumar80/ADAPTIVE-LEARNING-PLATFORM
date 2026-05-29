@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -429,7 +430,10 @@ export default function AdminStudentsPage() {
 }
 
 function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: () => void }) {
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const content = (
     <div
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
       onClick={onClose}
@@ -552,6 +556,9 @@ function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: 
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(content, document.body);
 }
 
 
