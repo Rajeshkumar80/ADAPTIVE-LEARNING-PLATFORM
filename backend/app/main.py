@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.routers import admin, ai, auth, journal, notifications, planner, student, tests
-from app.routers import documents, vtu
+from app.routers import documents, vtu, learning
 from app.seed import seed_database
 
 # Ensure all models are imported for table creation
@@ -78,6 +78,7 @@ app.include_router(planner.router, prefix="/api/planner", tags=["Planner"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(vtu.router, prefix="/api/vtu", tags=["VTU"])
+app.include_router(learning.router, prefix="/api/learning", tags=["Learning"])
 
 
 @app.get("/")

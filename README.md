@@ -1,84 +1,83 @@
-# 🎓 Adaptive Learning Platform
+# Adaptive Learning Platform
 
-AI-powered learning platform for VTU students with adaptive scheduling, code journal, and smart assessments.
+AI-powered adaptive learning platform for VTU CSE students (2022 Scheme).
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Install
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 15
-
-### 2. Setup Database
-```bash
-psql -U postgres
-CREATE DATABASE adaptive_learning;
-\q
-
-psql -U postgres -d adaptive_learning -f database/schema.sql
-```
-
-### 3. Backend
+### 1. Backend
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install --only-binary :all: psycopg2-binary
-pip install fastapi uvicorn[standard] python-multipart python-jose[cryptography] passlib[bcrypt] python-dotenv sqlalchemy alembic pydantic pydantic-settings httpx python-dateutil pytest pytest-asyncio black
-copy .env.example .env
+venv\Scripts\activate        # Windows
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
+Server runs at http://localhost:8000 | Docs at http://localhost:8000/docs
 
-### 4. Frontend
+### 2. Frontend
 ```bash
 cd frontend
-copy .env.local.example .env.local
+npm install
 npm run dev
 ```
+App runs at http://localhost:3000
 
-### 5. Access
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+### Default Accounts
+- **Student:** `student` / `student123`
+- **Admin:** `admin` / `admin123`
 
-## 📁 Structure
+## Tech Stack
 
-```
-├── frontend/          # Next.js 15 + TypeScript
-├── backend/           # FastAPI + Python
-├── database/          # PostgreSQL schema
-└── docs/              # Documentation
-```
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15, TypeScript, Tailwind CSS, Recharts |
+| Backend | FastAPI, Python 3.11+, SQLAlchemy |
+| Database | SQLite (dev) / PostgreSQL (prod) |
+| Auth | JWT (python-jose), bcrypt |
+| AI | Google Gemini + OpenRouter (fallback) |
+| Scheduling | SM-2 Spaced Repetition Algorithm |
 
-## 🛠️ Tech Stack
+## API Endpoints (68 routes)
 
-**Frontend:** Next.js 15, TypeScript, Tailwind CSS, shadcn/ui  
-**Backend:** FastAPI, SQLAlchemy, PostgreSQL  
-**Features:** JWT Auth, Code Journal, AI Tutor, Smart Tests
+| Category | Endpoints |
+|----------|-----------|
+| Auth | `/api/auth/register`, `/login`, `/logout`, `/me` |
+| Student | `/api/student/dashboard`, `/profile`, `/progress`, `/leaderboard` |
+| Admin | `/api/admin/dashboard`, `/students`, `/analytics`, `/anti-cheat-flags` |
+| Tests | `/api/tests/` (CRUD), `/start`, `/submit`, `/violation`, `/result` |
+| AI Tutor | `/api/ai/chat`, `/ask`, `/explain`, `/generate-quiz`, `/status` |
+| Planner | `/api/planner/today`, `/goals`, `/sessions/start`, `/sessions/end`, `/mastery` |
+| Learning | `/api/learning/due-today`, `/update`, `/dashboard`, `/sm2-calculate` |
+| Documents | `/api/documents/upload`, `/ask` (RAG) |
+| VTU | `/api/vtu/subjects`, `/subjects/{code}`, `/program-outcomes`, `/import` |
+| Notifications | `/api/notifications/`, `/send`, `/broadcast`, `/stats` |
 
-## 📝 Environment Variables
+## Features
 
-**backend/.env:**
+- **SM-2 Adaptive Scheduler** — Spaced repetition for optimal review timing
+- **AI Tutor** — Gemini-powered chat with document upload (RAG)
+- **VTU Integration** — All 8 semesters, 64 subjects, 205 course outcomes
+- **Progress Tracker** — Module-by-module flowchart with topic completion
+- **Anti-Cheat Tests** — Tab detection, auto-submit, violation logging
+- **Gamification** — Certificates, achievements, leaderboard, streaks
+
+## Environment Variables
+
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/adaptive_learning
-SECRET_KEY=your-secret-key
+# Backend (.env)
+DATABASE_URL=sqlite:///./adaptlearn.db
+SECRET_KEY=change-this-in-production
+GEMINI_API_KEY=your-key        # For AI features
+OPENROUTER_API_KEY=your-key    # Fallback AI
 ```
 
-**frontend/.env.local:**
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret
-DATABASE_URL=postgresql://postgres:password@localhost:5432/adaptive_learning
+## Tests
+
+```bash
+cd backend
+pytest tests/ -v
 ```
 
-## 📚 Docs
+## License
 
-- [Task List](TASK_LIST.md) - All tasks
-- [Progress](PROGRESS_SUMMARY.md) - Current status
-- [Analysis](docs/learnings/PROJECT_ANALYSIS.md) - Technical details
-
----
-
-**Version:** 2.0 | **Status:** Phase 1 - 85% Complete
+MIT
