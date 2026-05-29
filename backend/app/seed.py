@@ -22,10 +22,10 @@ def seed_database(db: Session):
     student = User(
         email="student@vtu.edu",
         username="student",
-        full_name="Rajesh Kumar",
+        full_name="Rajesh G",
         hashed_password=hash_password("student123"),
         role="student",
-        usn="1GD23CS001",
+        usn="1GD24CS407",
         semester=6,
         branch="Computer Science",
         section="A",

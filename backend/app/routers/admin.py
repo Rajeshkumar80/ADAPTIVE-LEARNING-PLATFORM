@@ -108,3 +108,48 @@ def class_analytics(
         "avg_score": round(avg_s, 1) if avg_s else 0.0,
         "top_performers": [{"usn": u.usn, "name": u.full_name, "cgpa": u.cgpa} for u in top_students],
     }
+
+
+@router.post("/import-class-data")
+def import_class_data(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Import all GCEM CSE 6th sem students into the database."""
+    from app.auth import hash_password
+    from app.data.class_data import GCEM_CSE_6TH_SEM
+    import random
+
+    imported = 0
+    for student_data in GCEM_CSE_6TH_SEM:
+        usn = student_data["usn"]
+        name = student_data["name"]
+
+        # Skip if already exists
+        existing = db.query(User).filter(User.usn == usn).first()
+        if existing:
+            continue
+
+        # Determine section based on USN range
+        usn_num = int(usn[7:]) if usn.startswith("1GD23CS") else 0
+        section = "A" if usn_num <= 62 else "B"
+        if usn.startswith("1GD24"):
+            section = "A"  # Lateral entry
+
+        user = User(
+            email=f"{usn.lower()}@gcem.edu",
+            username=usn.lower(),
+            full_name=name,
+            hashed_password=hash_password("student123"),
+            role="student",
+            usn=usn,
+            semester=6,
+            branch="Computer Science",
+            section=section,
+            cgpa=round(random.uniform(6.5, 9.5), 2),
+        )
+        db.add(user)
+        imported += 1
+
+    db.commit()
+    return {"message": f"Imported {imported} students", "total": imported}
