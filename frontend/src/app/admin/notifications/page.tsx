@@ -1,177 +1,184 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { Send, Users, Bell, CheckCircle2 } from 'lucide-react';
+import {
+  AppNotification, getAllNotifications, sendNotification,
+  NOTIFICATION_CATEGORIES, getCategoryMeta,
+} from '@/lib/notifications-store';
+import { Send, Users, CheckCircle2, Clock, Trash2 } from 'lucide-react';
 
 export default function AdminNotificationsPage() {
   const { user } = useAuth();
+  const [category, setCategory] = useState('announcement');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [type, setType] = useState('info');
-  const [target, setTarget] = useState<'all' | 'section'>('all');
-  const [section, setSection] = useState('A');
-  const [semester, setSemester] = useState(6);
-  const [sending, setSending] = useState(false);
+  const [target, setTarget] = useState<'all' | 'A' | 'B'>('all');
+  const [sent, setSent] = useState<AppNotification[]>([]);
   const [result, setResult] = useState<string | null>(null);
 
-  const handleSend = async () => {
+  useEffect(() => { loadSent(); }, []);
+
+  const loadSent = () => setSent(getAllNotifications());
+
+  const handleSend = () => {
     if (!title.trim() || !message.trim()) return;
-    setSending(true);
-    setResult(null);
+    const cat = getCategoryMeta(category);
+    sendNotification({
+      category,
+      title: title.trim(),
+      message: message.trim(),
+      type: cat.type,
+      target,
+      sentBy: user?.full_name || 'Admin',
+    });
+    setResult(`Sent to ${target === 'all' ? 'all students' : `Section ${target}`}`);
+    setTitle('');
+    setMessage('');
+    loadSent();
+    setTimeout(() => setResult(null), 3000);
+  };
 
-    try {
-      const token = localStorage.getItem('adaptlearn_token');
-      const endpoint = target === 'all'
-        ? '/api/notifications/send'
-        : '/api/notifications/broadcast';
-
-      const body = target === 'all'
-        ? { title, message, type }
-        : { title, message, type, section, semester };
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setResult(`Sent to ${data.count} student(s)`);
-        setTitle('');
-        setMessage('');
-      } else {
-        setResult(`Error: ${data.detail || 'Failed to send'}`);
-      }
-    } catch (err: any) {
-      setResult(`Error: ${err.message}`);
-    } finally {
-      setSending(false);
-    }
+  const timeAgo = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex min-h-screen bg-background">
       <Sidebar isAdmin />
       <div className="flex-1 flex flex-col overflow-auto">
-        <Header title="Send Notifications" subtitle="Notify students" />
-        <main className="flex-1 p-6 max-w-3xl w-full mx-auto space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Bell className="w-4 h-4" /> Compose Notification
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Target */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Send To</label>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={target === 'all' ? 'default' : 'outline'}
-                    onClick={() => setTarget('all')}
-                  >
-                    <Users className="w-3.5 h-3.5 mr-1" /> All Students
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={target === 'section' ? 'default' : 'outline'}
-                    onClick={() => setTarget('section')}
-                  >
-                    Specific Section
-                  </Button>
-                </div>
-              </div>
-
-              {target === 'section' && (
-                <div className="flex gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Section</label>
-                    <select
-                      value={section}
-                      onChange={(e) => setSection(e.target.value)}
-                      className="block w-full mt-1 h-8 px-2 border border-border rounded-md text-sm"
-                    >
-                      {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Semester</label>
-                    <select
-                      value={semester}
-                      onChange={(e) => setSemester(Number(e.target.value))}
-                      className="block w-full mt-1 h-8 px-2 border border-border rounded-md text-sm"
-                    >
-                      {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+        <Header title="Notifications" subtitle="Send messages to students" />
+        <main className="flex-1 p-6 max-w-5xl w-full mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Compose — left */}
+            <Card className="lg:col-span-2 h-fit">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Send className="w-4 h-4" /> Compose
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Category with emojis */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Category</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {NOTIFICATION_CATEGORIES.map(cat => (
+                      <button
+                        key={cat.key}
+                        onClick={() => setCategory(cat.key)}
+                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs transition-colors ${
+                          category === cat.key ? 'border-foreground bg-muted' : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <span className="text-base">{cat.emoji}</span>
+                        <span className="truncate">{cat.label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
 
-              {/* Type */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
-                <div className="flex gap-2">
-                  {['info', 'success', 'warning', 'error'].map(t => (
-                    <Button
-                      key={t}
-                      size="sm"
-                      variant={type === t ? 'default' : 'outline'}
-                      onClick={() => setType(t)}
-                    >
-                      {t}
-                    </Button>
-                  ))}
+                {/* Target */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Send To</label>
+                  <div className="flex gap-2">
+                    {(['all', 'A', 'B'] as const).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setTarget(t)}
+                        className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                          target === t ? 'border-foreground bg-foreground text-background' : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        {t === 'all' ? 'All' : `Sec ${t}`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Title */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Notification title..."
-                  className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                />
-              </div>
+                {/* Title */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Notification title..."
+                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
+                  />
+                </div>
 
-              {/* Message */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Message</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write your notification message..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:border-foreground resize-none"
-                />
-              </div>
+                {/* Message */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Message</label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Write your message..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:border-foreground resize-none"
+                  />
+                </div>
 
-              {/* Send */}
-              <div className="flex items-center justify-between">
-                <Button onClick={handleSend} disabled={sending || !title.trim() || !message.trim()}>
-                  <Send className="w-3.5 h-3.5 mr-1" />
-                  {sending ? 'Sending...' : 'Send Notification'}
+                <Button onClick={handleSend} disabled={!title.trim() || !message.trim()} className="w-full">
+                  <Send className="w-3.5 h-3.5 mr-1" /> Send Notification
                 </Button>
                 {result && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> {result}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 justify-center">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {result}
+                  </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Sent history — right */}
+            <Card className="lg:col-span-3">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Sent History ({sent.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {sent.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">No notifications sent yet</p>
+                  ) : (
+                    sent.map(n => {
+                      const cat = getCategoryMeta(n.category);
+                      return (
+                        <div key={n.id} className="flex gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-lg shrink-0">
+                            {cat.emoji}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium">{n.title}</p>
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground">{cat.label}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                            <div className="flex items-center gap-3 mt-1.5">
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {timeAgo(n.createdAt)}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Users className="w-3 h-3" /> {n.target === 'all' ? 'All Students' : `Section ${n.target}`}
+                              </span>
+                              <span className="text-[10px] text-green-600">{n.readBy.length} read</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </main>
       </div>
     </div>
