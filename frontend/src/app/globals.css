@@ -35,9 +35,9 @@
   --chart-5: #8fa07e;
 
   /* Typography */
-  --font-display: var(--font-geist-sans);
-  --font-body: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-jetbrains);
+  --font-body: var(--font-jetbrains);
+  --font-mono: var(--font-jetbrains);
 
   /* Radius */
   --radius-sm: 0.5rem;
@@ -72,8 +72,8 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
 
-  --font-sans: var(--font-display);
-  --font-mono: var(--font-mono);
+  --font-sans: var(--font-jetbrains);
+  --font-mono: var(--font-jetbrains);
 }
 
 /* ============================================
@@ -93,6 +93,7 @@ html {
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-family: var(--font-jetbrains), 'JetBrains Mono', monospace;
   font-feature-settings: "rlig" 1, "calt" 1;
   letter-spacing: -0.011em;
 }
