@@ -1,7 +1,7 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 /* ============================================
-   DESIGN TOKENS — OptiFlow Warm Light Theme
+   DESIGN TOKENS ΓÇö OptiFlow Warm Light Theme
    Warm cream background + Olive/sage accents
    Reference: OptiFlow Analytics Dashboard
    ============================================ */
@@ -35,9 +35,9 @@
   --chart-5: #8fa07e;
 
   /* Typography */
-  --font-display: var(--font-jetbrains);
-  --font-body: var(--font-jetbrains);
-  --font-mono: var(--font-jetbrains);
+  --font-display: var(--font-geist-sans);
+  --font-body: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 
   /* Radius */
   --radius-sm: 0.5rem;
@@ -72,8 +72,8 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
 
-  --font-sans: var(--font-jetbrains);
-  --font-mono: var(--font-jetbrains);
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 /* ============================================
@@ -93,7 +93,6 @@ html {
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-jetbrains), 'JetBrains Mono', monospace;
   font-feature-settings: "rlig" 1, "calt" 1;
   letter-spacing: -0.011em;
 }
@@ -214,7 +213,7 @@ button, a, input, textarea, select {
   transition: transform 80ms ease;
 }
 
-/* Stat card — OptiFlow style */
+/* Stat card ΓÇö OptiFlow style */
 .stat-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -229,7 +228,7 @@ button, a, input, textarea, select {
   box-shadow: var(--shadow);
 }
 
-/* Timeline tracker — OptiFlow Process Tracking style */
+/* Timeline tracker ΓÇö OptiFlow Process Tracking style */
 .timeline-item {
   display: flex;
   gap: 1rem;
@@ -271,7 +270,7 @@ button, a, input, textarea, select {
   background: hsl(var(--border-strong));
 }
 
-/* Calendar mini — OptiFlow style */
+/* Calendar mini ΓÇö OptiFlow style */
 .calendar-day {
   width: 28px;
   height: 28px;
@@ -288,7 +287,7 @@ button, a, input, textarea, select {
   font-weight: 600;
 }
 
-/* Operation/event card — OptiFlow style */
+/* Operation/event card ΓÇö OptiFlow style */
 .event-card {
   display: flex;
   align-items: center;
@@ -313,7 +312,7 @@ button, a, input, textarea, select {
   flex-shrink: 0;
 }
 
-/* Tab switcher — Day/Week/Month style */
+/* Tab switcher ΓÇö Day/Week/Month style */
 .tab-switcher {
   display: inline-flex;
   background: hsl(var(--muted));
