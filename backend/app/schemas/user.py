@@ -57,3 +57,28 @@ class AdminDashboard(BaseModel):
     active_tests: int
     flags_count: int
     avg_performance: float
+
+
+class StudentCreate(BaseModel):
+    email: EmailStr
+    username: str
+    full_name: str
+    usn: str
+    branch: str = "CSE"
+    section: str = "A"
+    semester: int = 6
+    cgpa: float = 0.0
+    password: Optional[str] = None
+
+
+class StudentUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    branch: Optional[str] = None
+    section: Optional[str] = None
+    semester: Optional[int] = None
+    cgpa: Optional[float] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = None
+

@@ -9,7 +9,7 @@ from typing import Optional
 from app.auth import require_admin
 from app.database import get_db
 from app.models import User, Test, AntiCheatFlag, Subject
-from app.schemas import AdminDashboard, UserResponse, SubjectResponse
+from app.schemas import AdminDashboard, UserResponse, SubjectResponse, StudentCreate, StudentUpdate
 
 router = APIRouter()
 
@@ -153,3 +153,151 @@ def import_class_data(
 
     db.commit()
     return {"message": f"Imported {imported} students", "total": imported}
+
+
+@router.post("/students", response_model=UserResponse)
+def create_student(
+    payload: StudentCreate,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from fastapi import HTTPException
+    from app.auth import hash_password
+
+    # Check unique constraints
+    existing = db.query(User).filter(
+        (User.usn == payload.usn) |
+        (User.email == payload.email) |
+        (User.username == payload.username)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Student with this USN, email or username already exists")
+
+    pwd = payload.password if payload.password else payload.usn.lower()
+
+    user = User(
+        email=payload.email,
+        username=payload.username,
+        full_name=payload.full_name,
+        hashed_password=hash_password(pwd),
+        role="student",
+        usn=payload.usn,
+        semester=payload.semester,
+        branch=payload.branch,
+        section=payload.section,
+        cgpa=payload.cgpa,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.put("/students/{usn}", response_model=UserResponse)
+def update_student(
+    usn: str,
+    payload: StudentUpdate,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from fastapi import HTTPException
+    from app.auth import hash_password
+
+    student = db.query(User).filter(User.usn == usn, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # If updating email/username, check constraints
+    if payload.email and payload.email != student.email:
+        if db.query(User).filter(User.email == payload.email).first():
+            raise HTTPException(status_code=400, detail="Email already registered")
+        student.email = payload.email
+
+    if payload.username and payload.username != student.username:
+        if db.query(User).filter(User.username == payload.username).first():
+            raise HTTPException(status_code=400, detail="Username already taken")
+        student.username = payload.username
+
+    if payload.full_name is not None:
+        student.full_name = payload.full_name
+    if payload.branch is not None:
+        student.branch = payload.branch
+    if payload.section is not None:
+        student.section = payload.section
+    if payload.semester is not None:
+        student.semester = payload.semester
+    if payload.cgpa is not None:
+        student.cgpa = payload.cgpa
+    if payload.is_active is not None:
+        student.is_active = payload.is_active
+    if payload.password:
+        student.hashed_password = hash_password(payload.password)
+
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.delete("/students/{usn}")
+def delete_student(
+    usn: str,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from fastapi import HTTPException
+
+    student = db.query(User).filter(User.usn == usn, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    db.delete(student)
+    db.commit()
+    return {"message": "Student successfully deleted"}
+
+
+@router.post("/students/import")
+def import_students(
+    students_list: list[StudentCreate],
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from app.auth import hash_password
+
+    imported = 0
+    errors = []
+
+    for s in students_list:
+        try:
+            # Check unique constraints
+            existing = db.query(User).filter(
+                (User.usn == s.usn) |
+                (User.email == s.email) |
+                (User.username == s.username)
+            ).first()
+            if existing:
+                errors.append(f"USN {s.usn} or Email {s.email} or Username {s.username} already exists.")
+                continue
+
+            pwd = s.password if s.password else s.usn.lower()
+
+            user = User(
+                email=s.email,
+                username=s.username,
+                full_name=s.full_name,
+                hashed_password=hash_password(pwd),
+                role="student",
+                usn=s.usn,
+                semester=s.semester,
+                branch=s.branch,
+                section=s.section,
+                cgpa=s.cgpa,
+                is_active=True,
+            )
+            db.add(user)
+            imported += 1
+        except Exception as e:
+            errors.append(f"Error importing {s.usn}: {str(e)}")
+
+    db.commit()
+    return {"message": f"Successfully imported {imported} students", "imported": imported, "errors": errors}

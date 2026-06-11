@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,66 +8,137 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Search, Download, Plus, MoreHorizontal, Users, X,
-  GraduationCap, ChevronRight, CheckCircle2, AlertCircle,
+  GraduationCap, CheckCircle2, AlertCircle, Upload
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+import { mockDB } from '@/lib/mockdb';
 import {
   ALL_STUDENTS,
   BRANCHES,
   SECTIONS,
   SEMESTERS,
   getStudentStats,
-  buildUSN,
-  nextUSNSequence,
   type Branch,
   type Section,
   type StudentRecord,
 } from '@/lib/students-data';
 
-const ADDED_KEY = 'adaptlearn_added_students';
+import StudentDetailModal from '@/components/admin/student-detail-modal';
+import AddStudentModal from '@/components/admin/add-student-modal';
+import StudentListDialog from '@/components/admin/student-list-dialog';
 
 export default function AdminStudentsPage() {
+  const { isOnline } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // States
   const [search, setSearch] = useState('');
   const [branch, setBranch] = useState<Branch | 'all'>('all');
   const [section, setSection] = useState<Section | 'all'>('all');
   const [semester, setSemester] = useState<number | 'all'>('all');
   const [status, setStatus] = useState<'active' | 'inactive' | 'all'>('all');
-  const [selected, setSelected] = useState<StudentRecord | null>(null);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modals
+  const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [quickFilter, setQuickFilter] = useState<'all' | 'active' | 'top' | 'risk'>('all');
+  const [studentToEdit, setStudentToEdit] = useState<StudentRecord | null>(null);
   const [listDialog, setListDialog] = useState<'active' | 'top' | 'risk' | 'avg' | null>(null);
-  const [addedStudents, setAddedStudents] = useState<StudentRecord[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const raw = localStorage.getItem(ADDED_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const allStudents = useMemo(() => [...addedStudents, ...ALL_STUDENTS], [addedStudents]);
+  useEffect(() => {
+    loadStudents();
+  }, [isOnline]);
 
+  const loadStudents = async () => {
+    setLoading(true);
+    try {
+      if (isOnline) {
+        const data = await api.getAdminStudents();
+        const mapped = data.map((u: any) => mapBackendUserToStudentRecord(u));
+        setStudents(mapped);
+      } else {
+        mockDB.init();
+        const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
+        const mapped = localUsers
+          .filter((u: any) => u.role === 'student')
+          .map((u: any) => mapBackendUserToStudentRecord(u));
+        setStudents(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to load students:', err);
+      // Fallback to static seed data
+      setStudents(ALL_STUDENTS);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  function normalizeBranch(raw: string | undefined): Branch {
+    if (!raw) return 'CSE';
+    const lower = raw.toLowerCase();
+    if (lower.includes('computer') || lower === 'cse' || lower === 'cs') return 'CSE';
+    return (raw as Branch) || 'CSE';
+  }
+
+  function mapBackendUserToStudentRecord(u: any): StudentRecord {
+    let hash = 0;
+    const usnStr = u.usn || '1GD23CS001';
+    for (let i = 0; i < usnStr.length; i++) {
+      hash = usnStr.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const r = (val: number, min: number, max: number) => {
+      const x = Math.sin(val) * 10000;
+      return Math.round(min + (x - Math.floor(x)) * (max - min));
+    };
+
+    // Determine status: default to active if not explicitly set to false/inactive
+    const isActive = u.is_active === false ? false
+      : u.status === 'inactive' ? false
+      : true;
+
+    return {
+      id: String(u.id || u.user_id || `std_${usnStr.toLowerCase()}`),
+      usn: usnStr,
+      name: u.full_name || 'Student',
+      email: u.email || `${usnStr.toLowerCase()}@gcem.edu`,
+      branch: normalizeBranch(u.branch),
+      section: (u.section || 'A') as Section,
+      semester: u.semester || 6,
+      cgpa: u.cgpa || 0.0,
+      attendance: r(hash, 72, 100),
+      status: isActive ? 'active' : 'inactive',
+      lastActive: u.updated_at ? new Date(u.updated_at).toISOString().split('T')[0] : 'Just now',
+      testsCompleted: r(hash + 1, 3, 13),
+      avgScore: r(hash + 2, 50, 95),
+    };
+  }
+
+  // Filter + sort logic
   const filtered = useMemo(() => {
-    let result = allStudents.filter(s => {
+    const result = students.filter(s => {
       if (branch !== 'all' && s.branch !== branch) return false;
       if (section !== 'all' && s.section !== section) return false;
       if (semester !== 'all' && s.semester !== semester) return false;
       if (status !== 'all' && s.status !== status) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (!s.name.toLowerCase().includes(q) && !s.usn.toLowerCase().includes(q)) return false;
+        return s.name.toLowerCase().includes(q) || s.usn.toLowerCase().includes(q);
       }
       return true;
     });
 
-    // Apply quick filter from stat cards
-    if (quickFilter === 'active') result = result.filter(s => s.status === 'active');
-    else if (quickFilter === 'top') result = result.filter(s => s.cgpa >= 9.0);
-    else if (quickFilter === 'risk') result = result.filter(s => s.cgpa < 6.0 || s.attendance < 75);
-
-    return result;
-  }, [allStudents, branch, section, semester, status, search, quickFilter]);
+    // Sort: regular USNs (23CS) before lateral (24CS), then numerically
+    return result.sort((a, b) => {
+      const aIsLateral = a.usn.includes('24CS');
+      const bIsLateral = b.usn.includes('24CS');
+      if (aIsLateral && !bIsLateral) return 1;
+      if (!aIsLateral && bIsLateral) return -1;
+      return a.usn.localeCompare(b.usn);
+    });
+  }, [students, branch, section, semester, status, search]);
 
   const stats = useMemo(() => getStudentStats(filtered), [filtered]);
 
@@ -82,29 +152,90 @@ export default function AdminStudentsPage() {
 
   const hasFilters = branch !== 'all' || section !== 'all' || semester !== 'all' || status !== 'all' || search !== '';
 
-  const handleAddStudent = (newStudent: StudentRecord) => {
-    // Check for duplicates
-    if (allStudents.some(s => s.usn === newStudent.usn)) {
-      setToast({ message: `USN ${newStudent.usn} already exists`, type: 'error' });
-      setTimeout(() => setToast(null), 3000);
-      return;
+  // CRUD Operations
+  const handleSaveStudent = async (formData: any) => {
+    try {
+      if (studentToEdit) {
+        // Edit Mode
+        if (isOnline) {
+          await api.updateStudent(studentToEdit.usn, {
+            email: formData.email,
+            username: formData.username,
+            full_name: formData.name,
+            branch: formData.branch,
+            section: formData.section,
+            semester: formData.semester,
+            cgpa: formData.cgpa,
+            is_active: formData.status === 'active',
+          });
+        } else {
+          const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
+          const updated = localUsers.map((u: any) => {
+            if (u.usn === studentToEdit.usn) {
+              return { ...u, full_name: formData.name, email: formData.email, branch: formData.branch, section: formData.section, semester: formData.semester, cgpa: formData.cgpa, status: formData.status };
+            }
+            return u;
+          });
+          localStorage.setItem('adaptlearn_users', JSON.stringify(updated));
+        }
+        showToast(`Saved changes for ${formData.name}`, 'success');
+      } else {
+        // Create Mode
+        if (isOnline) {
+          await api.createStudent({
+            email: formData.email,
+            username: formData.username,
+            full_name: formData.name,
+            usn: formData.usn,
+            branch: formData.branch,
+            section: formData.section,
+            semester: formData.semester,
+            cgpa: formData.cgpa,
+            password: formData.password || undefined,
+          });
+        } else {
+          mockDB.init();
+          const response = mockDB.register({
+            email: formData.email,
+            username: formData.username,
+            password: formData.password || formData.usn.toLowerCase(),
+            full_name: formData.name,
+            usn: formData.usn,
+            semester: formData.semester,
+            branch: formData.branch,
+            section: formData.section,
+            cgpa: formData.cgpa,
+          }, 'student');
+          if (!response) throw new Error('Duplicate username or USN in local database.');
+        }
+        showToast(`${formData.name} added successfully`, 'success');
+      }
+      setStudentToEdit(null);
+      setShowAddForm(false);
+      loadStudents();
+    } catch (err: any) {
+      showToast(err.message || 'Operation failed', 'error');
     }
-    if (allStudents.some(s => s.email === newStudent.email)) {
-      setToast({ message: `Email ${newStudent.email} already registered`, type: 'error' });
-      setTimeout(() => setToast(null), 3000);
-      return;
-    }
-
-    const updated = [newStudent, ...addedStudents];
-    setAddedStudents(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ADDED_KEY, JSON.stringify(updated));
-    }
-    setShowAddForm(false);
-    setToast({ message: `${newStudent.name} added successfully`, type: 'success' });
-    setTimeout(() => setToast(null), 3000);
   };
 
+  const handleDeleteStudent = async (usn: string) => {
+    try {
+      if (isOnline) {
+        await api.deleteStudent(usn);
+      } else {
+        const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
+        const updated = localUsers.filter((u: any) => u.usn !== usn);
+        localStorage.setItem('adaptlearn_users', JSON.stringify(updated));
+      }
+      setSelectedStudent(null);
+      showToast('Student deleted successfully', 'success');
+      loadStudents();
+    } catch (err: any) {
+      showToast(err.message || 'Deletion failed', 'error');
+    }
+  };
+
+  // CSV Import/Export
   const handleExport = () => {
     const csv = [
       ['USN', 'Name', 'Email', 'Branch', 'Section', 'Semester', 'CGPA', 'Attendance', 'Status'].join(','),
@@ -114,16 +245,113 @@ export default function AdminStudentsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `students_export_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setToast({ message: `Exported ${filtered.length} students`, type: 'success' });
+    showToast(`Exported ${filtered.length} students`, 'success');
+  };
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) {
+          showToast('CSV file is empty or invalid', 'error');
+          return;
+        }
+        
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const parsedStudents: any[] = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split(',').map(v => v.trim());
+          if (row.length < headers.length) continue;
+          
+          const record: any = {};
+          headers.forEach((header, index) => {
+            record[header] = row[index];
+          });
+
+          const name = record.name || record.fullname || record['full name'] || '';
+          const usn = record.usn || '';
+          const email = record.email || (usn ? `${usn.toLowerCase()}@gcem.edu` : '');
+          const username = record.username || usn.toLowerCase();
+          const branch = record.branch || 'CSE';
+          const section = record.section || 'A';
+          const semester = parseInt(record.semester) || 6;
+          const cgpa = parseFloat(record.cgpa) || 0.0;
+
+          if (usn && name) {
+            parsedStudents.push({
+              usn: usn.toUpperCase(),
+              email: email.toLowerCase(),
+              username: username.toLowerCase(),
+              full_name: name,
+              branch,
+              section,
+              semester,
+              cgpa,
+              password: usn.toLowerCase(),
+            });
+          }
+        }
+
+        if (parsedStudents.length === 0) {
+          showToast('No valid records found in CSV', 'error');
+          return;
+        }
+
+        if (isOnline) {
+          const res = await api.importStudents(parsedStudents);
+          showToast(`Successfully imported ${res.imported} students.`, 'success');
+        } else {
+          mockDB.init();
+          const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
+          let count = 0;
+          parsedStudents.forEach(s => {
+            if (!localUsers.some((u: any) => u.usn === s.usn)) {
+              localUsers.push({
+                id: `std_csv_${Date.now()}_${count}`,
+                email: s.email,
+                username: s.username,
+                password: s.password,
+                full_name: s.full_name,
+                role: 'student',
+                usn: s.usn,
+                semester: s.semester,
+                branch: s.branch,
+                section: s.section,
+                cgpa: s.cgpa,
+                created_at: new Date().toISOString()
+              });
+              count++;
+            }
+          });
+          localStorage.setItem('adaptlearn_users', JSON.stringify(localUsers));
+          showToast(`Imported ${count} students to local mockDB`, 'success');
+        }
+        loadStudents();
+      } catch (err: any) {
+        showToast(err.message || 'CSV Import failed', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Get current selection label
+  // Label helper
   const selectionLabel = useMemo(() => {
     const parts = [];
     if (branch !== 'all') parts.push(branch);
@@ -137,67 +365,76 @@ export default function AdminStudentsPage() {
       <Sidebar isAdmin />
       <div className="flex-1 flex flex-col">
         <Header isAdmin />
+        
         <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
-          {/* Header */}
-          <div className="flex items-end justify-between">
+          {/* Header Action Row */}
+          <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Students</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {stats.total} students · {selectionLabel}
               </p>
             </div>
+            
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="w-3.5 h-3.5" />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportCSV}
+                accept=".csv"
+                className="hidden"
+              />
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="press-effect">
+                <Upload className="w-3.5 h-3.5 mr-1" />
+                Import CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport} className="press-effect">
+                <Download className="w-3.5 h-3.5 mr-1" />
                 Export
               </Button>
-              <Button size="sm" onClick={() => setShowAddForm(true)}>
-                <Plus className="w-3.5 h-3.5" />
+              <Button size="sm" onClick={() => { setStudentToEdit(null); setShowAddForm(true); }} className="press-effect">
+                <Plus className="w-3.5 h-3.5 mr-1" />
                 Add Student
               </Button>
             </div>
           </div>
 
-          {/* Branch quick-pick row */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {/* Quick-Pick filter row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
             <button
               onClick={() => { setBranch('all'); setSection('all'); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap border transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap border transition-all duration-150 press-effect ${
                 branch === 'all'
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'border-border hover:bg-muted'
+                  ? 'bg-foreground text-background border-foreground shadow-sm'
+                  : 'border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
               All branches
-              <span className="ml-1.5 opacity-60">{ALL_STUDENTS.length}</span>
             </button>
             {BRANCHES.map((b) => (
               <button
                 key={b.code}
                 onClick={() => { setBranch(b.code); setSection('all'); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap border transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap border transition-all duration-150 press-effect ${
                   branch === b.code
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'border-border hover:bg-muted'
+                    ? 'bg-foreground text-background border-foreground shadow-sm'
+                    : 'border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
                 }`}
-                title={b.name}
               >
                 {b.code}
-                <span className="ml-1.5 opacity-60">{b.students}</span>
+                <span className="ml-1 text-[10px] opacity-60">({b.students})</span>
               </button>
             ))}
           </div>
 
-          {/* Section selector — only when a branch is selected */}
+          {/* Section Selector */}
           {branch !== 'all' && (
             <div className="flex items-center gap-2 animate-fade-in">
-              <span className="text-xs text-muted-foreground mr-1">Section:</span>
+              <span className="text-xs text-muted-foreground">Section:</span>
               <button
                 onClick={() => setSection('all')}
-                className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${
-                  section === 'all'
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'border-border hover:bg-muted'
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                  section === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-card hover:bg-muted'
                 }`}
               >
                 All
@@ -206,10 +443,8 @@ export default function AdminStudentsPage() {
                 <button
                   key={s}
                   onClick={() => setSection(s)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${
-                    section === s
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'border-border hover:bg-muted'
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                    section === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-card hover:bg-muted'
                   }`}
                 >
                   Section {s}
@@ -218,167 +453,181 @@ export default function AdminStudentsPage() {
             </div>
           )}
 
-          {/* Stats — clickable to open list dialog */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Card className="cursor-pointer transition-colors hover:border-foreground/50" onClick={() => setQuickFilter('all')}>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 stagger-children">
+            <Card className="hover-lift cursor-pointer bg-card" onClick={() => setListDialog('avg')}>
               <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Showing</p>
-                <p className="text-2xl font-semibold tracking-tight">{stats.total}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">Total Showing</p>
+                <p className="text-2xl font-bold tracking-tight">{stats.total}</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer transition-colors hover:border-green-300" onClick={() => setListDialog('active')}>
+            <Card className="hover-lift cursor-pointer bg-card" onClick={() => setListDialog('active')}>
               <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Active</p>
-                <p className="text-2xl font-semibold tracking-tight text-green-700">{stats.active}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">Active</p>
+                <p className="text-2xl font-bold tracking-tight text-green-700">{stats.active}</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer transition-colors hover:border-foreground/50" onClick={() => setListDialog('avg')}>
+            <Card className="hover-lift cursor-pointer bg-card" onClick={() => setListDialog('avg')}>
               <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Avg CGPA</p>
-                <p className="text-2xl font-semibold tracking-tight">{stats.avgCgpa}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">Avg CGPA</p>
+                <p className="text-2xl font-bold tracking-tight">{stats.avgCgpa.toFixed(2)}</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer transition-colors hover:border-foreground/50" onClick={() => setListDialog('top')}>
+            <Card className="hover-lift cursor-pointer bg-card" onClick={() => setListDialog('top')}>
               <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">Top performers</p>
-                <p className="text-2xl font-semibold tracking-tight">{stats.topPerformers}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">Top Performers</p>
+                <p className="text-2xl font-bold tracking-tight text-primary">{stats.topPerformers}</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer transition-colors hover:border-amber-300" onClick={() => setListDialog('risk')}>
+            <Card className="hover-lift cursor-pointer bg-card" onClick={() => setListDialog('risk')}>
               <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground mb-1">At risk</p>
-                <p className="text-2xl font-semibold tracking-tight text-amber-700">{stats.atRisk}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">At Risk</p>
+                <p className="text-2xl font-bold tracking-tight text-amber-700">{stats.atRisk}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Search + secondary filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          {/* Search & Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[240px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search by name or USN..."
+                placeholder="Search student name or USN..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-8 pl-9 pr-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors"
+                className="w-full h-9 pl-9 pr-8 bg-card border border-border rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:border-foreground transition-all duration-150"
               />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <select
               value={semester}
               onChange={(e) => setSemester(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="h-8 px-2 text-xs border border-border rounded-md bg-background"
+              className="h-9 px-3 text-xs border border-border rounded-md bg-card focus:outline-none focus:border-foreground transition-colors cursor-pointer"
             >
-              <option value="all">All semesters</option>
-              {SEMESTERS.map(s => <option key={s} value={s}>Sem {s}</option>)}
+              <option value="all">All Semesters</option>
+              {SEMESTERS.map(s => <option key={s} value={s}>Semester {s}</option>)}
             </select>
 
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
-              className="h-8 px-2 text-xs border border-border rounded-md bg-background"
+              className="h-9 px-3 text-xs border border-border rounded-md bg-card focus:outline-none focus:border-foreground transition-colors cursor-pointer"
             >
-              <option value="all">All statuses</option>
-              <option value="active">Active only</option>
-              <option value="inactive">Inactive only</option>
+              <option value="all">All Statuses</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
             </select>
 
             {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-8">
-                <X className="w-3 h-3" />
-                Clear
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-9 text-muted-foreground hover:text-foreground press-effect">
+                <X className="w-3.5 h-3.5 mr-1" />
+                Clear Filters
               </Button>
             )}
           </div>
 
-          {/* Table */}
-          <Card>
+          {/* Table Container */}
+          <Card className="border border-border shadow-sm rounded-lg overflow-hidden">
             <CardContent className="p-0">
-              {filtered.length === 0 ? (
-                <div className="text-center py-16">
-                  <Users className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-1">No students found</p>
-                  <p className="text-xs text-muted-foreground mb-4">Try adjusting your filters</p>
-                  <Button size="sm" variant="outline" onClick={clearFilters}>Clear filters</Button>
+              {loading ? (
+                <div className="py-24 space-y-4 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
+                  <p className="text-sm text-muted-foreground">Fetching class records...</p>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-20 bg-card">
+                  <Users className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">No students matched the filters</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-4">Refine your search parameters</p>
+                  <Button size="sm" variant="outline" onClick={clearFilters} className="press-effect">
+                    Reset Filters
+                  </Button>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-border text-xs text-muted-foreground bg-muted/30">
+                  <table className="w-full text-sm text-left">
+                    <thead className="border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/20">
                       <tr>
-                        <th className="text-left px-6 py-3 font-medium">USN</th>
-                        <th className="text-left px-6 py-3 font-medium">Name</th>
-                        <th className="text-left px-6 py-3 font-medium">Branch</th>
-                        <th className="text-left px-6 py-3 font-medium">Section</th>
-                        <th className="text-left px-6 py-3 font-medium">Sem</th>
-                        <th className="text-left px-6 py-3 font-medium">CGPA</th>
-                        <th className="text-left px-6 py-3 font-medium">Attendance</th>
-                        <th className="text-left px-6 py-3 font-medium">Status</th>
-                        <th className="px-6 py-3"></th>
+                        <th className="px-6 py-4">USN</th>
+                        <th className="px-6 py-4">Name</th>
+                        <th className="px-6 py-4">Branch</th>
+                        <th className="px-6 py-4">Sec</th>
+                        <th className="px-6 py-4">Sem</th>
+                        <th className="px-6 py-4 text-center">CGPA</th>
+                        <th className="px-6 py-4">Attendance</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 w-12"></th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border bg-card">
                       {filtered.map((s) => (
                         <tr
                           key={s.id}
-                          className="border-b last:border-0 border-border hover:bg-muted/40 transition-colors cursor-pointer"
-                          onClick={() => setSelected(s)}
+                          className="hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => setSelectedStudent(s)}
                         >
-                          <td className="px-6 py-3 font-mono text-xs text-muted-foreground">{s.usn}</td>
-                          <td className="px-6 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-muted text-foreground flex items-center justify-center text-[10px] font-semibold">
-                                {s.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          <td className="px-6 py-3.5 font-mono text-xs font-medium text-muted-foreground">{s.usn}</td>
+                          <td className="px-6 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                               </div>
-                              <div>
-                                <p className="font-medium">{s.name}</p>
-                                <p className="text-[11px] text-muted-foreground">{s.email}</p>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-foreground truncate">{s.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{s.email}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-3">
-                            <Badge variant="outline" className="text-[10px]">{s.branch}</Badge>
+                          <td className="px-6 py-3.5">
+                            <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5">{s.branch}</Badge>
                           </td>
-                          <td className="px-6 py-3 text-muted-foreground">{s.section}</td>
-                          <td className="px-6 py-3 text-muted-foreground">{s.semester}</td>
-                          <td className="px-6 py-3 font-mono">
-                            <span className={
-                              s.cgpa >= 9 ? 'text-green-700' :
-                              s.cgpa >= 7 ? '' :
-                              'text-amber-700'
-                            }>
-                              {s.cgpa}
+                          <td className="px-6 py-3.5 text-muted-foreground font-medium">{s.section}</td>
+                          <td className="px-6 py-3.5 text-muted-foreground font-medium">{s.semester}</td>
+                          <td className="px-6 py-3.5 text-center font-mono font-semibold">
+                            <span className={s.cgpa >= 9.0 ? 'text-primary' : s.cgpa >= 7.5 ? '' : 'text-amber-700'}>
+                              {s.cgpa.toFixed(2)}
                             </span>
                           </td>
-                          <td className="px-6 py-3">
+                          <td className="px-6 py-3.5">
                             <div className="flex items-center gap-2">
-                              <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
+                              <div className="w-16 h-1 bg-muted rounded-full overflow-hidden shrink-0">
                                 <div
-                                  className={`h-full ${
-                                    s.attendance >= 90 ? 'bg-green-500' :
-                                    s.attendance >= 75 ? 'bg-foreground' :
+                                  className={`h-full transition-all duration-300 ${
+                                    s.attendance >= 90 ? 'bg-emerald-500' :
+                                    s.attendance >= 75 ? 'bg-primary' :
                                     'bg-amber-500'
                                   }`}
                                   style={{ width: `${s.attendance}%` }}
                                 />
                               </div>
-                              <span className="text-[11px] text-muted-foreground font-mono">{s.attendance}%</span>
+                              <span className="text-xs text-muted-foreground font-mono font-medium">{s.attendance}%</span>
                             </div>
                           </td>
-                          <td className="px-6 py-3">
-                            <Badge variant="outline" className={
-                              s.status === 'active'
-                                ? 'text-[10px] border-green-200 bg-green-50 text-green-700'
-                                : 'text-[10px]'
-                            }>
+                          <td className="px-6 py-3.5">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-2 py-0.5 ${
+                                s.status === 'active'
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                  : 'border-border bg-muted text-muted-foreground'
+                              }`}
+                            >
                               {s.status}
                             </Badge>
                           </td>
-                          <td className="px-6 py-3">
+                          <td className="px-6 py-3.5">
                             <button
-                              onClick={(e) => { e.stopPropagation(); setSelected(s); }}
-                              className="p-1 text-muted-foreground hover:text-foreground rounded"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStudent(s);
+                              }}
+                              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
                             >
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
@@ -394,735 +643,58 @@ export default function AdminStudentsPage() {
         </main>
       </div>
 
-      {/* Student Detail Modal */}
-      {selected && <StudentDetail student={selected} onClose={() => setSelected(null)} />}
+      {/* Modals & Dialogs */}
+      {selectedStudent && (
+        <StudentDetailModal
+          student={selectedStudent}
+          onClose={() => setSelectedStudent(null)}
+          onEdit={(s) => {
+            setSelectedStudent(null);
+            setStudentToEdit(s);
+            setShowAddForm(true);
+          }}
+          onDelete={handleDeleteStudent}
+        />
+      )}
 
-      {/* Student List Dialog (from stat cards) */}
+      {showAddForm && (
+        <AddStudentModal
+          student={studentToEdit}
+          onSave={handleSaveStudent}
+          onCancel={() => {
+            setShowAddForm(false);
+            setStudentToEdit(null);
+          }}
+        />
+      )}
+
       {listDialog && (
         <StudentListDialog
           type={listDialog}
           students={filtered}
           onClose={() => setListDialog(null)}
-          onSelect={(s) => { setListDialog(null); setSelected(s); }}
-        />
-      )}
-
-      {/* Add Student Modal */}
-      {showAddForm && (
-        <AddStudentForm
-          existingStudents={allStudents}
-          onAdd={handleAddStudent}
-          onCancel={() => setShowAddForm(false)}
-          defaults={{
-            branch: branch !== 'all' ? branch : 'CSE',
-            section: section !== 'all' ? section : 'A',
-            semester: semester !== 'all' ? semester : 6,
+          onSelect={(s) => {
+            setListDialog(null);
+            setSelectedStudent(s);
           }}
         />
       )}
 
-      {/* Toast */}
+      {/* Elegant Notification Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-md border shadow-lg animate-slide-up ${
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg border shadow-lg animate-slide-up ${
           toast.type === 'success'
-            ? 'bg-green-50 border-green-200 text-green-700'
-            : 'bg-red-50 border-red-200 text-red-700'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-destructive/10 border-destructive/20 text-destructive'
         }`}>
           {toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           ) : (
-            <AlertCircle className="w-4 h-4" />
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
           )}
-          <p className="text-sm font-medium">{toast.message}</p>
+          <p className="text-xs font-semibold">{toast.message}</p>
         </div>
       )}
-    </div>
-  );
-}
-
-function StudentListDialog({
-  type,
-  students,
-  onClose,
-  onSelect,
-}: {
-  type: 'active' | 'top' | 'risk' | 'avg';
-  students: StudentRecord[];
-  onClose: () => void;
-  onSelect: (s: StudentRecord) => void;
-}) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  const config = {
-    active: { title: 'Active Students', filter: (s: StudentRecord) => s.status === 'active', color: '#16a34a' },
-    top: { title: 'Top Performers', filter: (s: StudentRecord) => s.cgpa >= 9.0, color: '#5c7f63' },
-    risk: { title: 'At Risk Students', filter: (s: StudentRecord) => s.cgpa < 6.0 || s.attendance < 75, color: '#d97706' },
-    avg: { title: 'All Students by CGPA', filter: () => true, color: '#5c7f63' },
-  }[type];
-
-  let list = students.filter(config.filter);
-  if (type === 'top' || type === 'avg') list = [...list].sort((a, b) => b.cgpa - a.cgpa);
-  if (type === 'risk') list = [...list].sort((a, b) => a.cgpa - b.cgpa);
-
-  const content = (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e2dc', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', width: '100%', maxWidth: '560px', maxHeight: '75vh', margin: '0 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <h2 className="text-base font-semibold">{config.title}</h2>
-            <p className="text-xs text-muted-foreground">{list.length} students</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* List */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {list.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-12">No students in this category</p>
-          ) : (
-            list.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => onSelect(s)}
-                className="w-full flex items-center gap-3 px-6 py-3 hover:bg-muted/40 transition-colors text-left border-b border-border/50"
-              >
-                <span className="text-xs text-muted-foreground font-mono w-6 shrink-0">{i + 1}</span>
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold shrink-0">
-                  {s.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{s.name}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">{s.usn} · Sec {s.section}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold" style={{ color: config.color }}>
-                    {type === 'risk' ? `${s.attendance}%` : s.cgpa}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {type === 'risk' ? 'attendance' : 'CGPA'}
-                  </p>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!mounted) return null;
-  return createPortal(content, document.body);
-}
-
-
-function StudentDetail({ student, onClose }: { student: StudentRecord; onClose: () => void }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  const content = (
-    <div
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ maxHeight: '85vh', overflowY: 'auto', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e2dc', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', margin: '0 16px', width: '100%', maxWidth: '500px' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-base font-semibold tracking-tight">Student Details</h2>
-          <button onClick={onClose} className="p-1 hover:bg-muted rounded">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {/* Profile */}
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-full bg-muted text-foreground flex items-center justify-center text-base font-semibold shrink-0">
-              {student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold tracking-tight">{student.name}</h3>
-              <p className="text-sm text-muted-foreground">{student.email}</p>
-              <p className="text-xs text-muted-foreground font-mono mt-1">{student.usn}</p>
-            </div>
-            <Badge variant="outline" className={
-              student.status === 'active'
-                ? 'text-[10px] border-green-200 bg-green-50 text-green-700'
-                : 'text-[10px]'
-            }>
-              {student.status}
-            </Badge>
-          </div>
-
-          {/* Academic info */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center p-3 border border-border rounded-md">
-              <p className="text-xs text-muted-foreground mb-0.5">Branch</p>
-              <p className="text-sm font-semibold">{student.branch}</p>
-            </div>
-            <div className="text-center p-3 border border-border rounded-md">
-              <p className="text-xs text-muted-foreground mb-0.5">Section</p>
-              <p className="text-sm font-semibold">{student.section}</p>
-            </div>
-            <div className="text-center p-3 border border-border rounded-md">
-              <p className="text-xs text-muted-foreground mb-0.5">Semester</p>
-              <p className="text-sm font-semibold">{student.semester}</p>
-            </div>
-          </div>
-
-          {/* Performance */}
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Performance</p>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-sm">CGPA</p>
-                <p className="text-sm font-semibold font-mono">{student.cgpa}</p>
-              </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-foreground" style={{ width: `${(student.cgpa / 10) * 100}%` }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-sm">Attendance</p>
-                <p className="text-sm font-semibold font-mono">{student.attendance}%</p>
-              </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${
-                    student.attendance >= 90 ? 'bg-green-500' :
-                    student.attendance >= 75 ? 'bg-foreground' :
-                    'bg-amber-500'
-                  }`}
-                  style={{ width: `${student.attendance}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-sm">Avg test score</p>
-                <p className="text-sm font-semibold font-mono">{student.avgScore}%</p>
-              </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-foreground" style={{ width: `${student.avgScore}%` }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick stats */}
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-[11px] text-muted-foreground">Tests completed</p>
-                <p className="text-sm font-semibold">{student.testsCompleted}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-[11px] text-muted-foreground">Last active</p>
-                <p className="text-sm font-semibold">{student.lastActive}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button>
-            View full profile
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!mounted) return null;
-  return createPortal(content, document.body);
-}
-
-
-// ============= Add Student Form =============
-function AddStudentForm({
-  existingStudents,
-  onAdd,
-  onCancel,
-  defaults,
-}: {
-  existingStudents: StudentRecord[];
-  onAdd: (student: StudentRecord) => void;
-  onCancel: () => void;
-  defaults: { branch: Branch; section: Section; semester: number };
-}) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [form, setForm] = useState({
-    // Personal
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    dob: '',
-    gender: 'male' as 'male' | 'female' | 'other',
-
-    // Academic
-    usn: '',
-    branch: defaults.branch,
-    section: defaults.section,
-    semester: defaults.semester,
-    admissionYear: 2023,
-    cgpa: 0,
-    attendance: 100,
-
-    // Contact / Other
-    parentName: '',
-    parentPhone: '',
-    address: '',
-    bloodGroup: '',
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const updateField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-    if (errors[key as string]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[key as string];
-        return next;
-      });
-    }
-  };
-
-  // Auto-generate USN like 1GD23CS001
-  const generateUSN = () => {
-    const seq = nextUSNSequence(existingStudents, form.branch, form.admissionYear);
-    return buildUSN(form.branch, form.admissionYear, seq);
-  };
-
-  const validateStep = (s: number): boolean => {
-    const errs: Record<string, string> = {};
-    if (s === 1) {
-      if (!form.firstName.trim()) errs.firstName = 'First name is required';
-      if (!form.lastName.trim()) errs.lastName = 'Last name is required';
-      if (!form.email.trim()) errs.email = 'Email is required';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email';
-      if (form.phone && !/^\d{10}$/.test(form.phone.replace(/\D/g, ''))) errs.phone = 'Phone must be 10 digits';
-    }
-    if (s === 2) {
-      if (!form.usn.trim()) errs.usn = 'USN is required';
-      else if (!/^1GD\d{2}[A-Z]{2}\d{3,4}$/.test(form.usn)) errs.usn = 'Format: 1GD23CS001';
-      if (form.cgpa < 0 || form.cgpa > 10) errs.cgpa = 'CGPA must be 0-10';
-      if (form.attendance < 0 || form.attendance > 100) errs.attendance = 'Attendance must be 0-100';
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const next = () => {
-    if (validateStep(step)) {
-      if (step === 1 && !form.usn) updateField('usn', generateUSN());
-      setStep(s => (s + 1) as 1 | 2 | 3);
-    }
-  };
-
-  const back = () => setStep(s => (s - 1) as 1 | 2 | 3);
-
-  const handleSubmit = () => {
-    if (!validateStep(step)) return;
-
-    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
-    const newStudent: StudentRecord = {
-      id: `std_new_${Date.now()}`,
-      usn: form.usn.toUpperCase(),
-      name: fullName,
-      branch: form.branch,
-      section: form.section,
-      semester: form.semester,
-      email: form.email.toLowerCase(),
-      cgpa: form.cgpa,
-      attendance: form.attendance,
-      status: 'active',
-      lastActive: 'Just now',
-      testsCompleted: 0,
-      avgScore: 0,
-    };
-    onAdd(newStudent);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-foreground/50 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onCancel}>
-      <div
-        className="bg-background rounded-lg max-w-xl w-full overflow-hidden border border-border max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header with stepper */}
-        <div className="px-6 py-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold tracking-tight">Add Student</h2>
-            <button onClick={onCancel} className="p-1 hover:bg-muted rounded">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Stepper */}
-          <div className="flex items-center gap-2">
-            {[
-              { n: 1, label: 'Personal' },
-              { n: 2, label: 'Academic' },
-              { n: 3, label: 'Contact' },
-            ].map((s, i) => (
-              <div key={s.n} className="flex items-center gap-2 flex-1">
-                <div className={`flex items-center gap-2 ${step >= s.n ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono shrink-0 ${
-                    step > s.n ? 'bg-foreground text-background' :
-                    step === s.n ? 'border-2 border-foreground' :
-                    'border border-border'
-                  }`}>
-                    {step > s.n ? <CheckCircle2 className="w-3.5 h-3.5" /> : s.n}
-                  </div>
-                  <span className="text-xs font-medium hidden sm:inline">{s.label}</span>
-                </div>
-                {i < 2 && (
-                  <div className={`flex-1 h-px ${step > s.n ? 'bg-foreground' : 'bg-border'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Form Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {step === 1 && (
-            <>
-              <p className="text-xs text-muted-foreground -mt-2 mb-2">Personal information</p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="First name" required error={errors.firstName}>
-                  <input
-                    type="text"
-                    value={form.firstName}
-                    onChange={(e) => updateField('firstName', e.target.value)}
-                    placeholder="Rajesh"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                    autoFocus
-                  />
-                </Field>
-                <Field label="Last name" required error={errors.lastName}>
-                  <input
-                    type="text"
-                    value={form.lastName}
-                    onChange={(e) => updateField('lastName', e.target.value)}
-                    placeholder="Kumar"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-              </div>
-
-              <Field label="Email" required error={errors.email}>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => updateField('email', e.target.value)}
-                  placeholder="rajesh.kumar@vtu.edu"
-                  className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Phone" error={errors.phone}>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => updateField('phone', e.target.value)}
-                    placeholder="9876543210"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-                <Field label="Date of birth">
-                  <input
-                    type="date"
-                    value={form.dob}
-                    onChange={(e) => updateField('dob', e.target.value)}
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-              </div>
-
-              <Field label="Gender">
-                <div className="flex gap-2">
-                  {(['male', 'female', 'other'] as const).map(g => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => updateField('gender', g)}
-                      className={`px-3 h-9 rounded-md text-sm capitalize border transition-colors ${
-                        form.gender === g
-                          ? 'bg-foreground text-background border-foreground'
-                          : 'border-border hover:bg-muted'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <p className="text-xs text-muted-foreground -mt-2 mb-2">Academic details</p>
-
-              <Field label="USN" required error={errors.usn} hint="Format: 1GD23CS001 (1GD + year + branch + number)">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={form.usn}
-                    onChange={(e) => updateField('usn', e.target.value.toUpperCase())}
-                    placeholder="1GD23CS001"
-                    className="flex-1 h-9 px-3 border border-border rounded-md text-sm font-mono uppercase focus:outline-none focus:border-foreground"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => updateField('usn', generateUSN())}
-                    className="h-9"
-                  >
-                    Auto
-                  </Button>
-                </div>
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Branch" required>
-                  <select
-                    value={form.branch}
-                    onChange={(e) => updateField('branch', e.target.value as Branch)}
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm bg-background focus:outline-none focus:border-foreground"
-                  >
-                    {BRANCHES.map(b => (
-                      <option key={b.code} value={b.code}>{b.code} — {b.name}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Section" required>
-                  <select
-                    value={form.section}
-                    onChange={(e) => updateField('section', e.target.value as Section)}
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm bg-background focus:outline-none focus:border-foreground"
-                  >
-                    {SECTIONS.map(s => (
-                      <option key={s} value={s}>Section {s}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Current semester" required>
-                  <select
-                    value={form.semester}
-                    onChange={(e) => updateField('semester', Number(e.target.value))}
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm bg-background focus:outline-none focus:border-foreground"
-                  >
-                    {SEMESTERS.map(s => (
-                      <option key={s} value={s}>Semester {s}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Admission year">
-                  <input
-                    type="number"
-                    min={2015}
-                    max={new Date().getFullYear()}
-                    value={form.admissionYear}
-                    onChange={(e) => updateField('admissionYear', Number(e.target.value))}
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Current CGPA" error={errors.cgpa}>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    max={10}
-                    value={form.cgpa}
-                    onChange={(e) => updateField('cgpa', Number(e.target.value))}
-                    placeholder="8.5"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-                <Field label="Attendance %" error={errors.attendance}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.attendance}
-                    onChange={(e) => updateField('attendance', Number(e.target.value))}
-                    placeholder="85"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <p className="text-xs text-muted-foreground -mt-2 mb-2">Contact &amp; emergency info</p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Parent / Guardian name">
-                  <input
-                    type="text"
-                    value={form.parentName}
-                    onChange={(e) => updateField('parentName', e.target.value)}
-                    placeholder="Suresh Kumar"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-                <Field label="Parent phone">
-                  <input
-                    type="tel"
-                    value={form.parentPhone}
-                    onChange={(e) => updateField('parentPhone', e.target.value)}
-                    placeholder="9876543210"
-                    className="w-full h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
-                  />
-                </Field>
-              </div>
-
-              <Field label="Address">
-                <textarea
-                  value={form.address}
-                  onChange={(e) => updateField('address', e.target.value)}
-                  rows={3}
-                  placeholder="Permanent address"
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:border-foreground resize-none"
-                />
-              </Field>
-
-              <Field label="Blood group">
-                <select
-                  value={form.bloodGroup}
-                  onChange={(e) => updateField('bloodGroup', e.target.value)}
-                  className="w-full h-9 px-3 border border-border rounded-md text-sm bg-background focus:outline-none focus:border-foreground"
-                >
-                  <option value="">Not specified</option>
-                  {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(b => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {/* Review summary */}
-              <div className="mt-6 p-4 bg-muted/40 border border-border rounded-md">
-                <p className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Review</p>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <p className="text-muted-foreground">Name</p>
-                    <p className="font-medium">{form.firstName} {form.lastName}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">USN</p>
-                    <p className="font-medium font-mono">{form.usn || '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Email</p>
-                    <p className="font-medium truncate">{form.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Branch &amp; Section</p>
-                    <p className="font-medium">{form.branch} — Section {form.section}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Semester</p>
-                    <p className="font-medium">{form.semester}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">CGPA</p>
-                    <p className="font-medium">{form.cgpa || '—'}</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex justify-between gap-2">
-          {step > 1 ? (
-            <Button variant="outline" onClick={back}>Back</Button>
-          ) : (
-            <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          )}
-
-          {step < 3 ? (
-            <Button onClick={next}>
-              Continue
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit}>
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Add Student
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============= Field wrapper =============
-function Field({
-  label,
-  required = false,
-  error,
-  hint,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="text-xs font-medium mb-1.5 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      {children}
-      {error ? (
-        <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
-      ) : null}
     </div>
   );
 }

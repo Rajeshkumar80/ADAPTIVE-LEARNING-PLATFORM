@@ -5,7 +5,7 @@ Re-exports all schemas for backward compatibility.
 
 from app.schemas.user import (
     UserBase, UserCreate, UserResponse, Token,
-    StudentDashboard, AdminDashboard,
+    StudentDashboard, AdminDashboard, StudentCreate, StudentUpdate,
 )
 from app.schemas.test import (
     QuestionBase, QuestionResponse,
@@ -21,7 +21,7 @@ from app.schemas.ai import AIQueryRequest, AIQueryResponse
 
 __all__ = [
     "UserBase", "UserCreate", "UserResponse", "Token",
-    "StudentDashboard", "AdminDashboard",
+    "StudentDashboard", "AdminDashboard", "StudentCreate", "StudentUpdate",
     "QuestionBase", "QuestionResponse",
     "TestBase", "TestCreate", "TestResponse", "TestSubmit",
     "JournalEntryBase", "JournalEntryCreate", "JournalEntryUpdate", "JournalEntryResponse",

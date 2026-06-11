@@ -144,137 +144,196 @@ GCEM_STUDENTS = [
 
 
 def seed_database(db: Session):
-    """Insert default data if DB is empty."""
-    if db.query(User).count() > 0:
-        return  # already seeded
-
+    """Insert default data, checking for existing records to prevent conflicts."""
     rng = random.Random(42)
 
     # ===== Admin =====
-    admin = User(
-        email="admin@gcem.edu",
-        username="admin",
-        full_name="Dr. Priya Sharma",
-        hashed_password=hash_password("admin123"),
-        role="admin",
-        employee_id="EMP001",
-        department="Computer Science",
-    )
-    db.add(admin)
-    db.flush()
+    admin = db.query(User).filter(
+        (User.email == "admin@gcem.edu") | (User.username == "admin")
+    ).first()
+    if not admin:
+        admin = User(
+            email="admin@gcem.edu",
+            username="admin",
+            full_name="Dr. Priya Sharma",
+            hashed_password=hash_password("admin123"),
+            role="admin",
+            employee_id="EMP001",
+            department="Computer Science",
+        )
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
 
     # ===== 121 Students — email = usn@gcem.edu, password = usn (lowercase) =====
     student_users = []
     for s in GCEM_STUDENTS:
         usn = s["usn"]
-        cgpa = round(rng.uniform(6.5, 9.5), 2)
+        email = f"{usn.lower()}@gcem.edu"
+        username = usn.lower()
 
-        # Boost Rajesh G, K S Bhavana, Janani B M
-        if usn == "1GD24CS407":
-            cgpa = 8.75
-        elif usn == "1GD23CS044":
-            cgpa = 9.52
-        elif usn == "1GD23CS040":
-            cgpa = 9.21
+        # Check if already exists
+        user = db.query(User).filter(
+            (User.usn == usn) | (User.email == email) | (User.username == username)
+        ).first()
 
-        user = User(
-            email=f"{usn.lower()}@gcem.edu",
-            username=usn.lower(),
-            full_name=s["name"],
-            hashed_password=hash_password(usn.lower()),  # password = usn
-            role="student",
-            usn=usn,
-            semester=6,
-            branch="Computer Science",
-            section=s["section"],
-            cgpa=cgpa,
-        )
-        db.add(user)
+        if not user:
+            cgpa = round(rng.uniform(6.5, 9.5), 2)
+            # Boost Rajesh G, K S Bhavana, Janani B M
+            if usn == "1GD24CS407":
+                cgpa = 8.75
+            elif usn == "1GD23CS044":
+                cgpa = 9.52
+            elif usn == "1GD23CS040":
+                cgpa = 9.21
+
+            user = User(
+                email=email,
+                username=username,
+                full_name=s["name"],
+                hashed_password=hash_password(usn.lower()),  # password = usn
+                role="student",
+                usn=usn,
+                semester=6,
+                branch="Computer Science",
+                section=s["section"],
+                cgpa=cgpa,
+            )
+            db.add(user)
         student_users.append((user, s))
 
     db.commit()
     for u, _ in student_users:
-        db.refresh(u)
-
-    # Refresh admin
-    db.refresh(admin)
+        try:
+            db.refresh(u)
+        except Exception:
+            pass
 
     # ===== Subjects =====
-    subjects = [
-        Subject(code="BCS601", name="Cloud Computing", credits=4),
-        Subject(code="BCS602", name="Machine Learning", credits=4),
-        Subject(code="BCS603", name="Software Testing", credits=3),
-        Subject(code="BCS604", name="Cryptography and Network Security", credits=3),
-        Subject(code="BCS613A", name="Blockchain Technology", credits=3),
-        Subject(code="BCS613C", name="Compiler Design", credits=3),
+    default_subjects = [
+        {"code": "BCS601", "name": "Cloud Computing", "credits": 4},
+        {"code": "BCS602", "name": "Machine Learning", "credits": 4},
+        {"code": "BCS603", "name": "Software Testing", "credits": 3},
+        {"code": "BCS604", "name": "Cryptography and Network Security", "credits": 3},
+        {"code": "BCS613A", "name": "Blockchain Technology", "credits": 3},
+        {"code": "BCS613C", "name": "Compiler Design", "credits": 3},
     ]
-    db.add_all(subjects)
-    db.commit()
-    for s in subjects:
-        db.refresh(s)
+    subjects = []
+    for sub_data in default_subjects:
+        sub = db.query(Subject).filter(Subject.code == sub_data["code"]).first()
+        if not sub:
+            sub = Subject(code=sub_data["code"], name=sub_data["name"], credits=sub_data["credits"])
+            db.add(sub)
+            db.commit()
+            db.refresh(sub)
+        subjects.append(sub)
 
     # ===== Topics =====
-    topics = [
-        Topic(subject_id=subjects[0].id, name="Virtualization Concepts", difficulty="medium", order_index=1),
-        Topic(subject_id=subjects[0].id, name="Cloud Architecture", difficulty="medium", order_index=2),
-        Topic(subject_id=subjects[0].id, name="Cloud Security", difficulty="hard", order_index=3),
-        Topic(subject_id=subjects[1].id, name="Supervised Learning", difficulty="medium", order_index=1),
-        Topic(subject_id=subjects[1].id, name="Neural Networks", difficulty="hard", order_index=2),
-        Topic(subject_id=subjects[3].id, name="RSA Algorithm", difficulty="hard", order_index=1),
-        Topic(subject_id=subjects[3].id, name="Digital Signatures", difficulty="medium", order_index=2),
+    default_topics = [
+        {"subject_code": "BCS601", "name": "Virtualization Concepts", "difficulty": "medium", "order_index": 1},
+        {"subject_code": "BCS601", "name": "Cloud Architecture", "difficulty": "medium", "order_index": 2},
+        {"subject_code": "BCS601", "name": "Cloud Security", "difficulty": "hard", "order_index": 3},
+        {"subject_code": "BCS602", "name": "Supervised Learning", "difficulty": "medium", "order_index": 1},
+        {"subject_code": "BCS602", "name": "Neural Networks", "difficulty": "hard", "order_index": 2},
+        {"subject_code": "BCS604", "name": "RSA Algorithm", "difficulty": "hard", "order_index": 1},
+        {"subject_code": "BCS604", "name": "Digital Signatures", "difficulty": "medium", "order_index": 2},
     ]
-    db.add_all(topics)
+    for top_data in default_topics:
+        sub = next((s for s in subjects if s.code == top_data["subject_code"]), None)
+        if not sub:
+            continue
+        topic = db.query(Topic).filter(Topic.subject_id == sub.id, Topic.name == top_data["name"]).first()
+        if not topic:
+            topic = Topic(
+                subject_id=sub.id,
+                name=top_data["name"],
+                difficulty=top_data["difficulty"],
+                order_index=top_data["order_index"]
+            )
+            db.add(topic)
     db.commit()
 
     # ===== Sample Test =====
-    test = Test(
-        subject_id=subjects[0].id,
-        title="Cloud Computing Mid-Term",
-        description="BCS601 - Covers Modules 1-3",
-        type="midterm",
-        duration_minutes=90,
-        total_marks=50,
-        passing_marks=20,
-    )
-    db.add(test)
-    db.commit()
-    db.refresh(test)
+    sub_cc = next((s for s in subjects if s.code == "BCS601"), None)
+    test = None
+    if sub_cc:
+        test = db.query(Test).filter(Test.subject_id == sub_cc.id, Test.title == "Cloud Computing Mid-Term").first()
+        if not test:
+            test = Test(
+                subject_id=sub_cc.id,
+                title="Cloud Computing Mid-Term",
+                description="BCS601 - Covers Modules 1-3",
+                type="midterm",
+                duration_minutes=90,
+                total_marks=50,
+                passing_marks=20,
+            )
+            db.add(test)
+            db.commit()
+            db.refresh(test)
 
-    from app.models import Question
-    questions = [
-        Question(test_id=test.id, question_text="Which is NOT a cloud service model?",
-                 question_type="mcq", options={"a": "IaaS", "b": "PaaS", "c": "SaaS", "d": "DaaS"},
-                 correct_answer="d", marks=2),
-        Question(test_id=test.id, question_text="Type 1 hypervisor runs on?",
-                 question_type="mcq", options={"a": "Hardware", "b": "OS", "c": "Virtual machine", "d": "Container"},
-                 correct_answer="a", marks=2),
-    ]
-    db.add_all(questions)
+    # ===== Questions =====
+    if test:
+        q1 = db.query(Question).filter(Question.test_id == test.id, Question.question_text == "Which is NOT a cloud service model?").first()
+        if not q1:
+            q1 = Question(
+                test_id=test.id,
+                question_text="Which is NOT a cloud service model?",
+                question_type="mcq",
+                options={"a": "IaaS", "b": "PaaS", "c": "SaaS", "d": "DaaS"},
+                correct_answer="d",
+                marks=2
+            )
+            db.add(q1)
 
-    # ===== Notifications for all students =====
+        q2 = db.query(Question).filter(Question.test_id == test.id, Question.question_text == "Type 1 hypervisor runs on?").first()
+        if not q2:
+            q2 = Question(
+                test_id=test.id,
+                question_text="Type 1 hypervisor runs on?",
+                question_type="mcq",
+                options={"a": "Hardware", "b": "OS", "c": "Virtual machine", "d": "Container"},
+                correct_answer="a",
+                marks=2
+            )
+            db.add(q2)
+        db.commit()
+
+    # ===== Notifications / Achievements / Certificates for Rajesh G =====
     rajesh = next((u for u, s in student_users if s["usn"] == "1GD24CS407"), None)
     if rajesh:
         from app.models import Notification, Certificate, Achievement
-        notifs = [
-            Notification(user_id=rajesh.id, title="Welcome!", message="Welcome to AdaptLearn GCEM. Start your learning journey today.", type="info"),
-            Notification(user_id=rajesh.id, title="Cloud Computing Test Scheduled", message="BCS601 Mid-Term on June 5, 2026 at 10:00 AM.", type="info"),
-        ]
-        db.add_all(notifs)
+        
+        # Check welcome notification
+        welcome_notif = db.query(Notification).filter(Notification.user_id == rajesh.id, Notification.title == "Welcome!").first()
+        if not welcome_notif:
+            notifs = [
+                Notification(user_id=rajesh.id, title="Welcome!", message="Welcome to AdaptLearn GCEM. Start your learning journey today.", type="info"),
+                Notification(user_id=rajesh.id, title="Cloud Computing Test Scheduled", message="BCS601 Mid-Term on June 5, 2026 at 10:00 AM.", type="info"),
+            ]
+            db.add_all(notifs)
 
-        certs = [
-            Certificate(user_id=rajesh.id, title="Cloud Computing Excellence", subject="BCS601", type="excellence", score=94),
-            Certificate(user_id=rajesh.id, title="Machine Learning Achievement", subject="BCS602", type="achievement", score=88),
-        ]
-        db.add_all(certs)
+        # Check certificates
+        cert1 = db.query(Certificate).filter(Certificate.user_id == rajesh.id, Certificate.title == "Cloud Computing Excellence").first()
+        if not cert1:
+            certs = [
+                Certificate(user_id=rajesh.id, title="Cloud Computing Excellence", subject="BCS601", type="excellence", score=94),
+                Certificate(user_id=rajesh.id, title="Machine Learning Achievement", subject="BCS602", type="achievement", score=88),
+            ]
+            db.add_all(certs)
 
-        achs = [
-            Achievement(user_id=rajesh.id, title="7-Day Streak", description="Studied 7 days in a row", icon="🔥", rarity="common"),
-            Achievement(user_id=rajesh.id, title="Quiz Master", description="Completed 10 tests", icon="🧠", rarity="rare"),
-            Achievement(user_id=rajesh.id, title="Top Performer", description="CGPA above 8.5", icon="🏆", rarity="epic"),
-        ]
-        db.add_all(achs)
+        # Check achievements
+        ach1 = db.query(Achievement).filter(Achievement.user_id == rajesh.id, Achievement.title == "7-Day Streak").first()
+        if not ach1:
+            achs = [
+                Achievement(user_id=rajesh.id, title="7-Day Streak", description="Studied 7 days in a row", icon="🔥", rarity="common"),
+                Achievement(user_id=rajesh.id, title="Quiz Master", description="Completed 10 tests", icon="🧠", rarity="rare"),
+                Achievement(user_id=rajesh.id, title="Top Performer", description="CGPA above 8.5", icon="🏆", rarity="epic"),
+            ]
+            db.add_all(achs)
 
-    db.commit()
-    print(f"✓ Seeded {len(GCEM_STUDENTS)} students + 1 admin")
+        db.commit()
+
+    print(f"Seeded {len(GCEM_STUDENTS)} students + 1 admin")
     print("  Login: email = usn@gcem.edu  |  password = usn (e.g. 1gd24cs407@gcem.edu / 1gd24cs407)")
     print("  Admin: admin@gcem.edu / admin123")

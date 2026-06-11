@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Award, Download, Share2 } from 'lucide-react';
 
 function downloadCertificate(cert: Certificate) {
-  const studentName = (typeof window !== 'undefined' && JSON.parse(localStorage.getItem('adaptlearn_current_user') || '{}').full_name) || 'Rajesh Kumar';
+  const studentName = (typeof window !== 'undefined' && JSON.parse(localStorage.getItem('adaptlearn_current_user') || '{}').full_name) || 'Rajesh G';
   const dateStr = new Date(cert.issued_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   // Generate PDF using canvas-based approach

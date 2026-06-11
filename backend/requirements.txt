@@ -6,7 +6,7 @@ python-dotenv
 
 # Database
 sqlalchemy
-# psycopg2-binary  # Uncomment for PostgreSQL
+psycopg2-binary  # Uncomment for PostgreSQL
 
 # Auth
 python-jose[cryptography]

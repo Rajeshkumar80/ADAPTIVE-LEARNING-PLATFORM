@@ -3,6 +3,8 @@
  * Simulates backend until PostgreSQL is set up
  */
 
+import { ALL_STUDENTS } from './students-data';
+
 // ============= TYPES =============
 export interface User {
   id: string;
@@ -53,21 +55,6 @@ const KEYS = {
 
 // ============= INITIAL SEED DATA =============
 const seedUsers: User[] = [
-  // Default Student
-  {
-    id: 'std_001',
-    email: 'student@vtu.edu',
-    username: 'student',
-    password: 'student123',
-    full_name: 'Rajesh Kumar',
-    role: 'student',
-    usn: '1GD23CS001',
-    semester: 6,
-    branch: 'Computer Science',
-    section: 'A',
-    cgpa: 8.5,
-    created_at: new Date().toISOString(),
-  },
   // Default Admin
   {
     id: 'adm_001',
@@ -80,6 +67,24 @@ const seedUsers: User[] = [
     department: 'Computer Science',
     created_at: new Date().toISOString(),
   },
+  // 121 GCEM students — 407 (Rajesh G) gets demo credentials
+  ...ALL_STUDENTS.map(s => {
+    const isDemo = s.usn === '1GD24CS407';
+    return {
+      id: s.id,
+      email: isDemo ? 'student@vtu.edu' : s.email,
+      username: isDemo ? 'student' : s.usn.toLowerCase(),
+      password: isDemo ? 'student123' : s.usn.toLowerCase(),
+      full_name: s.name,
+      role: 'student' as const,
+      usn: s.usn,
+      semester: s.semester,
+      branch: s.branch,
+      section: s.section,
+      cgpa: s.cgpa,
+      created_at: new Date().toISOString(),
+    };
+  })
 ];
 
 const seedCertificates: Certificate[] = [
@@ -133,9 +138,18 @@ const seedAchievements: Achievement[] = [
 ];
 
 // ============= INITIALIZATION =============
+const SEED_VERSION = 'v4'; // Bump when seed data changes
+
 function initStorage() {
   if (typeof window === 'undefined') return;
   
+  const currentVersion = localStorage.getItem('adaptlearn_seed_version');
+  if (currentVersion !== SEED_VERSION) {
+    // Clear stale seed data and re-seed
+    Object.values(KEYS).forEach(key => localStorage.removeItem(key));
+    localStorage.setItem('adaptlearn_seed_version', SEED_VERSION);
+  }
+
   if (!localStorage.getItem(KEYS.USERS)) {
     localStorage.setItem(KEYS.USERS, JSON.stringify(seedUsers));
   }

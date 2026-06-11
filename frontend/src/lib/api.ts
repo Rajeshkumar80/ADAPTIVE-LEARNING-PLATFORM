@@ -146,6 +146,33 @@ class APIClient {
     return this.request('/api/admin/analytics');
   }
 
+  async createStudent(studentData: any) {
+    return this.request('/api/admin/students', {
+      method: 'POST',
+      body: JSON.stringify(studentData),
+    });
+  }
+
+  async updateStudent(usn: string, studentData: any) {
+    return this.request(`/api/admin/students/${usn}`, {
+      method: 'PUT',
+      body: JSON.stringify(studentData),
+    });
+  }
+
+  async deleteStudent(usn: string) {
+    return this.request(`/api/admin/students/${usn}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async importStudents(students: any[]) {
+    return this.request('/api/admin/students/import', {
+      method: 'POST',
+      body: JSON.stringify(students),
+    });
+  }
+
   // ============= Tests =============
   async listTests() {
     return this.request('/api/tests/');
