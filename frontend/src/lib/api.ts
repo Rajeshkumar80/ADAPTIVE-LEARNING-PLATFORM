@@ -204,6 +204,14 @@ class APIClient {
     });
   }
 
+  async getMyAttempts() {
+    return this.request('/api/tests/my-attempts');
+  }
+
+  async getUpcomingTests() {
+    return this.request('/api/tests/upcoming');
+  }
+
   // ============= Journal =============
   async listJournalEntries(filters?: { q?: string; starred?: boolean }) {
     const params = new URLSearchParams();
@@ -254,6 +262,22 @@ class APIClient {
     return this.request('/api/planner/mastery');
   }
 
+  // ============= Learning =============
+  async getDueToday() {
+    return this.request('/api/learning/due-today');
+  }
+
+  async updateLearningState(topicId: number, scorePercent: number) {
+    return this.request('/api/learning/update', {
+      method: 'POST',
+      body: JSON.stringify({ topic_id: topicId, score_percent: scorePercent }),
+    });
+  }
+
+  async getLearningDashboard() {
+    return this.request('/api/learning/dashboard');
+  }
+
   // ============= Notifications =============
   async getNotifications() {
     return this.request('/api/notifications/');
@@ -265,6 +289,18 @@ class APIClient {
 
   async markAllRead() {
     return this.request('/api/notifications/read-all', { method: 'PUT' });
+  }
+
+  async sendNotification(data: { title: string; message: string; type: string; target_users?: number[]; target_section?: string }) {
+    return this.request('/api/notifications/send', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async getNotificationStats() {
+    return this.request('/api/notifications/stats');
+  }
+
+  async getLeaderboard() {
+    return this.request('/api/student/leaderboard');
   }
 
   // ============= Documents (Phase 2B) =============
