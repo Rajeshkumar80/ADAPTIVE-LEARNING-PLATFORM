@@ -1,8 +1,12 @@
-# Adaptive Learning Platform
+# AdaptLearn — Adaptive Learning Platform
 
-AI-powered adaptive learning platform for VTU CSE students (2022 Scheme).
+AI-powered adaptive learning platform for VTU CSE students (2022 Scheme). Built with Next.js 15 + FastAPI + SM-2 spaced repetition + Google Gemini AI.
 
 ## Quick Start
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
 
 ### 1. Backend
 ```bash
@@ -12,7 +16,7 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
-Server runs at http://localhost:8000 | Docs at http://localhost:8000/docs
+Server runs at `http://localhost:8000` | API docs at `http://localhost:8000/docs`
 
 ### 2. Frontend
 ```bash
@@ -20,11 +24,13 @@ cd frontend
 npm install
 npm run dev
 ```
-App runs at http://localhost:3000
+App runs at `http://localhost:3000`
 
 ### Default Accounts
-- **Student:** `student` / `student123`
-- **Admin:** `admin` / `admin123`
+| Role | Email | Password |
+|------|-------|----------|
+| Student | `usn@gcem.edu` | `usn` |
+| Admin | `admin@gcem.edu` | `admin123` |
 
 ## Tech Stack
 
@@ -37,7 +43,18 @@ App runs at http://localhost:3000
 | AI | Google Gemini + OpenRouter (fallback) |
 | Scheduling | SM-2 Spaced Repetition Algorithm |
 
-## API Endpoints (68 routes)
+## Features
+
+- **SM-2 Adaptive Scheduler** — Spaced repetition for optimal review timing
+- **AI Tutor** — Gemini-powered chat with document upload (RAG)
+- **VTU Integration** — All 8 semesters, 64 subjects, 205 course outcomes
+- **Progress Tracker** — Module-by-module flowchart with topic completion
+- **Anti-Cheat Tests** — Tab detection, auto-submit, violation logging
+- **Gamification** — Certificates, achievements, leaderboard, streaks
+- **Admin Dashboard** — Student management, analytics, test creation
+- **Email Notifications** — Resend-powered notifications
+
+## API Endpoints (68+ routes)
 
 | Category | Endpoints |
 |----------|-----------|
@@ -52,30 +69,31 @@ App runs at http://localhost:3000
 | VTU | `/api/vtu/subjects`, `/subjects/{code}`, `/program-outcomes`, `/import` |
 | Notifications | `/api/notifications/`, `/send`, `/broadcast`, `/stats` |
 
-## Features
-
-- **SM-2 Adaptive Scheduler** — Spaced repetition for optimal review timing
-- **AI Tutor** — Gemini-powered chat with document upload (RAG)
-- **VTU Integration** — All 8 semesters, 64 subjects, 205 course outcomes
-- **Progress Tracker** — Module-by-module flowchart with topic completion
-- **Anti-Cheat Tests** — Tab detection, auto-submit, violation logging
-- **Gamification** — Certificates, achievements, leaderboard, streaks
-
-## Environment Variables
-
-```env
-# Backend (.env)
-DATABASE_URL=sqlite:///./adaptlearn.db
-SECRET_KEY=change-this-in-production
-GEMINI_API_KEY=your-key        # For AI features
-OPENROUTER_API_KEY=your-key    # Fallback AI
-```
-
-## Tests
+## Testing
 
 ```bash
 cd backend
 pytest tests/ -v
+```
+
+63 tests across 9 test files covering auth, admin, student, tests, learning, VTU, and more.
+
+## Docker
+
+```bash
+docker-compose up --build
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` in the backend directory and configure:
+
+```env
+DATABASE_URL=sqlite:///./adaptlearn.db
+SECRET_KEY=change-this-in-production
+GEMINI_API_KEY=your-key        # For AI features
+OPENROUTER_API_KEY=your-key    # Fallback AI
+RESEND_API_KEY=your-key        # For email notifications
 ```
 
 ## License
