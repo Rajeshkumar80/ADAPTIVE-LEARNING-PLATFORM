@@ -138,7 +138,7 @@ const seedAchievements: Achievement[] = [
 ];
 
 // ============= INITIALIZATION =============
-const SEED_VERSION = 'v4'; // Bump when seed data changes
+const SEED_VERSION = 'v5'; // Bump when seed data changes
 
 function initStorage() {
   if (typeof window === 'undefined') return;
