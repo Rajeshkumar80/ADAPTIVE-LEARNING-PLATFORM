@@ -64,7 +64,7 @@ export default function AITutorPage() {
         content: m.content,
       }));
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adaptlearn_token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/ai/chat`, {
         method: 'POST',
         headers: {
