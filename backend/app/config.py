@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     # Google Gemini Direct API
     GEMINI_API_KEY: str = ""
 
+    # Email (Resend)
+    RESEND_API_KEY: str = ""
+    FROM_EMAIL: str = ""
+
+    # Feature Flags
+    ENABLE_RL_SCHEDULER: bool = False
+    ENABLE_EMAIL_NOTIFICATIONS: bool = True
+    ENABLE_ANTI_CHEAT: bool = True
+
     @property
     def cors_origins_list(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, str):

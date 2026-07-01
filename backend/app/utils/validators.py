@@ -41,8 +41,8 @@ def validate_password(password: str) -> dict:
 
 
 def validate_subject_code(code: str) -> bool:
-    """Validate subject code format: XX### (e.g., CS501)."""
-    pattern = r"^[A-Z]{2}\d{3}$"
+    """Validate VTU subject code format (e.g., BCS613A, BCSL307, BMATS101)."""
+    pattern = r"^[A-Z]{2,4}\d{3}[A-Z]?$"
     return bool(re.match(pattern, code.upper()))
 
 

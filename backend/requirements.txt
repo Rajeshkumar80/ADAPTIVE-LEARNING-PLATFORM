@@ -6,7 +6,7 @@ python-dotenv
 
 # Database
 sqlalchemy
-psycopg2-binary  # Uncomment for PostgreSQL
+psycopg2-binary
 
 # Auth
 python-jose[cryptography]
@@ -22,24 +22,10 @@ httpx
 
 # AI Services
 google-genai
+openai
 
 # PDF Processing (optional)
 # PyMuPDF
-
-# NLP & Embeddings (optional — install for full ML features)
-# sentence-transformers
-# numpy
-
-# ML / RL (optional — install for adaptive scheduler)
-# torch
-# numpy
-
-# Background Tasks (optional — install for async processing)
-# celery[redis]
-# redis
-
-# Email (optional)
-# resend
 
 # Testing
 pytest

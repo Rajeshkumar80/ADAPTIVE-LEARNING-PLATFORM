@@ -4,14 +4,14 @@
 cd backend
 venv\Scripts\activate
 
-# 2. Install dependencies (no compilation, no database setup needed)
+# 2. Install dependencies
 python -m pip install --upgrade pip
-pip install --only-binary :all: -r requirements.txt
+pip install -r requirements.txt
 
 # 3. Run
 uvicorn app.main:app --reload
 
 # That's it. SQLite database is auto-created at backend/adaptlearn.db
 # Default accounts (auto-seeded):
-#   Student: student / student123
+#   Student: 1GD24CS407 / 1gd24cs407
 #   Admin:   admin / admin123
