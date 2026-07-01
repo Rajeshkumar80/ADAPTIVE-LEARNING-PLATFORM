@@ -21,10 +21,10 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
     # Student fields
-    usn = Column(String, unique=True, nullable=True)
-    semester = Column(Integer, nullable=True)
+    usn = Column(String, unique=True, nullable=True, index=True)
+    semester = Column(Integer, nullable=True, index=True)
     branch = Column(String, nullable=True)
-    section = Column(String, nullable=True)
+    section = Column(String, nullable=True, index=True)
     cgpa = Column(Float, default=0.0)
 
     # Admin fields
