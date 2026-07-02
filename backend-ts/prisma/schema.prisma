@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============= Users =============
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  username       String    @unique
+  hashedPassword String
+  fullName       String    @default("")
+  role           String    @default("student") // student | admin
+  isActive       Boolean   @default(true)
+
+  // Student fields
+  usn       String?  @unique
+  semester  Int?
+  branch    String?
+  section   String?
+  cgpa      Float    @default(0)
+
+  // Admin fields
+  employeeId String? @unique
+  department String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  journalEntries  JournalEntry[]
+  testAttempts    TestAttempt[]
+  antiCheatFlags  AntiCheatFlag[]
+  certificates    Certificate[]
+  achievements    Achievement[]
+  notifications   UserNotification[]
+  studySessions   StudySession[]
+  topicMastery    TopicMastery[]
+  learningEvents  LearningEvent[]
+  spacedCards     SpacedRepetitionCard[]
+}
+
+// ============= Subjects & Topics =============
+model Subject {
+  id          Int    @id @default(autoincrement())
+  code        String @unique
+  name        String
+  credits     Int    @default(4)
+  semester    Int
+  type        String @default("theory") // theory | lab
+  branch      String @default("CSE")
+  modules     String @default("{}") // JSON string of modules
+
+  topics   Topic[]
+  tests    Test[]
+  sessions StudySession[]
+
+  createdAt DateTime @default(now())
+}
+
+model Topic {
+  id          Int     @id @default(autoincrement())
+  subjectId   Int
+  subject     Subject @relation(fields: [subjectId], references: [id])
+  name        String
+  moduleNum   Int     @default(1)
+  topicNum    Int     @default(1)
+  description String  @default("")
+
+  mastery      TopicMastery[]
+  dependencies TopicDependency[] @relation("TopicPrereq")
+  dependents   TopicDependency[] @relation("TopicDep")
+  studySessions StudySession[]
+  spacedCards  SpacedRepetitionCard[]
+
+  createdAt DateTime @default(now())
+}
+
+model TopicDependency {
+  id           Int  @id @default(autoincrement())
+  topicId      Int
+  topic        Topic @relation("TopicDep", fields: [topicId], references: [id])
+  prerequisiteId Int
+  prerequisite Topic @relation("TopicPrereq", fields: [prerequisiteId], references: [id])
+  threshold    Float @default(0.7) // mastery threshold to unlock
+
+  @@unique([topicId, prerequisiteId])
+}
+
+// ============= Tests =============
+model Test {
+  id              Int       @id @default(autoincrement())
+  subjectId       Int?
+  subject         Subject?  @relation(fields: [subjectId], references: [id])
+  title           String
+  description     String    @default("")
+  type            String    @default("quiz") // quiz | midterm | final | assignment
+  difficulty      String    @default("medium")
+  durationMinutes Int       @default(60)
+  totalMarks      Int       @default(100)
+  passingMarks    Int       @default(40)
+  isActive        Boolean   @default(true)
+  antiCheatEnabled Boolean  @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  questions Question[]
+  attempts  TestAttempt[]
+}
+
+model Question {
+  id            Int    @id @default(autoincrement())
+  testId        Int
+  test          Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questionText  String
+  questionType  String @default("mcq") // mcq | coding | descriptive
+  options       String @default("[]") // JSON string
+  correctAnswer String
+  marks         Int    @default(1)
+  difficulty    String @default("medium")
+}
+
+model TestAttempt {
+  id              Int     @id @default(autoincrement())
+  userId          Int
+  user            User    @relation(fields: [userId], references: [id])
+  testId          Int
+  test            Test    @relation(fields: [testId], references: [id])
+  startedAt       DateTime @default(now())
+  submittedAt     DateTime?
+  score           Float   @default(0)
+  answers         String  @default("{}") // JSON string
+  antiCheatFlags  String  @default("[]") // JSON string
+  isCompleted     Boolean @default(false)
+
+  violationLogs AntiCheatFlag[]
+  learningEvents LearningEvent[]
+
+  @@index([userId])
+  @@index([testId])
+  @@index([isCompleted])
+}
+
+model AntiCheatFlag {
+  id            Int      @id @default(autoincrement())
+  testAttemptId Int
+  testAttempt   TestAttempt @relation(fields: [testAttemptId], references: [id])
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  severity      String   @default("info") // critical | warning | info
+  violation     String
+  count         Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+// ============= Learning State =============
+model TopicMastery {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  topicId        Int
+  topic          Topic    @relation(fields: [topicId], references: [id])
+  mastery        Float    @default(0) // 0-100
+  forgettingRisk String   @default("low") // low | medium | high
+
+  // BKT parameters
+  pKnow          Float    @default(0.1)
+  pGuess         Float    @default(0.25)
+  pSlip          Float    @default(0.1)
+  pTransit       Float    @default(0.1)
+  observations   Int      @default(0)
+
+  lastReviewed DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, topicId])
+  @@index([userId])
+}
+
+model StudySession {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  subjectId       Int?
+  subject         Subject? @relation(fields: [subjectId], references: [id])
+  topicId         Int?
+  topic           Topic?   @relation(fields: [topicId], references: [id])
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  durationMinutes Int      @default(0)
+  focusScore      Float    @default(0)
+  notes           String   @default("")
+
+  @@index([userId])
+}
+
+// ============= Learning Events (Data Ingestion) =============
+model LearningEvent {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  eventType    String   // quiz_attempt | study_session | time_spent | mastery_update
+  topicId      Int?
+  subjectId    Int?
+  testAttemptId Int?
+  testAttempt  TestAttempt? @relation(fields: [testAttemptId], references: [id])
+  payload      String   @default("{}") // JSON: score, duration, correct, total, etc.
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+// ============= Spaced Repetition =============
+model SpacedRepetitionCard {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  topicId     Int
+  topic       Topic    @relation(fields: [topicId], references: [id])
+  easeFactor  Float    @default(2.5)
+  interval    Int      @default(0) // days
+  repetitions Int      @default(0)
+  nextReview  DateTime @default(now())
+  lastReview  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, topicId])
+  @@index([userId])
+  @@index([nextReview])
+}
+
+// ============= Journal =============
+model JournalEntry {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  content   String   @default("")
+  mood      String   @default("neutral")
+  tags      String   @default("[]") // JSON array of tags
+  starred   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============= Gamification =============
+model Certificate {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  subject     String
+  issuedDate  DateTime @default(now())
+  score       Float    @default(0)
+  type        String   @default("completion") // completion | achievement | excellence
+
+  @@index([userId])
+}
+
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  description String   @default("")
+  icon        String   @default("🏆")
+  earnedDate  DateTime @default(now())
+  rarity      String   @default("common") // common | rare | epic | legendary
+
+  @@index([userId])
+}
+
+// ============= Notifications =============
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String   @default("info") // info | success | warning | error
+  category  String   @default("announcement")
+  sentBy    Int?
+  target    String   @default("all") // all | section name
+  createdAt DateTime @default(now())
+
+  users UserNotification[]
+}
+
+model UserNotification {
+  id             Int      @id @default(autoincrement())
+  notificationId Int
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  read           Boolean  @default(false)
+  readAt         DateTime?
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+}
