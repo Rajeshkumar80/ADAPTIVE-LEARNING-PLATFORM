@@ -12,6 +12,7 @@ import journalRoutes from './routes/journal';
 import aiRoutes from './routes/ai';
 import ingestionRoutes from './routes/ingestion';
 import learningStateRoutes from './routes/learning-state';
+import studyPlanRoutes from './routes/study-plan';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -34,6 +35,7 @@ app.use('/api/journal', journalRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ingestion', ingestionRoutes);
 app.use('/api/learning-state', learningStateRoutes);
+app.use('/api/study-plan', studyPlanRoutes);
 
 // Health
 app.get('/', (_req, res) => res.json({ name: 'AdaptLearn API', version: '2.0.0', stack: 'Node.js/TypeScript' }));
