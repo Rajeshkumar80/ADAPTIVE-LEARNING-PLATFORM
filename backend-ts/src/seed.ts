@@ -67,7 +67,7 @@ async function seed() {
     console.log(`  Student ${usn} created (id=${user.id})`);
   }
 
-  // Create topics for BCS601 and BCS602
+  // Create topics for Cloud Computing and Machine Learning
   const bcs601 = await prisma.subject.findUnique({ where: { code: 'BCS601' } });
   const bcs602 = await prisma.subject.findUnique({ where: { code: 'BCS602' } });
 
@@ -84,6 +84,71 @@ async function seed() {
     }
   }
   console.log('  Topics created');
+
+  // Create topic dependencies (prerequisite graph)
+  const allTopics = await prisma.topic.findMany();
+  const cloudTopics = allTopics.filter(t => t.subjectId === bcs601?.id);
+  const mlTopics = allTopics.filter(t => t.subjectId === bcs602?.id);
+
+  // Cloud: Architecture depends on Virtualization, Storage depends on Architecture, etc.
+  if (cloudTopics.length >= 3) {
+    await prisma.topicDependency.create({ data: { topicId: cloudTopics[1].id, prerequisiteId: cloudTopics[0].id, threshold: 0.5 } });
+    await prisma.topicDependency.create({ data: { topicId: cloudTopics[2].id, prerequisiteId: cloudTopics[1].id, threshold: 0.6 } });
+    await prisma.topicDependency.create({ data: { topicId: cloudTopics[3].id, prerequisiteId: cloudTopics[2].id, threshold: 0.7 } });
+    await prisma.topicDependency.create({ data: { topicId: cloudTopics[4].id, prerequisiteId: cloudTopics[1].id, threshold: 0.5 } });
+  }
+  // ML: Neural Nets depends on Linear Reg, SVM depends on Linear Reg
+  if (mlTopics.length >= 3) {
+    await prisma.topicDependency.create({ data: { topicId: mlTopics[1].id, prerequisiteId: mlTopics[0].id, threshold: 0.5 } });
+    await prisma.topicDependency.create({ data: { topicId: mlTopics[2].id, prerequisiteId: mlTopics[0].id, threshold: 0.6 } });
+    await prisma.topicDependency.create({ data: { topicId: mlTopics[3].id, prerequisiteId: mlTopics[0].id, threshold: 0.6 } });
+    await prisma.topicDependency.create({ data: { topicId: mlTopics[4].id, prerequisiteId: mlTopics[1].id, threshold: 0.5 } });
+  }
+  console.log('  Topic dependencies created');
+
+  // Seed sample learning events for student 1
+  const student1 = await prisma.user.findUnique({ where: { usn: '1GD23CS001' } });
+  if (student1 && cloudTopics.length > 0 && mlTopics.length > 0) {
+    // Quiz attempts
+    for (let i = 0; i < 8; i++) {
+      const topic = i < 4 ? cloudTopics[i % cloudTopics.length] : mlTopics[i % mlTopics.length];
+      const score = 50 + Math.floor(Math.random() * 50);
+      const correct = Math.round(score / 100 * 5);
+      await prisma.learningEvent.create({
+        data: {
+          userId: student1.id,
+          eventType: 'quiz_attempt',
+          topicId: topic.id,
+          subjectId: topic.subjectId,
+          payload: JSON.stringify({ score, correct, total: 5, duration_seconds: 60 + Math.floor(Math.random() * 120) }),
+        },
+      });
+    }
+    // Study sessions
+    for (let i = 0; i < 10; i++) {
+      const topic = i < 5 ? cloudTopics[i % cloudTopics.length] : mlTopics[i % mlTopics.length];
+      const activities = ['reading', 'quiz', 'flashcard', 'practice', 'video'] as const;
+      await prisma.learningEvent.create({
+        data: {
+          userId: student1.id,
+          eventType: 'time_spent',
+          topicId: topic.id,
+          subjectId: topic.subjectId,
+          payload: JSON.stringify({ duration_minutes: 15 + Math.floor(Math.random() * 45), activity: activities[i % 5], focus_score: 40 + Math.floor(Math.random() * 60) }),
+        },
+      });
+      await prisma.studySession.create({
+        data: {
+          userId: student1.id,
+          subjectId: topic.subjectId,
+          topicId: topic.id,
+          durationMinutes: 15 + Math.floor(Math.random() * 45),
+          focusScore: 40 + Math.floor(Math.random() * 60),
+        },
+      });
+    }
+    console.log('  Sample learning events seeded for student 1');
+  }
 
   // Create a sample test
   const test = await prisma.test.create({
