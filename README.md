@@ -29,8 +29,8 @@ App runs at `http://localhost:3000`
 ### Default Accounts
 | Role | Email | Password |
 |------|-------|----------|
-| Student | `usn@gcem.edu` | `usn` |
 | Admin | `admin@gcem.edu` | `admin123` |
+| Student | `<usn>@gcem.edu` | `<usn>` (e.g. `1gd23cs001@gcem.edu` / `1gd23cs001`) |
 
 ## Tech Stack
 
