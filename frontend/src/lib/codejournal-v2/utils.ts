@@ -1,7 +1,13 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { useState, useEffect } from 'react'
-import type { TextBlock } from '@/components/codejournal-v2/tile-card'
+
+export interface TextBlock {
+  id: string;
+  text: string;
+  contentType?: string;
+  [key: string]: any;
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

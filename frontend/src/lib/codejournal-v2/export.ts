@@ -1,5 +1,9 @@
 import type { ContentType } from "./content-types"
-import type { ConfidenceHistoryEntry } from "@/components/codejournal-v2/tile-card"
+
+export interface ConfidenceHistoryEntry {
+  date: string
+  score: number
+}
 
 // Escape characters that would break markdown table cells
 const mdCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ")

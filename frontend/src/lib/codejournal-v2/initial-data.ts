@@ -1,6 +1,4 @@
-import type { Project } from "@/app/journal/page"
-
-export const INITIAL_PROJECTS: Project[] = [
+export const INITIAL_PROJECTS: any[] = [
   {
     id: "p-demo",
     name: "JavaScript Deep Dive",

@@ -92,17 +92,35 @@ async function seed() {
 
   // Cloud: Architecture depends on Virtualization, Storage depends on Architecture, etc.
   if (cloudTopics.length >= 3) {
-    await prisma.topicDependency.create({ data: { topicId: cloudTopics[1].id, prerequisiteId: cloudTopics[0].id, threshold: 0.5 } });
-    await prisma.topicDependency.create({ data: { topicId: cloudTopics[2].id, prerequisiteId: cloudTopics[1].id, threshold: 0.6 } });
-    await prisma.topicDependency.create({ data: { topicId: cloudTopics[3].id, prerequisiteId: cloudTopics[2].id, threshold: 0.7 } });
-    await prisma.topicDependency.create({ data: { topicId: cloudTopics[4].id, prerequisiteId: cloudTopics[1].id, threshold: 0.5 } });
+    const deps = [
+      { topicId: cloudTopics[1].id, prerequisiteId: cloudTopics[0].id, threshold: 0.5 },
+      { topicId: cloudTopics[2].id, prerequisiteId: cloudTopics[1].id, threshold: 0.6 },
+      { topicId: cloudTopics[3].id, prerequisiteId: cloudTopics[2].id, threshold: 0.7 },
+      { topicId: cloudTopics[4].id, prerequisiteId: cloudTopics[1].id, threshold: 0.5 },
+    ];
+    for (const d of deps) {
+      await prisma.topicDependency.upsert({
+        where: { topicId_prerequisiteId: { topicId: d.topicId, prerequisiteId: d.prerequisiteId } },
+        update: { threshold: d.threshold },
+        create: d,
+      });
+    }
   }
   // ML: Neural Nets depends on Linear Reg, SVM depends on Linear Reg
   if (mlTopics.length >= 3) {
-    await prisma.topicDependency.create({ data: { topicId: mlTopics[1].id, prerequisiteId: mlTopics[0].id, threshold: 0.5 } });
-    await prisma.topicDependency.create({ data: { topicId: mlTopics[2].id, prerequisiteId: mlTopics[0].id, threshold: 0.6 } });
-    await prisma.topicDependency.create({ data: { topicId: mlTopics[3].id, prerequisiteId: mlTopics[0].id, threshold: 0.6 } });
-    await prisma.topicDependency.create({ data: { topicId: mlTopics[4].id, prerequisiteId: mlTopics[1].id, threshold: 0.5 } });
+    const deps = [
+      { topicId: mlTopics[1].id, prerequisiteId: mlTopics[0].id, threshold: 0.5 },
+      { topicId: mlTopics[2].id, prerequisiteId: mlTopics[0].id, threshold: 0.6 },
+      { topicId: mlTopics[3].id, prerequisiteId: mlTopics[0].id, threshold: 0.6 },
+      { topicId: mlTopics[4].id, prerequisiteId: mlTopics[1].id, threshold: 0.5 },
+    ];
+    for (const d of deps) {
+      await prisma.topicDependency.upsert({
+        where: { topicId_prerequisiteId: { topicId: d.topicId, prerequisiteId: d.prerequisiteId } },
+        update: { threshold: d.threshold },
+        create: d,
+      });
+    }
   }
   console.log('  Topic dependencies created');
 

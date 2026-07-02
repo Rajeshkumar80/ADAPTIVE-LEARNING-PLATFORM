@@ -161,7 +161,10 @@ router.get('/dependency-graph/:subjectId', authenticate, async (req: AuthRequest
     const subjectId = parseInt(String(req.params.subjectId));
     const topics = await prisma.topic.findMany({
       where: { subjectId },
-      include: { dependencies: { include: { prerequisite: true } } },
+      include: {
+        dependencies: { include: { prerequisite: true } },
+        dependents: { include: { topic: true } },
+      },
       orderBy: { moduleNum: 'asc' },
     });
 
@@ -174,7 +177,10 @@ router.get('/dependency-graph/:subjectId', authenticate, async (req: AuthRequest
         name: d.prerequisite.name,
         threshold: d.threshold,
       })),
-      dependents: t.dependents ? [] : [],
+      dependents: (t.dependents || []).map(d => ({
+        id: d.topic.id,
+        name: d.topic.name,
+      })),
     }));
 
     return res.json({ subject_id: subjectId, graph });

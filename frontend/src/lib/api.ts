@@ -382,6 +382,50 @@ class APIClient {
     if (data.full_name) params.append('full_name', data.full_name);
     return this.request(`/api/student/profile?${params.toString()}`, { method: 'PUT' });
   }
+
+  // ============= Learning State (Phase 3) =============
+  async getLearningState(userId?: number) {
+    const id = userId || 'me';
+    return this.request(`/api/learning-state/${id}`);
+  }
+
+  async bktUpdate(topicId: number, correct: number, total: number) {
+    return this.request('/api/learning-state/bkt-update', {
+      method: 'POST',
+      body: JSON.stringify({ topic_id: topicId, correct, total }),
+    });
+  }
+
+  async getDependencyGraph(subjectId: number) {
+    return this.request(`/api/learning-state/dependency-graph/${subjectId}`);
+  }
+
+  // ============= Study Plan (Phase 4) =============
+  async getStudyPlan(userId?: number) {
+    const id = userId || 'me';
+    return this.request(`/api/study-plan/${id}`);
+  }
+
+  async completeStudyStep(topicId: number, scorePercent: number) {
+    return this.request('/api/study-plan/complete-step', {
+      method: 'POST',
+      body: JSON.stringify({ topic_id: topicId, score_percent: scorePercent }),
+    });
+  }
+
+  // ============= Data Ingestion (Phase 2) =============
+  async logQuizAttempt(data: { topic_id: number; subject_id?: number; score: number; correct: number; total: number; duration_seconds?: number }) {
+    return this.request('/api/ingestion/quiz-attempt', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async logTimeSpent(data: { topic_id: number; subject_id?: number; duration_minutes: number; activity: string; focus_score?: number }) {
+    return this.request('/api/ingestion/time-spent', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async getPerformanceHistory(userId?: number) {
+    const id = userId || 'me';
+    return this.request(`/api/ingestion/performance/${id}`);
+  }
 }
 
 export const api = new APIClient(API_URL);

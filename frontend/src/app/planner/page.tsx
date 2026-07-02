@@ -31,21 +31,39 @@ interface Goal {
 
 export default function PlannerPage() {
   const { user } = useAuth();
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([
-    { id: 1, time: '09:00', subject: 'Cloud Computing', topic: 'Virtualization Concepts', duration: 60, activity: 'study', status: 'completed' },
-    { id: 2, time: '10:00', subject: 'Machine Learning', topic: 'Linear Regression', duration: 45, activity: 'practice', status: 'completed' },
-    { id: 3, time: '11:00', subject: 'Software Testing', topic: 'White-Box Testing', duration: 60, activity: 'study', status: 'active' },
-    { id: 4, time: '14:00', subject: 'Cryptography', topic: 'RSA Algorithm', duration: 45, activity: 'study', status: 'pending' },
-    { id: 5, time: '15:00', subject: 'Cloud Computing', topic: 'Cloud Security Quiz', duration: 30, activity: 'quiz', status: 'pending' },
-    { id: 6, time: '16:00', subject: 'Machine Learning', topic: 'Decision Trees Practice', duration: 60, activity: 'practice', status: 'pending' },
-  ]);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
-  const [goals] = useState<Goal[]>([
-    { id: 1, title: 'Complete Cloud Computing Module 3', progress: 75, deadline: 'Jun 02' },
-    { id: 2, title: 'ML Assignment Submission', progress: 40, deadline: 'Jun 05' },
-    { id: 3, title: 'CNS Module 2 Revision', progress: 60, deadline: 'Jun 03' },
-    { id: 4, title: 'Software Testing Lab', progress: 90, deadline: 'Jun 01' },
-  ]);
+  useEffect(() => {
+    if (!user) return;
+    const loadPlan = async () => {
+      try {
+        const [planData, goalsData] = await Promise.all([
+          api.getStudyPlan().catch(() => ({ today_plan: [] })),
+          api.getGoals().catch(() => []),
+        ]);
+        const items = (planData.today_plan || []).map((item: any, i: number) => ({
+          id: i + 1,
+          time: `${9 + i}:00`,
+          subject: item.subject || '',
+          topic: item.topic_name || item.topic || '',
+          duration: 45,
+          activity: item.type === 'review' ? 'review' : item.type === 'weak_area' ? 'practice' : 'study',
+          status: 'pending' as const,
+          reason: item.reason || '',
+        }));
+        setSchedule(items.length > 0 ? items : [
+          { id: 1, time: '09:00', subject: 'Cloud Computing', topic: 'Review due topics', duration: 60, activity: 'study', status: 'active' },
+        ]);
+        setGoals((goalsData || []).map((g: any, i: number) => ({
+          id: g.id || i + 1, title: g.title, progress: g.progress || 0, deadline: g.deadline || '',
+        })));
+      } catch { /* use defaults */ }
+      setLoadingData(false);
+    };
+    loadPlan();
+  }, [user]);
 
   const [activeTab, setActiveTab] = useState<'day'>('day');
 

@@ -12,17 +12,33 @@ import { api } from '@/lib/api';
 
 export default function MasteryPage() {
   const [mastery, setMastery] = useState<any>({ subjects: [], streak_days: 0, total_study_hours: 0 });
+  const [learningState, setLearningState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getMastery().then(setMastery).catch(() => {}).finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        const [masteryData, stateData] = await Promise.all([
+          api.getMastery().catch(() => ({ subjects: [] })),
+          api.getLearningState().catch(() => null),
+        ]);
+        setMastery(masteryData);
+        setLearningState(stateData);
+      } catch { /* use defaults */ }
+      setLoading(false);
+    };
+    load();
   }, []);
 
-  const allTopics = mastery.subjects || [];
-  const mastered = allTopics.filter((s: any) => (s.avg_mastery || 0) >= 80).length;
-  const proficient = allTopics.filter((s: any) => (s.avg_mastery || 0) >= 50 && (s.avg_mastery || 0) < 80).length;
-  const learning = allTopics.filter((s: any) => (s.avg_mastery || 0) > 0 && (s.avg_mastery || 0) < 50).length;
-  const weak = allTopics.filter((s: any) => (s.avg_mastery || 0) === 0).length;
+  const allTopics = learningState?.topics || mastery.subjects?.map((s: any) => ({
+    topic_name: s.name || s.topic_name, subject: s.name, mastery_percent: s.avg_mastery || 0,
+    mastery_level: (s.avg_mastery || 0) >= 90 ? 'mastered' : (s.avg_mastery || 0) >= 70 ? 'proficient' : (s.avg_mastery || 0) >= 40 ? 'learning' : 'weak',
+  })) || [];
+  const summary = learningState?.summary || { mastered: 0, proficient: 0, learning: 0, weak: allTopics.length };
+  const mastered = summary.mastered;
+  const proficient = summary.proficient;
+  const learningCount = summary.learning;
+  const weak = summary.weak;
 
   const getStatus = (mastery: number) => {
     if (mastery >= 80) return { label: 'mastered', class: 'bg-green-50 text-green-700 border-green-200' };
@@ -48,7 +64,7 @@ export default function MasteryPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Mastered</p><p className="text-2xl font-semibold tracking-tight">{mastered}</p></CardContent></Card>
             <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Proficient</p><p className="text-2xl font-semibold tracking-tight">{proficient}</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Learning</p><p className="text-2xl font-semibold tracking-tight">{learning}</p></CardContent></Card>
+            <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Learning</p><p className="text-2xl font-semibold tracking-tight">{learningCount}</p></CardContent></Card>
             <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground mb-1">Not Started</p><p className="text-2xl font-semibold tracking-tight">{weak}</p></CardContent></Card>
           </div>
           <Card>

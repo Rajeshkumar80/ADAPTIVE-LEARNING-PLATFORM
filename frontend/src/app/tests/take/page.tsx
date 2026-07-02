@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
@@ -18,7 +19,7 @@ interface Question {
   marks: number;
 }
 
-export default function TakeTestPage() {
+function TakeTestInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const testId = searchParams.get('id');
@@ -216,5 +217,13 @@ export default function TakeTestPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function TakeTestPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
+      <TakeTestInner />
+    </Suspense>
   );
 }
