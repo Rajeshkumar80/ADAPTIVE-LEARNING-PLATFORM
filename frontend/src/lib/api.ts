@@ -1,9 +1,8 @@
 /**
- * API Client — communicates with FastAPI backend
- * Falls back to localStorage mock if backend is unavailable
+ * API Client — communicates with Express/TypeScript backend
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 class APIClient {
   private baseURL: string;
