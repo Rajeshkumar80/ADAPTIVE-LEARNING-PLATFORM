@@ -1,22 +1,22 @@
 # AdaptLearn — Adaptive Learning Platform
 
-AI-powered adaptive learning platform for VTU CSE students (2022 Scheme). Built with Next.js 15 + FastAPI + SM-2 spaced repetition + Google Gemini AI.
+AI-powered adaptive learning platform for VTU CSE students (2022 Scheme). Built with Next.js 15 + Express/TypeScript + Prisma ORM. Features BKT knowledge tracing, SM-2 spaced repetition, topic dependency graphs, and adaptive study planning — all in TypeScript.
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.11+
 - Node.js 18+
+- npm or yarn
 
-### 1. Backend
+### 1. Backend (TypeScript)
 ```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate        # Windows
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+cd backend-ts
+npm install
+npx prisma db push
+npm run db:seed
+npm run dev
 ```
-Server runs at `http://localhost:8000` | API docs at `http://localhost:8000/docs`
+Server runs at `http://localhost:8001`
 
 ### 2. Frontend
 ```bash
@@ -27,73 +27,92 @@ npm run dev
 App runs at `http://localhost:3000`
 
 ### Default Accounts
-| Role | Email | Password |
-|------|-------|----------|
+| Role | USN | Password |
+|------|-----|----------|
 | Admin | `admin@gcem.edu` | `admin123` |
-| Student | `<usn>@gcem.edu` | `<usn>` (e.g. `1gd23cs001@gcem.edu` / `1gd23cs001`) |
+| Student | `1GD23CS001` | `student123` |
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS, Recharts |
-| Backend | FastAPI, Python 3.11+, SQLAlchemy |
+| Frontend | Next.js 15, React, TypeScript, Tailwind CSS |
+| Backend | Express.js, TypeScript, Prisma ORM |
 | Database | SQLite (dev) / PostgreSQL (prod) |
-| Auth | JWT (python-jose), bcrypt |
-| AI | Google Gemini + OpenRouter (fallback) |
-| Scheduling | SM-2 Spaced Repetition Algorithm |
+| Auth | JWT (jsonwebtoken), bcryptjs |
+| Validation | Zod |
+| Algorithms | BKT (Bayesian Knowledge Tracing), SM-2 (Spaced Repetition) |
 
-## Features
+## Learning Algorithms
 
-- **SM-2 Adaptive Scheduler** — Spaced repetition for optimal review timing
-- **AI Tutor** — Gemini-powered chat with document upload (RAG)
-- **VTU Integration** — All 8 semesters, 64 subjects, 205 course outcomes
-- **Progress Tracker** — Module-by-module flowchart with topic completion
-- **Anti-Cheat Tests** — Tab detection, auto-submit, violation logging
-- **Gamification** — Certificates, achievements, leaderboard, streaks
-- **Admin Dashboard** — Student management, analytics, test creation
-- **Email Notifications** — Resend-powered notifications
+### BKT — Bayesian Knowledge Tracing
+Estimates per-topic mastery probability using p(L₀), p(T), p(G), p(S) parameters. Updates after each quiz attempt via Bayes' theorem.
 
-## API Endpoints (68+ routes)
+### SM-2 — Spaced Repetition
+Schedules review cards using ease factor, interval, and repetition count. Quality 0-5 mapped from quiz scores.
+
+### Study Plan Generator
+Rule-based scheduler (DQN fallback): weak topics first → due reviews → new topics → reinforcement. Respects topic dependency graph (prerequisites must reach threshold before unlocking).
+
+### Topic Dependency Graph
+Adjacency list per subject — prerequisite topics must reach mastery threshold before next topic unlocks.
+
+## API Endpoints
 
 | Category | Endpoints |
 |----------|-----------|
-| Auth | `/api/auth/register`, `/login`, `/logout`, `/me` |
-| Student | `/api/student/dashboard`, `/profile`, `/progress`, `/leaderboard` |
-| Admin | `/api/admin/dashboard`, `/students`, `/analytics`, `/anti-cheat-flags` |
-| Tests | `/api/tests/` (CRUD), `/start`, `/submit`, `/violation`, `/result` |
-| AI Tutor | `/api/ai/chat`, `/ask`, `/explain`, `/generate-quiz`, `/status` |
-| Planner | `/api/planner/today`, `/goals`, `/sessions/start`, `/sessions/end`, `/mastery` |
-| Learning | `/api/learning/due-today`, `/update`, `/dashboard`, `/sm2-calculate` |
-| Documents | `/api/documents/upload`, `/ask` (RAG) |
-| VTU | `/api/vtu/subjects`, `/subjects/{code}`, `/program-outcomes`, `/import` |
-| Notifications | `/api/notifications/`, `/send`, `/broadcast`, `/stats` |
+| Auth | `POST /api/auth/register`, `/login`, `/logout`, `/me` |
+| Student | `GET /api/student/dashboard`, `/profile`, `/progress`, `/leaderboard` |
+| Admin | `GET /api/admin/dashboard`, `/students`, `/analytics`, `/anti-cheat-flags` |
+| Tests | `GET /api/tests/`, `/start`, `/submit`, `/violation` |
+| Learning | `GET /api/learning/due-today`, `/update`, `/dashboard`, `/sm2-calculate` |
+| Ingestion | `POST /api/ingestion/quiz-attempt`, `/time-spent` |
+| Learning State | `GET /api/learning-state/:userId`, `POST /bkt-update` |
+| Study Plan | `GET /api/study-plan/:userId`, `POST /complete-step` |
+| AI Tutor | `POST /api/ai/chat`, `/ask`, `/explain` |
+| VTU | `GET /api/vtu/subjects`, `/subjects/{code}` |
+| Notifications | `GET /api/notifications/` |
 
 ## Testing
 
 ```bash
-cd backend
-pytest tests/ -v
+cd backend-ts
+npm test
 ```
 
-63 tests across 9 test files covering auth, admin, student, tests, learning, VTU, and more.
+40 tests covering BKT algorithm, SM-2 algorithm, auth utilities, and study plan generation.
 
-## Docker
+## Project Structure
 
-```bash
-docker-compose up --build
+```
+├── backend-ts/           # TypeScript backend (Express + Prisma)
+│   ├── src/
+│   │   ├── routes/       # API route handlers
+│   │   ├── services/     # BKT, SM-2 algorithms
+│   │   ├── middleware/    # Auth, RBAC
+│   │   ├── utils/        # Password hashing, JWT
+│   │   └── __tests__/    # Jest test suite
+│   ├── prisma/           # Database schema
+│   └── seed.ts           # Database seeder
+├── frontend/             # Next.js 15 frontend
+│   ├── src/app/          # Page routes
+│   ├── src/components/   # React components
+│   └── src/lib/          # API client, utilities
+└── PROGRESS_LOG.md       # Development progress
 ```
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` in the backend directory and configure:
+Copy `.env.example` to `.env` in `backend-ts/` and configure:
 
 ```env
-DATABASE_URL=sqlite:///./adaptlearn.db
-SECRET_KEY=change-this-in-production
-GEMINI_API_KEY=your-key        # For AI features
-OPENROUTER_API_KEY=your-key    # Fallback AI
-RESEND_API_KEY=your-key        # For email notifications
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="change-this-in-production"
+JWT_EXPIRES_IN="24h"
+PORT=8001
+CORS_ORIGINS="http://localhost:3000"
+GEMINI_API_KEY=""        # For AI features (optional)
+OPENROUTER_API_KEY=""    # Fallback AI (optional)
 ```
 
 ## License
