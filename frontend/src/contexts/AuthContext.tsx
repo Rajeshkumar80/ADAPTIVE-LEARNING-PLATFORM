@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { mockDB, User as MockUser } from '@/lib/mockdb';
 
 export interface User {
   id: number | string;
@@ -45,15 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      // Try backend first
       const me = await api.getMe();
       setUser(me);
       setIsOnline(true);
     } catch {
-      // Fall back to mockDB
-      mockDB.init();
-      const cached = mockDB.getCurrentUser();
-      if (cached) setUser(cached as User);
+      api.clearToken();
+      setUser(null);
       setIsOnline(false);
     } finally {
       setLoading(false);
@@ -61,54 +57,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (username: string, password: string, role: 'student' | 'admin'): Promise<User> => {
-    try {
-      // Try backend
-      const data = await api.login(username, password);
-      if (data.user.role !== role) {
-        throw new Error(`This account is registered as ${data.user.role}, not ${role}`);
-      }
-      setUser(data.user);
-      setIsOnline(true);
-      router.push(data.user.role === 'admin' ? '/admin' : '/dashboard');
-      return data.user;
-    } catch (err: any) {
-      // Fall back to mockDB
-      const cached = mockDB.login(username, password, role);
-      if (cached) {
-        setUser(cached as User);
-        setIsOnline(false);
-        router.push(cached.role === 'admin' ? '/admin' : '/dashboard');
-        return cached as User;
-      }
-      throw err;
+    const data = await api.login(username, password);
+    if (data.user.role !== role) {
+      throw new Error(`This account is registered as ${data.user.role}, not ${role}`);
     }
+    setUser(data.user);
+    setIsOnline(true);
+    router.push(data.user.role === 'admin' ? '/admin' : '/dashboard');
+    return data.user;
   };
 
-  const register = async (data: any, role: 'student' | 'admin'): Promise<User> => {
-    try {
-      const response = await api.register({ ...data, role });
-      setUser(response.user);
-      setIsOnline(true);
-      router.push(response.user.role === 'admin' ? '/admin' : '/dashboard');
-      return response.user;
-    } catch (err: any) {
-      // Fall back to mockDB
-      const newUser = mockDB.register(data, role);
-      if (newUser) {
-        setUser(newUser as User);
-        setIsOnline(false);
-        router.push(newUser.role === 'admin' ? '/admin' : '/dashboard');
-        return newUser as User;
-      }
-      throw err;
-    }
+  const register = async (data: any, role: 'student' | 'admin') => {
+    const response = await api.register({ ...data, role });
+    setUser(response.user);
+    setIsOnline(true);
+    router.push(response.user.role === 'admin' ? '/admin' : '/dashboard');
+    return response.user;
   };
 
   const logout = () => {
     api.logout().catch(() => {});
-    mockDB.logout();
     setUser(null);
-    router.push('/');
+    setIsOnline(false);
+    router.push('/login');
   };
 
   return (
