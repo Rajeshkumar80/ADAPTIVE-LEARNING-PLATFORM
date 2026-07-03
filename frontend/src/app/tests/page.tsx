@@ -14,7 +14,7 @@ interface TestItem {
   id: number;
   title: string;
   description?: string;
-  subject?: string;
+  subject?: string | { code: string; name: string };
   type?: string;
   difficulty?: string;
   duration_minutes: number;
@@ -23,6 +23,12 @@ interface TestItem {
   starts_at?: string;
   ends_at?: string;
   is_active: boolean;
+}
+
+function getSubjectName(subject: string | { code: string; name: string } | undefined): string {
+  if (!subject) return '';
+  if (typeof subject === 'object') return subject.name;
+  return subject;
 }
 
 interface AttemptItem {
@@ -107,7 +113,7 @@ export default function TestsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-medium">{test.title}</p>
-                          <Badge variant="outline" className="text-[10px]">{test.subject || test.type || 'Quiz'}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{getSubjectName(test.subject) || test.type || 'Quiz'}</Badge>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {test.starts_at && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(test.starts_at).toLocaleDateString()}</span>}
