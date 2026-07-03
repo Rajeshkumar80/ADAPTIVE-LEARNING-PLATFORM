@@ -6,3 +6,4 @@
 [2026-07-02] phase-3: BKT algorithm (TypeScript) — pKnow, pTransit, pGuess, pSlip. 12/12 BKT unit tests + 10/10 API tests.
 [2026-07-02] phase-4: SM-2 spaced repetition + study plan generator. 10/10 SM-2 unit tests.
 [2026-07-02] phase-5: Frontend integration complete. API methods added (learning-state, study-plan, ingestion). Planner & mastery pages use real TS backend APIs. Fixed codejournal-v2 type errors, tests/take Suspense boundary, ESLint config, Button import. Seed script idempotent (upsert). Backend TS: 12/12 BKT + 10/10 SM-2 tests. Frontend: 29/29 pages build. .env.local points to TS backend (port 8001). Commit: a307e9a.
+[2026-07-03] phase-6: Deleted entire Python backend (84 files, 8088 lines). Zero .py files remain. Jest test suite: 40/40 passing (12 BKT, 16 SM-2, 4 auth, 8 study-plan). Backend TS type-check clean. Frontend 29/29 pages build. Commit: f32ed45.
