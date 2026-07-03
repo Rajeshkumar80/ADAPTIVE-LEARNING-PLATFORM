@@ -1,0 +1,42 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "A AdaptLearn" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e8]: A
+          - generic [ref=e9]: AdaptLearn
+        - button "Change role" [ref=e47]:
+          - img [ref=e48]
+          - text: Change role
+    - main [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e50]:
+            - img [ref=e51]
+            - text: Student
+          - heading "Sign in" [level=1] [ref=e54]
+          - paragraph [ref=e55]: Enter your credentials below
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]: Username
+            - textbox "student" [ref=e59]
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: Password
+              - link "Forgot?" [ref=e63] [cursor=pointer]:
+                - /url: /learn-more
+            - textbox "••••••••" [ref=e64]
+          - button "Sign in" [ref=e65]
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - paragraph [ref=e69]: Demo Account
+              - paragraph [ref=e70]: student / student123
+            - button "Use" [ref=e71]
+        - paragraph [ref=e35]:
+          - text: Don't have an account?
+          - link "Sign up" [ref=e72] [cursor=pointer]:
+            - /url: /register
+  - button "Open Next.js Dev Tools" [ref=e42] [cursor=pointer]:
+    - img [ref=e43]
+  - alert [ref=e46]

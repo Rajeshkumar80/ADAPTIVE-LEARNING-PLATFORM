@@ -30,10 +30,10 @@ export default function LoginPage() {
 
   const fillDemo = () => {
     if (role === 'student') {
-      setUsername('student');
+      setUsername('1GD23CS001');
       setPassword('student123');
     } else {
-      setUsername('admin');
+      setUsername('admin@gcem.edu');
       setPassword('admin123');
     }
   };
@@ -208,7 +208,7 @@ export default function LoginPage() {
                 <div>
                   <p className="text-xs font-medium">Demo Account</p>
                   <p className="text-[11px] text-muted-foreground font-mono">
-                    {isStudent ? 'student / student123' : 'admin / admin123'}
+                    {isStudent ? '1GD23CS001 / student123' : 'admin@gcem.edu / admin123'}
                   </p>
                 </div>
                 <button
