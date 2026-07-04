@@ -46,48 +46,64 @@ export default function ProfilePage() {
 
   const loadProfile = async () => {
     try {
-      const data = await api.getStudentProfile();
-      setProfile(data);
-      setEditData({
-        full_name: data.full_name,
-        semester: data.semester,
-        section: data.section,
-        branch: data.branch,
+      const [profileData, dashboard, subjects, achievements, certificates] = await Promise.allSettled([
+        api.getStudentProfile(),
+        api.getStudentDashboard(),
+        api.getStudentSubjects(),
+        api.getStudentAchievements(),
+        api.getStudentCertificates(),
+      ]);
+
+      const p = profileData.status === 'fulfilled' ? profileData.value : null;
+      const d = dashboard.status === 'fulfilled' ? dashboard.value : null;
+      const s = subjects.status === 'fulfilled' ? subjects.value : [];
+      const ach = achievements.status === 'fulfilled' ? achievements.value : [];
+      const certs = certificates.status === 'fulfilled' ? certificates.value : [];
+
+      if (p) {
+        setEditData({
+          full_name: p.full_name,
+          semester: p.semester,
+          section: p.section,
+          branch: p.branch,
+        });
+      }
+
+      setProfile({
+        id: p?.id || user?.id || 1,
+        email: p?.email || user?.email || '',
+        username: p?.username || user?.username || '',
+        full_name: p?.full_name || user?.full_name || '',
+        usn: p?.usn || user?.usn || '',
+        semester: p?.semester || user?.semester || 6,
+        branch: p?.branch || user?.branch || 'Computer Science',
+        section: p?.section || user?.section || 'A',
+        cgpa: p?.cgpa || user?.cgpa || 0,
+        subjects: Array.isArray(s) ? s : [],
+        stats: {
+          total_study_hours: d?.hours_this_week ? Math.round(d.hours_this_week * 10) : 0,
+          tests_taken: d?.avg_score !== undefined ? Math.round(d.avg_score) : 0,
+          avg_score: d?.avg_score || 0,
+          certificates: Array.isArray(certs) ? certs.length : 0,
+          achievements: Array.isArray(ach) ? ach.length : 0,
+        },
       });
     } catch {
       // Use auth context data as fallback
+      setProfile({
+        id: user?.id || 1,
+        email: user?.email || '',
+        username: user?.username || '',
+        full_name: user?.full_name || '',
+        usn: user?.usn || '',
+        semester: user?.semester || 6,
+        branch: user?.branch || 'Computer Science',
+        section: user?.section || 'A',
+        cgpa: user?.cgpa || 0,
+        subjects: [],
+        stats: { total_study_hours: 0, tests_taken: 0, avg_score: 0, certificates: 0, achievements: 0 },
+      });
     } finally {
-      // Always set dummy stats for display if no real data
-      if (!profile || (profile && profile.stats.certificates === 0)) {
-        setProfile(prev => prev ? {
-          ...prev,
-          stats: {
-            total_study_hours: 245,
-            tests_taken: 12,
-            avg_score: 85.5,
-            certificates: 8,
-            achievements: 10,
-          }
-        } : {
-          id: (user?.id as number) || 1,
-          email: user?.email || 'student@vtu.edu',
-          username: user?.username || 'student',
-          full_name: user?.full_name || 'Rajesh G',
-          usn: user?.usn || '1GD24CS407',
-          semester: user?.semester || 6,
-          branch: user?.branch || 'Computer Science',
-          section: user?.section || 'A',
-          cgpa: user?.cgpa || 8.5,
-          subjects: [],
-          stats: {
-            total_study_hours: 245,
-            tests_taken: 12,
-            avg_score: 85.5,
-            certificates: 8,
-            achievements: 10,
-          },
-        });
-      }
       setLoading(false);
     }
   };
@@ -119,7 +135,6 @@ export default function ProfilePage() {
       <div className="flex-1 flex flex-col overflow-auto">
         <Header title="My Profile" subtitle="Academic details and progress" />
         <main className="flex-1 p-6 max-w-5xl w-full mx-auto space-y-6">
-          {/* Profile Header */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
@@ -160,7 +175,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Academic Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
@@ -217,7 +231,6 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { icon: Clock, label: 'Study Hours', value: profile?.stats.total_study_hours || 0 },
@@ -236,7 +249,6 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* Enrolled Subjects */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Enrolled Subjects (Semester {profile?.semester})</CardTitle>
@@ -254,7 +266,7 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No subjects loaded. Check VTU data import.</p>
+                <p className="text-sm text-muted-foreground">No subjects loaded.</p>
               )}
             </CardContent>
           </Card>
