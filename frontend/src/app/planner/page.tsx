@@ -40,18 +40,17 @@ export default function PlannerPage() {
     const loadPlan = async () => {
       try {
         const [planData, goalsData] = await Promise.all([
-          api.getStudyPlan().catch(() => ({ today_plan: [] })),
+          api.getTodayPlan().catch(() => ({ items: [] })),
           api.getGoals().catch(() => []),
         ]);
-        const items = (planData.today_plan || []).map((item: any, i: number) => ({
+        const items = (planData.items || planData.today_plan || []).map((item: any, i: number) => ({
           id: i + 1,
-          time: `${9 + i}:00`,
+          time: item.time || `${9 + i}:00`,
           subject: item.subject || '',
           topic: item.topic_name || item.topic || '',
-          duration: 45,
-          activity: item.type === 'review' ? 'review' : item.type === 'weak_area' ? 'practice' : 'study',
-          status: 'pending' as const,
-          reason: item.reason || '',
+          duration: item.duration || 45,
+          activity: item.activity || 'study',
+          status: (item.status || 'pending') as const,
         }));
         setSchedule(items.length > 0 ? items : [
           { id: 1, time: '09:00', subject: 'Cloud Computing', topic: 'Review due topics', duration: 60, activity: 'study', status: 'active' },
@@ -132,7 +131,7 @@ export default function PlannerPage() {
           {/* Stat cards row */}
           <div className="flex items-center justify-between">
             <div />
-            <Button onClick={() => alert('AI plan generation will use /api/planner/today endpoint')} size="sm">
+            <Button onClick={async () => { setLoadingData(true); try { const plan = await api.getTodayPlan(); const items = (plan.items || []).map((item: any, i: number) => ({ id: i + 1, time: item.time || `${9 + i}:00`, subject: item.subject || '', topic: item.topic || '', duration: item.duration || 45, activity: item.activity || 'study', status: 'pending' as const })); setSchedule(items); } catch { /* keep current */ } setLoadingData(false); }} size="sm">
               <Sparkles className="w-3.5 h-3.5 mr-1" /> Generate AI Plan
             </Button>
           </div>

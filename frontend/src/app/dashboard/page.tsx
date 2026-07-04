@@ -57,7 +57,7 @@ export default function StudentDashboard() {
         ]);
         setDashboardData(dash);
         setSubjects(subs);
-        setTodaySchedule(plan.sessions || []);
+        setTodaySchedule(plan.items || plan.sessions || []);
         setUpcomingTests(tests.slice(0, 3)); // show first 3
       } catch (e) {
         console.error("Failed to fetch dashboard data:", e);
@@ -170,14 +170,18 @@ export default function StudentDashboard() {
                 <div className="flex-1">
                   <p className="text-sm font-semibold mb-1">Today's recommendation</p>
                   <p className="text-sm text-muted-foreground mb-3">
-                    You're behind on <strong>Operating Systems</strong> (45% mastery). Your retention is 23% higher in morning sessions — try a 30 min focused session at 9 AM tomorrow.
+                    {dashboardData?.streak > 0
+                      ? `Great work maintaining a ${dashboardData.streak}-day streak! Keep it up with a focused study session today.`
+                      : dashboardData?.avg_score > 80
+                      ? `Your average score is ${dashboardData.avg_score}%. Challenge yourself with harder topics!`
+                      : `Start building your study streak today. Consistent practice leads to better retention.`}
                   </p>
                   <div className="flex gap-2">
-                    <Link href="/ai-tutor">
+                    <Link href="/planner">
                       <Button size="sm">Start now</Button>
                     </Link>
-                    <Link href="/learn-more">
-                      <Button size="sm" variant="outline">Why?</Button>
+                    <Link href="/ai-tutor">
+                      <Button size="sm" variant="outline">Ask AI</Button>
                     </Link>
                   </div>
                 </div>
@@ -227,7 +231,7 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Today's Schedule</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">Friday, May 15</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                   </div>
                   <Link href="/planner">
                     <Button variant="ghost" size="sm" className="text-xs h-7">
