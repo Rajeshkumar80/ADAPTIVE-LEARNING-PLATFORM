@@ -1,0 +1,70 @@
+- generic [ref=f4e3]:
+  - complementary [ref=f4e4]:
+    - link "A AdaptLearn / student" [ref=f4e6] [cursor=pointer]:
+      - /url: /dashboard
+      - generic [ref=f4e8]: A
+      - generic [ref=f4e9]:
+        - generic [ref=f4e10]: AdaptLearn
+        - generic [ref=f4e11]: / student
+    - navigation [ref=f4e12]:
+      - generic [ref=f4e13]:
+        - paragraph [ref=f4e14]: Overview
+        - generic [ref=f4e15]:
+          - link "Dashboard" [ref=f4e16] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f4e17]
+            - generic [ref=f4e22]: Dashboard
+          - link "Progress" [ref=f4e23] [cursor=pointer]:
+            - /url: /analytics
+            - img [ref=f4e24]
+            - generic [ref=f4e26]: Progress
+      - generic [ref=f4e27]:
+        - paragraph [ref=f4e28]: Learn
+        - generic [ref=f4e29]:
+          - link "Subjects" [ref=f4e30] [cursor=pointer]:
+            - /url: /courses
+            - img [ref=f4e31]
+            - generic [ref=f4e33]: Subjects
+          - link "AI Tutor" [ref=f4e34] [cursor=pointer]:
+            - /url: /ai-tutor
+            - img [ref=f4e35]
+            - generic [ref=f4e45]: AI Tutor
+          - link "Planner" [ref=f4e46] [cursor=pointer]:
+            - /url: /planner
+            - img [ref=f4e47]
+            - generic [ref=f4e49]: Planner
+          - link "Mastery" [ref=f4e50] [cursor=pointer]:
+            - /url: /mastery
+            - img [ref=f4e51]
+            - generic [ref=f4e55]: Mastery
+      - generic [ref=f4e56]:
+        - paragraph [ref=f4e57]: Practice
+        - link "Tests" [ref=f4e59] [cursor=pointer]:
+          - /url: /tests
+          - img [ref=f4e60]
+          - generic [ref=f4e63]: Tests
+      - generic [ref=f4e64]:
+        - paragraph [ref=f4e65]: Achievements
+        - generic [ref=f4e66]:
+          - link "Certificates" [ref=f4e67] [cursor=pointer]:
+            - /url: /certificates
+            - img [ref=f4e68]
+            - generic [ref=f4e71]: Certificates
+          - link "Badges" [ref=f4e72] [cursor=pointer]:
+            - /url: /achievements
+            - img [ref=f4e73]
+            - generic [ref=f4e79]: Badges
+      - generic [ref=f4e80]:
+        - paragraph [ref=f4e81]: Account
+        - link "Profile" [ref=f4e83] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=f4e84]
+          - generic [ref=f4e89]: Profile
+    - generic [ref=f4e91] [cursor=pointer]:
+      - generic [ref=f4e92]: ST
+      - generic [ref=f4e93]:
+        - paragraph [ref=f4e94]: Student
+        - paragraph
+      - button "Sign out" [ref=f4e95]:
+        - img [ref=f4e96]
+  - img [ref=f4e100]
