@@ -8,9 +8,15 @@ const router = Router();
 // GET /api/study-plan/:userId
 router.get('/:userId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = parseInt(String(req.params.userId));
-    if (req.user!.id !== userId && req.user!.role !== 'admin') {
-      return res.status(403).json({ detail: 'Forbidden' });
+    const param = String(req.params.userId);
+    let userId: number;
+    if (param === 'me') {
+      userId = req.user!.id;
+    } else {
+      userId = parseInt(param);
+      if (req.user!.id !== userId && req.user!.role !== 'admin') {
+        return res.status(403).json({ detail: 'Forbidden' });
+      }
     }
 
     // Get all topics with mastery and card info

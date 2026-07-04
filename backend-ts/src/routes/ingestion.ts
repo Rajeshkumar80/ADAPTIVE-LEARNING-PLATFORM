@@ -114,9 +114,15 @@ router.post('/time-spent', requireStudent, async (req: AuthRequest, res: Respons
 // GET /api/ingestion/performance/:userId
 router.get('/performance/:userId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = parseInt(String(req.params.userId));
-    if (req.user!.id !== userId && req.user!.role !== 'admin') {
-      return res.status(403).json({ detail: 'Forbidden' });
+    const param = String(req.params.userId);
+    let userId: number;
+    if (param === 'me') {
+      userId = req.user!.id;
+    } else {
+      userId = parseInt(param);
+      if (req.user!.id !== userId && req.user!.role !== 'admin') {
+        return res.status(403).json({ detail: 'Forbidden' });
+      }
     }
 
     const events = await prisma.learningEvent.findMany({
