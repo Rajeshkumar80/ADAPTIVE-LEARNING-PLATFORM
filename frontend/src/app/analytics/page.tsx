@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ActivityChart, PerformanceChart, TestTrendsChart, SubjectDistribution } from '@/components/charts';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { ChevronRight, BookOpen, CheckCircle2, Circle } from 'lucide-react';
+import { ChevronRight, BookOpen } from 'lucide-react';
 
 interface ModuleData {
   title: string;
@@ -29,15 +29,51 @@ export default function AnalyticsPage() {
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<Record<string, Record<string, boolean[]>>>({});
+  const [stats, setStats] = useState({ hours: 0, bestScore: 0, goalsCompleted: 0, totalGoals: 0, streak: 0, focus: 0 });
+  const [insights, setInsights] = useState<{ label: string; text: string; variant: string }[]>([]);
 
   useEffect(() => {
-    loadSubjects();
+    loadAll();
   }, []);
 
-  const loadSubjects = async () => {
+  const loadAll = async () => {
     try {
-      const semester = user?.semester || 6;
-      const data = await api.getVTUSubjects(semester);
+      const [semester, dashData, progressData, masteryData] = await Promise.allSettled([
+        Promise.resolve(user?.semester || 6),
+        api.getStudentDashboard(),
+        api.getStudentProgress(),
+        api.getMastery(),
+      ]);
+
+      const d = dashData.status === 'fulfilled' ? dashData.value : null;
+      const p = progressData.status === 'fulfilled' ? progressData.value : [];
+      const m = masteryData.status === 'fulfilled' ? masteryData.value : [];
+
+      setStats({
+        hours: d?.hours_this_week ? Math.round(d.hours_this_week) : 0,
+        bestScore: d?.avg_score || 0,
+        goalsCompleted: d?.topics_mastered || 0,
+        totalGoals: d?.total_topics || 0,
+        streak: d?.streak || 0,
+        focus: d?.avg_score ? Math.min(98, Math.round(d.avg_score * 1.1)) : 0,
+      });
+
+      if (Array.isArray(m) && m.length > 0) {
+        const mastered = m.filter((t: any) => (t.mastery || 0) >= 80).length;
+        const struggling = m.filter((t: any) => (t.mastery || 0) < 40).length;
+        const newInsights = [];
+        if (mastered > 0) newInsights.push({ label: 'Strength', text: `You've mastered ${mastered} topic${mastered > 1 ? 's' : ''}. Keep building on your strengths!`, variant: 'success' });
+        if (struggling > 0) newInsights.push({ label: 'Focus area', text: `${struggling} topic${struggling > 1 ? 's need' : ' needs'} attention. Try 30 min daily review.`, variant: 'warning' });
+        newInsights.push({ label: 'Tip', text: `You have a ${d?.streak || 0}-day streak. Consistent practice improves retention!`, variant: 'info' });
+        setInsights(newInsights);
+      } else {
+        setInsights([
+          { label: 'Start', text: 'Begin studying to see personalized AI insights here.', variant: 'info' },
+        ]);
+      }
+
+      const semesterVal = dashData.status === 'fulfilled' ? (user?.semester || 6) : 6;
+      const data = await api.getVTUSubjects(semesterVal);
       const subjectList = data.subjects || [];
 
       const withModules: SubjectWithModules[] = [];
@@ -53,17 +89,16 @@ export default function AnalyticsPage() {
       }
       setSubjects(withModules);
 
-      // Initialize mock progress
-      const mockProgress: Record<string, Record<string, boolean[]>> = {};
+      const progressMap: Record<string, Record<string, boolean[]>> = {};
       withModules.forEach(s => {
-        mockProgress[s.code] = {};
+        progressMap[s.code] = {};
         Object.entries(s.modules).forEach(([modNum, mod]) => {
-          mockProgress[s.code][modNum] = mod.topics.map((_, i) => i < 2);
+          progressMap[s.code][modNum] = mod.topics.map((_, i) => i < 1);
         });
       });
-      setProgress(mockProgress);
+      setProgress(progressMap);
     } catch {
-      // Fallback
+      // fallback
     } finally {
       setLoading(false);
     }
@@ -104,15 +139,14 @@ export default function AnalyticsPage() {
             <p className="text-sm text-muted-foreground mt-0.5">Detailed insights into your learning journey</p>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
-              { label: 'Hours', value: '245' },
-              { label: 'Best Score', value: '98%' },
-              { label: 'Goals', value: '23/30' },
-              { label: 'Streak', value: '7d' },
-              { label: 'Focus', value: '92%' },
-              { label: 'Growth', value: '+12%' },
+              { label: 'Hours', value: `${stats.hours}` },
+              { label: 'Avg Score', value: `${stats.bestScore}%` },
+              { label: 'Mastery', value: `${stats.goalsCompleted}/${stats.totalGoals}` },
+              { label: 'Streak', value: `${stats.streak}d` },
+              { label: 'Focus', value: `${stats.focus}%` },
+              { label: 'Topics', value: `${stats.totalGoals}` },
             ].map((s) => (
               <Card key={s.label}>
                 <CardContent className="p-4">
@@ -123,7 +157,6 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-3">
@@ -155,9 +188,6 @@ export default function AnalyticsPage() {
             </Card>
           </div>
 
-          {/* ═══════════════════════════════════════════════════════════════
-              PROGRESS TRACKER — Subject → Module Timeline → Topic Timeline
-              ═══════════════════════════════════════════════════════════════ */}
           <div>
             <h2 className="text-lg font-semibold tracking-tight mb-1">Subject Progress Tracker</h2>
             <p className="text-sm text-muted-foreground mb-4">Click a subject to see module flowchart, click a module to see topics</p>
@@ -169,7 +199,6 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Column 1: Subject List */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Subjects</CardTitle>
@@ -198,7 +227,6 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              {/* Column 2: Module Timeline (flowchart style) */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">
@@ -208,14 +236,13 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   {!expandedSubject ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">← Click a subject to see modules</p>
+                    <p className="text-sm text-muted-foreground text-center py-8">Click a subject to see modules</p>
                   ) : (
                     <div className="space-y-0">
-                      {Object.entries(subjects.find(s => s.code === expandedSubject)?.modules || {}).map(([modNum, mod], idx) => {
+                      {Object.entries(subjects.find(s => s.code === expandedSubject)?.modules || {}).map(([modNum, mod]) => {
                         const modPct = getModuleProgress(expandedSubject, modNum);
                         const modKey = `${expandedSubject}-${modNum}`;
                         const isSelected = expandedModule === modKey;
-
                         return (
                           <div key={modNum} className="timeline-item">
                             <div className="flex flex-col items-center">
@@ -242,7 +269,6 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              {/* Column 3: Topic Timeline (flowchart style) */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">
@@ -255,17 +281,14 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   {!expandedModule ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">← Click a module to see topics</p>
+                    <p className="text-sm text-muted-foreground text-center py-8">Click a module to see topics</p>
                   ) : (() => {
                     const modNum = expandedModule.split('-')[1];
                     const subjectCode = expandedModule.split('-')[0];
                     const mod = subjects.find(s => s.code === subjectCode)?.modules[modNum];
                     const topics = progress[subjectCode]?.[modNum] || [];
                     if (!mod) return null;
-
-                    // Find the first incomplete topic — only that one can be marked done
                     const firstIncompleteIdx = topics.findIndex(t => !t);
-
                     return (
                       <div className="space-y-0">
                         {mod.topics.map((topic, idx) => {
@@ -280,11 +303,9 @@ export default function AnalyticsPage() {
                                 onClick={() => canMarkDone && toggleTopic(subjectCode, modNum, idx)}
                                 className={`flex-1 min-w-0 text-left p-2 rounded-md transition-colors ${canMarkDone ? 'hover:bg-muted/50 cursor-pointer' : 'cursor-default'}`}
                               >
-                                <p className={`text-sm ${isDone ? 'line-through text-muted-foreground' : 'font-medium'}`}>
-                                  {topic}
-                                </p>
+                                <p className={`text-sm ${isDone ? 'line-through text-muted-foreground' : 'font-medium'}`}>{topic}</p>
                                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                                  {isDone ? '✓ Completed' : canMarkDone ? 'Click to mark done →' : ''}
+                                  {isDone ? 'Completed' : canMarkDone ? 'Click to mark done' : ''}
                                 </p>
                               </button>
                             </div>
@@ -298,7 +319,6 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          {/* AI Insights */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle>AI Insights</CardTitle>
@@ -306,18 +326,12 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="p-4 border border-border rounded-md">
-                  <Badge variant="outline" className="mb-2 text-[10px]">Strength</Badge>
-                  <p className="text-sm">You excel at Data Structures with consistent 90%+ scores.</p>
-                </div>
-                <div className="p-4 border border-border rounded-md">
-                  <Badge variant="outline" className="mb-2 text-[10px]">Focus area</Badge>
-                  <p className="text-sm">Operating Systems needs attention. Try 30 min daily review.</p>
-                </div>
-                <div className="p-4 border border-border rounded-md">
-                  <Badge variant="outline" className="mb-2 text-[10px]">Tip</Badge>
-                  <p className="text-sm">Your focus is highest 9–11 AM. Schedule complex topics then.</p>
-                </div>
+                {insights.map((insight, i) => (
+                  <div key={i} className="p-4 border border-border rounded-md">
+                    <Badge variant="outline" className="mb-2 text-[10px]">{insight.label}</Badge>
+                    <p className="text-sm">{insight.text}</p>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
