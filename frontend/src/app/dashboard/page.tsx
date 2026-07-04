@@ -49,16 +49,49 @@ export default function StudentDashboard() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const [dash, subs, plan, tests] = await Promise.all([
+        const [dash, subjectList, progressData, plan, tests] = await Promise.all([
           api.getStudentDashboard(),
+          api.getStudentSubjects(),
           api.getStudentProgress(),
           api.getTodayPlan(),
           api.listTests(),
         ]);
         setDashboardData(dash);
-        setSubjects(subs);
+
+        // Aggregate progress by subject
+        const subjectMap: Record<string, { code: string; name: string; totalMastery: number; count: number }> = {};
+        if (Array.isArray(progressData)) {
+          progressData.forEach((p: any) => {
+            const key = p.subject || p.topic;
+            if (!subjectMap[key]) subjectMap[key] = { code: key, name: key, totalMastery: 0, count: 0 };
+            subjectMap[key].totalMastery += (p.mastery || 0);
+            subjectMap[key].count++;
+          });
+        }
+        // Enrich with subject codes from subjects API
+        if (Array.isArray(subjectList)) {
+          subjectList.forEach((s: any) => {
+            if (subjectMap[s.name]) {
+              subjectMap[s.name].code = s.code;
+              subjectMap[s.name].name = s.name;
+            } else {
+              subjectMap[s.name] = { code: s.code, name: s.name, totalMastery: 0, count: 0 };
+            }
+          });
+        }
+        const aggregated = Object.values(subjectMap).map(s => {
+          const avg = s.count > 0 ? Math.round(s.totalMastery / s.count) : 0;
+          return {
+            code: s.code,
+            name: s.name,
+            progress: avg,
+            mastery: avg >= 80 ? 'high' : avg >= 50 ? 'medium' : 'low',
+          };
+        });
+        setSubjects(aggregated);
+
         setTodaySchedule(plan.items || plan.sessions || []);
-        setUpcomingTests(tests.slice(0, 3)); // show first 3
+        setUpcomingTests(tests.slice(0, 3));
       } catch (e) {
         console.error("Failed to fetch dashboard data:", e);
       }
