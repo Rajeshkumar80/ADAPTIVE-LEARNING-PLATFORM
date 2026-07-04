@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 import { Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
 
 interface Message {
@@ -15,7 +16,10 @@ interface Message {
 }
 
 function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const date = new Date(ts);
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 export default function AITutorPage() {
@@ -58,35 +62,19 @@ export default function AITutorPage() {
     setLoading(true);
 
     try {
-      // Build history from last 10 messages for context
-      const history = messages.slice(-10).map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const token = localStorage.getItem('adaptlearn_token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/ai/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ message: query, history }),
-      });
-
-      const data = await res.json();
+      const data = await api.askAI(query);
 
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: data.response || 'Sorry, I could not generate a response.',
+        content: data.response || data.answer || 'Sorry, I could not generate a response.',
         timestamp: Date.now(),
       }]);
     } catch (err) {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: 'Unable to reach the AI service. Make sure the backend is running at localhost:8000.',
+        content: 'AI service is currently unavailable. Please try again later or ask your teacher for help.',
         timestamp: Date.now(),
       }]);
     } finally {
