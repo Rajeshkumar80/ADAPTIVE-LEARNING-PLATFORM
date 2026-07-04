@@ -20,6 +20,8 @@ import {
   Target,
   LogOut,
   ChevronsUpDown,
+  Medal,
+  PenLine,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -51,6 +53,13 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       section: 'Practice',
       items: [
         { icon: GraduationCap, label: 'Tests', href: '/tests' },
+        { icon: Medal, label: 'Leaderboard', href: '/leaderboard' },
+      ],
+    },
+    {
+      section: 'Reflection',
+      items: [
+        { icon: PenLine, label: 'Journal', href: '/journal' },
       ],
     },
     {
