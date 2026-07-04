@@ -50,7 +50,7 @@ export default function PlannerPage() {
           topic: item.topic_name || item.topic || '',
           duration: item.duration || 45,
           activity: item.activity || 'study',
-          status: (item.status || 'pending') as const,
+          status: (item.status || 'pending') as 'completed' | 'active' | 'pending',
         }));
         setSchedule(items.length > 0 ? items : [
           { id: 1, time: '09:00', subject: 'Cloud Computing', topic: 'Review due topics', duration: 60, activity: 'study', status: 'active' },
@@ -131,7 +131,7 @@ export default function PlannerPage() {
           {/* Stat cards row */}
           <div className="flex items-center justify-between">
             <div />
-            <Button onClick={async () => { setLoadingData(true); try { const plan = await api.getTodayPlan(); const items = (plan.items || []).map((item: any, i: number) => ({ id: i + 1, time: item.time || `${9 + i}:00`, subject: item.subject || '', topic: item.topic || '', duration: item.duration || 45, activity: item.activity || 'study', status: 'pending' as const })); setSchedule(items); } catch { /* keep current */ } setLoadingData(false); }} size="sm">
+            <Button onClick={async () => { setLoadingData(true); try { const plan = await api.getTodayPlan(); const items = (plan.items || []).map((item: any, i: number) => ({ id: i + 1, time: item.time || `${9 + i}:00`, subject: item.subject || '', topic: item.topic || '', duration: item.duration || 45, activity: item.activity || 'study', status: 'pending' as 'completed' | 'active' | 'pending' })); setSchedule(items); } catch { /* keep current */ } setLoadingData(false); }} size="sm">
               <Sparkles className="w-3.5 h-3.5 mr-1" /> Generate AI Plan
             </Button>
           </div>

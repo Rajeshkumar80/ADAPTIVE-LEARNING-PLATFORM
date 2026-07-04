@@ -91,7 +91,7 @@ export default function ProfilePage() {
     } catch {
       // Use auth context data as fallback
       setProfile({
-        id: user?.id || 1,
+        id: Number(user?.id) || 1,
         email: user?.email || '',
         username: user?.username || '',
         full_name: user?.full_name || '',
