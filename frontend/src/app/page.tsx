@@ -61,7 +61,7 @@ export default function Home() {
         </p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <Link
-            href="/register"
+            href="/login"
             className="h-10 px-5 inline-flex items-center justify-center gap-1.5 text-sm font-medium bg-foreground text-background hover:bg-foreground/90 rounded-md transition-colors"
           >
             Start learning
@@ -128,7 +128,7 @@ export default function Home() {
         <p className="text-sm text-muted-foreground mb-8">Join thousands of students learning smarter every day.</p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <Link
-            href="/register"
+            href="/login"
             className="h-10 px-5 inline-flex items-center justify-center gap-1.5 text-sm font-medium bg-foreground text-background hover:bg-foreground/90 rounded-md transition-colors"
           >
             Create free account
