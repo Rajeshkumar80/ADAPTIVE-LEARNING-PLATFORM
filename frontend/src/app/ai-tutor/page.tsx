@@ -6,7 +6,7 @@ import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Sparkles, Bot, User, Loader2, RotateCcw } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -25,27 +25,34 @@ function formatTime(ts: number): string {
 export default function AITutorPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [chatHistory, setChatHistory] = useState<{ role: string; content: string }[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       role: 'assistant',
-      content: "Hi! I'm your AI tutor powered by Gemini. Ask me anything about your subjects — DSA, DBMS, OS, Networks, or any programming topic.",
+      content: "Hi! I'm your AI tutor. Ask me anything about your subjects — DSA, DBMS, OS, Networks, or any programming topic. I'm here to help you learn!",
       timestamp: Date.now(),
     },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const suggestions = [
     'Explain DBMS normalization',
     'How does binary search work?',
     'What is process scheduling?',
-    'Explain closures in JavaScript',
     'Difference between TCP and UDP',
+    'Explain sorting algorithms',
+    'What is a binary search tree?',
   ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleSend = async (text?: string) => {
     const query = (text || message).trim();
@@ -61,25 +68,50 @@ export default function AITutorPage() {
     setMessage('');
     setLoading(true);
 
+    const newHistory = [...chatHistory, { role: 'user', content: query }];
+    setChatHistory(newHistory);
+
     try {
-      const data = await api.askAI(query);
+      let response: string;
+
+      try {
+        const data = await api.chatAI(query, newHistory);
+        response = data.response || data.answer || 'I could not generate a response. Please try again.';
+      } catch {
+        const data = await api.askAI(query);
+        response = data.response || data.answer || 'I could not generate a response. Please try again.';
+      }
+
+      setChatHistory(prev => [...prev, { role: 'assistant', content: response }]);
 
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: data.response || data.answer || 'Sorry, I could not generate a response.',
+        content: response,
         timestamp: Date.now(),
       }]);
     } catch (err) {
+      const errorMsg = 'Sorry, I encountered an error. Please try again or ask your teacher for help.';
+      setChatHistory(prev => [...prev, { role: 'assistant', content: errorMsg }]);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: 'AI service is currently unavailable. Please try again later or ask your teacher for help.',
+        content: errorMsg,
         timestamp: Date.now(),
       }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClear = () => {
+    setMessages([{
+      id: Date.now(),
+      role: 'assistant',
+      content: "Chat cleared. How can I help you today?",
+      timestamp: Date.now(),
+    }]);
+    setChatHistory([]);
   };
 
   return (
@@ -90,7 +122,7 @@ export default function AITutorPage() {
         <main className="flex-1 overflow-hidden p-6">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full max-w-7xl mx-auto">
             {/* Sidebar */}
-            <div className="space-y-3">
+            <div className="space-y-3 hidden lg:block">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Start</p>
                 <div className="space-y-1">
@@ -106,18 +138,41 @@ export default function AITutorPage() {
                   ))}
                 </div>
               </div>
+              <Button variant="outline" size="sm" className="w-full" onClick={handleClear} disabled={loading}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Clear Chat
+              </Button>
             </div>
 
             {/* Chat */}
             <Card className="lg:col-span-3 flex flex-col overflow-hidden">
-              <div className="border-b border-border px-5 py-3 flex items-center gap-3">
-                <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-background" />
+              <div className="border-b border-border px-5 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-background" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">AI Tutor</p>
+                    <p className="text-xs text-muted-foreground">Always here to help</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">AI Tutor</p>
-                  <p className="text-xs text-muted-foreground">Powered by Gemini · Always here to help</p>
-                </div>
+                <Button variant="ghost" size="sm" onClick={handleClear} disabled={loading} className="lg:hidden">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+
+              {/* Mobile suggestions - shown on small screens */}
+              <div className="lg:hidden border-b border-border px-4 py-2 flex gap-2 overflow-x-auto">
+                {suggestions.slice(0, 3).map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(s)}
+                    disabled={loading}
+                    className="shrink-0 text-xs px-2.5 py-1.5 border border-border rounded-full hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
 
               <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
@@ -156,10 +211,11 @@ export default function AITutorPage() {
               <div className="border-t border-border p-3">
                 <div className="flex gap-2">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                     placeholder="Ask anything..."
                     disabled={loading}
                     className="flex-1 h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors disabled:opacity-50"

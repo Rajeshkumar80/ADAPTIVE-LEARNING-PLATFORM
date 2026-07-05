@@ -23,14 +23,66 @@ const AI_RESPONSES: Record<string, string> = {
   'testing': 'Software testing types: Unit (individual components), Integration (combined components), System (complete system), Acceptance (user validation). Methods: Black-box (specification-based), White-box (code-based). TDD: Test-Driven Development writes tests before code.',
   'scheduling': 'Process scheduling algorithms: FCFS (First Come First Served), SJF (Shortest Job First), Round Robin (time quantum), Priority Scheduling, Multilevel Queue. Metrics: throughput, turnaround time, waiting time, response time.',
   'memory': 'Memory management techniques: Paging (fixed-size blocks), Segmentation (variable-size blocks), Virtual Memory (disk as extension of RAM). Page replacement: FIFO, LRU (Least Recently Used), Optimal. Thrashing: excessive paging degrades performance.',
+  'linked list': 'A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a pointer to the next node. Types: singly linked, doubly linked, circular. Operations: insertion, deletion, traversal. Time: O(n) for search, O(1) for insert/delete at head.',
+  'stack': 'A stack is a LIFO (Last In First Out) data structure. Operations: push (add to top), pop (remove from top), peek (view top), isEmpty. Applications: function call management, expression evaluation, undo operations, bracket matching. Implementation: array or linked list.',
+  'queue': 'A queue is a FIFO (First In First Out) data structure. Operations: enqueue (add to rear), dequeue (remove from front), peek (view front). Types: simple queue, circular queue, priority queue, deque. Applications: BFS, task scheduling, print spooling.',
+  'os': 'Operating System manages hardware and software resources. Key functions: process management, memory management, file system management, I/O management, security. Types: batch, time-sharing, real-time, distributed. Concepts: deadlock, thrashing, context switching.',
+  'database': 'A database is an organized collection of data. Relational databases use SQL (Structured Query Language). Key concepts: tables, rows, columns, primary keys, foreign keys, indexes. ACID properties: Atomicity, Consistency, Isolation, Durability.',
+  'sql': 'SQL (Structured Query Language) is used to manage relational databases. Commands: DDL (CREATE, ALTER, DROP), DML (SELECT, INSERT, UPDATE, DELETE), DCL (GRANT, REVOKE), TCL (COMMIT, ROLLBACK). Joins: INNER, LEFT, RIGHT, FULL, CROSS.',
+  'java': 'Java is an object-oriented, platform-independent language. Key features: Write Once Run Anywhere (WORA), garbage collection, strong typing. Concepts: classes, objects, inheritance, polymorphism, encapsulation, abstraction. JDK, JRE, JVM.',
+  'python': 'Python is a high-level, interpreted language known for simplicity. Features: dynamic typing, extensive libraries, readability. Used in: web development, data science, AI/ML, automation, scripting. Libraries: NumPy, Pandas, Django, Flask, TensorFlow.',
+  'javascript': 'JavaScript is a high-level, dynamic language for web development. Features: event-driven, functional, prototype-based. Runs in browser and server (Node.js). ES6+ features: arrow functions, promises, async/await, destructuring, modules.',
+  'c++': 'C++ is a high-performance language combining procedural and object-oriented paradigms. Features: manual memory management, templates, RAII, STL (Standard Template Library). Used in: system programming, game development, competitive programming.',
+  'algorithm': 'An algorithm is a step-by-step procedure for solving a problem. Key properties: finite, definite, effective. Analysis: time complexity (Big O), space complexity. Common paradigms: divide and conquer, dynamic programming, greedy, backtracking.',
+  'recursion': 'Recursion is when a function calls itself to solve a problem. Components: base case (termination condition) and recursive case. Examples: factorial, Fibonacci, tree traversal, divide and conquer algorithms. Can be converted to iteration using stack.',
+  'string': 'A string is a sequence of characters. Operations: concatenation, substring, search, replace, reverse. Algorithms: KMP (pattern matching), Rabin-Karp, Boyer-Moore. Strings can be mutable (C) or immutable (Java, Python).',
+  'pointer': 'A pointer is a variable that stores the memory address of another variable. Used for: dynamic memory allocation, passing data by reference, data structures (linked lists, trees). Dangerous if misused: dangling pointers, memory leaks, null pointer dereference.',
+  'inheritance': 'Inheritance is an OOP concept where a class derives properties from a parent class. Types: single, multiple, multilevel, hierarchical, hybrid. Benefits: code reuse, polymorphism, hierarchical classification. Keyword: extends (Java), class Derived: public Base (C++).',
+  'polymorphism': 'Polymorphism allows objects of different types to be treated as objects of a common parent type. Types: compile-time (overloading), runtime (overriding). Benefits: flexibility, extensibility, interface reusability. Key mechanism: virtual functions in C++.',
+  'abstraction': 'Abstraction hides implementation details and shows only functionality. Achieved through: abstract classes (can have both abstract and concrete methods) and interfaces (only abstract methods). Benefits: reduced complexity, increased reusability.',
+  'encapsulation': 'Encapsulation bundles data and methods that operate on that data, restricting direct access. Achieved through: access modifiers (private, protected, public), getters/setters. Benefits: data hiding, modularity, flexibility.',
+  'exception handling': 'Exception handling manages runtime errors gracefully. Components: try (risky code), catch (handle exception), finally (cleanup), throw (raise exception), throws (declare exception). Benefits: program flow control, separation of error handling code.',
+  'file system': 'A file system organizes and stores files on storage devices. Types: FAT, NTFS, ext4, HFS+. Operations: create, read, write, delete, rename. Concepts: directories, paths, permissions, inodes, journaling.',
+  'network': 'Computer networking connects devices to share resources. Models: OSI (7 layers), TCP/IP (4 layers). Protocols: HTTP, FTP, SMTP, DNS, DHCP. Topologies: bus, star, ring, mesh. Types: LAN, WAN, MAN, PAN.',
+  'security': 'Computer security protects systems and data from unauthorized access. Principles: CIA (Confidentiality, Integrity, Availability). Methods: encryption, authentication, authorization, firewalls, intrusion detection. Threats: malware, phishing, DDoS.',
+  'compiler': 'A compiler translates source code to machine code in one pass. Phases: lexical analysis, syntax analysis, semantic analysis, intermediate code generation, optimization, code generation. Interpreter executes code line by line.',
+  'debugging': 'Debugging is finding and fixing bugs in code. Techniques: print debugging, breakpoints, step-through, logging, assertions. Tools: IDE debuggers, gdb (C/C++), browser developer tools. Best practices: reproduce the bug, isolate the problem.',
 };
 
 function findBestResponse(query: string): string {
   const lower = query.toLowerCase();
+  
+  // Direct match
   for (const [keyword, response] of Object.entries(AI_RESPONSES)) {
     if (lower.includes(keyword)) return response;
   }
-  return `Great question about "${query}". Here's what I can tell you:\n\nThis is a fundamental concept in computer science. I recommend reviewing your textbook chapters and practice problems. You can also ask me about specific subtopics for more detailed explanations.\n\nTip: Try the practice quizzes on this topic to test your understanding!`;
+  
+  // Check for common question patterns
+  if (lower.includes('what is') || lower.includes('what are') || lower.includes('define')) {
+    return `That's a great question! Let me explain:\n\nBased on your query, I can tell you that this is an important concept in computer science. I recommend:\n\n1. Reviewing your textbook chapters on this topic\n2. Practicing related problems\n3. Using the quiz feature to test your understanding\n\nWould you like me to explain a specific aspect of this topic?`;
+  }
+  
+  if (lower.includes('how') || lower.includes('explain') || lower.includes('describe')) {
+    return `Great question! Let me break this down for you:\n\nThis concept is fundamental to understanding computer science. The key points to remember are:\n\n1. Understand the core principles\n2. Practice with examples\n3. Apply it in real-world scenarios\n\nTry asking about specific subtopics for more detailed explanations!`;
+  }
+  
+  if (lower.includes('difference') || lower.includes('compare') || lower.includes('vs')) {
+    return `Good comparison question! When comparing concepts, consider:\n\n1. Core purpose and use cases\n2. Advantages and disadvantages\n3. Performance characteristics\n4. Real-world applications\n\nAsk me about specific aspects to get detailed comparisons!`;
+  }
+  
+  if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+    return "Hello! I'm your AI tutor. I can help you with:\n\n• Data Structures & Algorithms\n• Database Management Systems\n• Operating Systems\n• Computer Networks\n• Programming (Java, Python, C++, JavaScript)\n\nWhat would you like to learn about today?";
+  }
+  
+  if (lower.includes('thank') || lower.includes('thanks')) {
+    return "You're welcome! Feel free to ask if you have more questions. Happy learning! 📚";
+  }
+  
+  if (lower.includes('help') || lower.includes('can you')) {
+    return "I can help you with:\n\n• Explaining concepts (DSA, DBMS, OS, Networks)\n• Comparing different approaches\n• Providing examples and practice tips\n• Breaking down complex topics\n\nJust ask your question and I'll do my best to help!";
+  }
+  
+  return `I'd be happy to help with that! Here's what I suggest:\n\nThis is an interesting topic. For the best explanation, try asking me about:\n\n• The specific concept or definition\n• How it works step by step\n• Examples and use cases\n• How it compares to similar concepts\n\nWhat specific aspect would you like me to explain?`;
 }
 
 // GET /api/ai/status

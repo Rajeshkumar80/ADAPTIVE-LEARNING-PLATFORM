@@ -248,6 +248,13 @@ class APIClient {
     });
   }
 
+  async chatAI(message: string, history?: { role: string; content: string }[]) {
+    return this.request('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, history }),
+    });
+  }
+
   // ============= Planner =============
   async getTodayPlan() {
     return this.request('/api/planner/today');
