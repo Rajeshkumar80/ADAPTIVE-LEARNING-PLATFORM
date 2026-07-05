@@ -56,7 +56,7 @@ async function callOpenRouterWithRetry(message: string, history?: { role: string
           break;
         }
 
-        const data = await resp.json();
+        const data: any = await resp.json();
         const text = data.choices?.[0]?.message?.content;
         if (text) return { text, source: 'openrouter' };
       } catch (err: any) {

@@ -35,6 +35,7 @@ export default function StudentDashboard() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
   const [upcomingTests, setUpcomingTests] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -49,14 +50,16 @@ export default function StudentDashboard() {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const [dash, subjectList, progressData, plan, tests] = await Promise.all([
+        const [dash, subjectList, progressData, plan, tests, activityHist] = await Promise.all([
           api.getStudentDashboard(),
           api.getStudentSubjects(),
           api.getStudentProgress(),
           api.getTodayPlan(),
           api.listTests(),
+          api.getActivityHistory().catch(() => null),
         ]);
         setDashboardData(dash);
+        if (activityHist) setChartData(activityHist);
 
         // Aggregate progress by subject
         const subjectMap: Record<string, { code: string; name: string; totalMastery: number; count: number }> = {};
@@ -240,7 +243,7 @@ export default function StudentDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ActivityChart />
+                <ActivityChart data={chartData?.weekly_activity} />
               </CardContent>
             </Card>
 
@@ -250,7 +253,7 @@ export default function StudentDashboard() {
                 <p className="text-xs text-muted-foreground mt-0.5">Your strengths by subject</p>
               </CardHeader>
               <CardContent>
-                <SubjectMasteryRadar />
+                <SubjectMasteryRadar data={chartData?.subject_performance?.map((s: any) => ({ subject: s.subject, mastery: s.score, classAvg: Math.max(50, s.score - 10) }))} />
               </CardContent>
             </Card>
           </div>

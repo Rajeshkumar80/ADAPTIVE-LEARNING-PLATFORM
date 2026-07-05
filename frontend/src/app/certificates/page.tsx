@@ -78,7 +78,10 @@ export default function CertificatesPage() {
               <h3 className="text-xl font-semibold tracking-tight mb-2">{user?.full_name}</h3>
               <p className="text-sm text-muted-foreground mb-1">for completing <span className="font-medium text-foreground">{selected.subject}</span></p>
               <p className="text-sm text-muted-foreground mb-6">with a score of <span className="font-semibold text-foreground">{selected.score}%</span></p>
-              <Button onClick={() => setSelected(null)} className="w-full">Close</Button>
+              <div className="flex gap-2">
+                <Button onClick={() => { api.downloadCertificate(selected.id).catch(() => {}); }} variant="outline" className="flex-1"><Download className="w-4 h-4 mr-2" /> Download</Button>
+                <Button onClick={() => setSelected(null)} className="flex-1">Close</Button>
+              </div>
             </div>
           </div>
         </div>

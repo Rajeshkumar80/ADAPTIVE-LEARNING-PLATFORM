@@ -120,6 +120,10 @@ class APIClient {
     return this.request('/api/student/progress');
   }
 
+  async getActivityHistory() {
+    return this.request('/api/student/activity-history');
+  }
+
   // ============= Admin =============
   async getAdminDashboard() {
     return this.request('/api/admin/dashboard');
@@ -443,6 +447,38 @@ class APIClient {
 
   async getReportEngagement() {
     return this.request('/api/admin/reports/engagement');
+  }
+
+  async exportReport(type: 'performance' | 'tests' | 'engagement') {
+    const headers: Record<string, string> = {};
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+    const response = await fetch(`${this.baseURL}/api/admin/reports/export/${type}`, { headers });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}-report.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  async downloadCertificate(certId: number) {
+    const headers: Record<string, string> = {};
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+    const response = await fetch(`${this.baseURL}/api/student/certificates/${certId}/download`, { headers });
+    if (!response.ok) throw new Error('Download failed');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `certificate-${certId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 }
 

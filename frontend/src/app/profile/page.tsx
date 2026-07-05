@@ -82,7 +82,7 @@ export default function ProfilePage() {
         subjects: Array.isArray(s) ? s : [],
         stats: {
           total_study_hours: d?.hours_this_week ? Math.round(d.hours_this_week * 10) : 0,
-          tests_taken: d?.avg_score !== undefined ? Math.round(d.avg_score) : 0,
+          tests_taken: d?.topics_mastered || 0,
           avg_score: d?.avg_score || 0,
           certificates: Array.isArray(certs) ? certs.length : 0,
           achievements: Array.isArray(ach) ? ach.length : 0,

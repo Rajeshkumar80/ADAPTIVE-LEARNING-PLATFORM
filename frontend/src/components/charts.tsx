@@ -42,8 +42,8 @@ const axisStyle = {
 };
 
 // ===== Student Engagement Chart (replaces stock-like activity) =====
-export function ActivityChart() {
-  const data = [
+export function ActivityChart({ data: propData }: { data?: { week: string; studyHours: number; aiQueries: number; testsTaken: number }[] }) {
+  const data = propData || [
     { week: 'W1', studyHours: 28, aiQueries: 12, testsTaken: 3 },
     { week: 'W2', studyHours: 32, aiQueries: 18, testsTaken: 4 },
     { week: 'W3', studyHours: 35, aiQueries: 22, testsTaken: 5 },
@@ -84,8 +84,8 @@ export function ActivityChart() {
 }
 
 // ===== Subject Mastery Radar (NEW for AI education) =====
-export function SubjectMasteryRadar() {
-  const data = [
+export function SubjectMasteryRadar({ data: propData }: { data?: { subject: string; mastery: number; classAvg: number }[] }) {
+  const data = propData || [
     { subject: 'DSA', mastery: 85, classAvg: 75 },
     { subject: 'DBMS', mastery: 92, classAvg: 78 },
     { subject: 'OS', mastery: 78, classAvg: 72 },
@@ -110,8 +110,8 @@ export function SubjectMasteryRadar() {
 }
 
 // ===== Performance Distribution (replaces stock bars) =====
-export function PerformanceChart() {
-  const data = [
+export function PerformanceChart({ data: propData }: { data?: { subject: string; score: number }[] }) {
+  const data = propData || [
     { subject: 'DSA', score: 85 },
     { subject: 'DBMS', score: 92 },
     { subject: 'OS', score: 78 },
@@ -168,8 +168,8 @@ export function GradeDistribution() {
 }
 
 // ===== Test Score Trend =====
-export function TestTrendsChart() {
-  const data = [
+export function TestTrendsChart({ data: propData }: { data?: { month: string; score: number }[] }) {
+  const data = propData || [
     { month: 'Jan', score: 72 },
     { month: 'Feb', score: 75 },
     { month: 'Mar', score: 78 },
@@ -199,8 +199,8 @@ export function TestTrendsChart() {
 }
 
 // ===== Topic Distribution =====
-export function SubjectDistribution() {
-  const data = [
+export function SubjectDistribution({ data: propData }: { data?: { name: string; value: number; hours: string }[] }) {
+  const data = propData || [
     { name: 'DSA', value: 25, hours: '62h' },
     { name: 'DBMS', value: 20, hours: '50h' },
     { name: 'OS', value: 18, hours: '45h' },

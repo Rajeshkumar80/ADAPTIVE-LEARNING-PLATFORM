@@ -112,10 +112,22 @@ router.get('/dashboard', authenticate, async (req: AuthRequest, res: Response) =
       sub.avgMastery = sub.topics.reduce((s, t) => s + t.mastery, 0) / (sub.topics.length || 1);
     }
 
+    // Calculate proper streak
+    const now = new Date();
+    let streak = 0;
+    for (let i = 0; i < 365; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dayStr = date.toISOString().split('T')[0];
+      const hasSession = sessions.some(s => s.startedAt.toISOString().startsWith(dayStr));
+      if (hasSession) streak++;
+      else if (i > 0) break;
+    }
+
     return res.json({
       user: { name: user?.fullName, semester: user?.semester },
       semester: user?.semester || 6,
-      streak_days: sessions.length > 0 ? 1 : 0,
+      streak_days: streak,
       total_study_hours: Math.round(sessions.reduce((s, ss) => s + ss.durationMinutes, 0) / 60 * 10) / 10,
       tests_taken: attempts.length,
       subjects: Array.from(subjectMap.values()),

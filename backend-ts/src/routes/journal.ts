@@ -86,4 +86,20 @@ router.get('/stats/summary', authenticate, async (req: AuthRequest, res: Respons
   }
 });
 
+// GET /api/journal/:id
+router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id));
+    const entry = await prisma.journalEntry.findUnique({ where: { id } });
+    if (!entry || entry.userId !== req.user!.id) return res.status(404).json({ detail: 'Not found' });
+    return res.json({
+      id: entry.id, title: entry.title, content: entry.content, mood: entry.mood,
+      tags: JSON.parse(entry.tags || '[]'), starred: entry.starred,
+      created_at: entry.createdAt, updated_at: entry.updatedAt,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
 export default router;

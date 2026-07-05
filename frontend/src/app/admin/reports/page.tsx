@@ -86,7 +86,10 @@ export default function AdminReportsPage() {
           {!loading && performance && activeReport === 'performance' && (
             <Card>
               <CardContent className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Student Performance Report</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Student Performance Report</h2>
+                  <Button size="sm" variant="outline" onClick={() => api.exportReport('performance')}><Download className="w-3.5 h-3.5 mr-1" /> CSV</Button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-muted rounded-md">
                     <p className="text-2xl font-bold">{performance.total_students}</p>
@@ -129,7 +132,10 @@ export default function AdminReportsPage() {
           {!loading && testReport && activeReport === 'tests' && (
             <Card>
               <CardContent className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" /> Test Analytics</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" /> Test Analytics</h2>
+                  <Button size="sm" variant="outline" onClick={() => api.exportReport('tests')}><Download className="w-3.5 h-3.5 mr-1" /> CSV</Button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-muted rounded-md">
                     <p className="text-2xl font-bold">{testReport.total_tests}</p>
@@ -160,7 +166,10 @@ export default function AdminReportsPage() {
           {!loading && engagement && activeReport === 'engagement' && (
             <Card>
               <CardContent className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2"><Users className="w-5 h-5" /> Student Engagement</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold flex items-center gap-2"><Users className="w-5 h-5" /> Student Engagement</h2>
+                  <Button size="sm" variant="outline" onClick={() => api.exportReport('engagement')}><Download className="w-3.5 h-3.5 mr-1" /> CSV</Button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-muted rounded-md">
                     <p className="text-2xl font-bold">{engagement.active_students}</p>

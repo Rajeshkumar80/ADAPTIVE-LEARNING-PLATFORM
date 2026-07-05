@@ -125,6 +125,47 @@ router.delete('/students/:usn', requireAdmin, async (req: AuthRequest, res: Resp
   }
 });
 
+// POST /api/admin/students/import (bulk JSON import)
+router.post('/students/import', requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const students = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ detail: 'Expected array of students' });
+    }
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+    for (const s of students) {
+      try {
+        const usn = s.usn || s.USN;
+        const email = s.email || s.Email || `${usn}@gcem.edu`;
+        const fullName = s.full_name || s.Full_Name || s.name || '';
+        const semester = s.semester || 6;
+        const branch = s.branch || s.Branch || 'Computer Science';
+        const section = s.section || s.Section || 'A';
+        const cgpa = s.cgpa || s.CGPA || 0;
+        if (!usn) { skipped++; errors.push(`Missing USN`); continue; }
+        const existing = await prisma.user.findFirst({ where: { OR: [{ usn }, { email }] } });
+        if (existing) { skipped++; continue; }
+        await prisma.user.create({
+          data: {
+            email, username: usn.toLowerCase(), hashedPassword: hashPassword('student123'),
+            fullName, role: 'student', usn, semester: Number(semester), branch,
+            section: String(section), cgpa: Number(cgpa),
+          },
+        });
+        imported++;
+      } catch (e: any) {
+        skipped++;
+        errors.push(e.message);
+      }
+    }
+    return res.json({ imported, skipped, total: students.length, errors: errors.slice(0, 10) });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
 // GET /api/admin/analytics
 router.get('/analytics', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
@@ -213,7 +254,7 @@ router.get('/reports/performance', requireAdmin, async (_req: AuthRequest, res: 
 // GET /api/admin/reports/tests
 router.get('/reports/tests', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const tests = await prisma.test.findMany({ orderBy: { createdAt: 'desc' } });
+    const tests = await prisma.test.findMany({ orderBy: { createdAt: 'desc' }, include: { subject: true } });
     const attempts = await prisma.testAttempt.findMany({ where: { isCompleted: true } });
 
     const testStats = tests.map(t => {
@@ -225,7 +266,7 @@ router.get('/reports/tests', requireAdmin, async (_req: AuthRequest, res: Respon
         ? (testAttempts.filter(a => a.score >= (t.passingMarks / t.totalMarks * 100)).length / testAttempts.length) * 100
         : 0;
       return {
-        id: t.id, title: t.title, subject: t.subject,
+        id: t.id, title: t.title, subject: t.subject?.name || 'N/A',
         total_marks: t.totalMarks, passing_marks: t.passingMarks,
         attempts: testAttempts.length,
         avg_score: Math.round(avgScore * 10) / 10,
@@ -274,6 +315,51 @@ router.get('/reports/engagement', requireAdmin, async (_req: AuthRequest, res: R
       total_events: events.length,
       students: engagementStats,
     });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
+// GET /api/admin/reports/export/:type (CSV export)
+router.get('/reports/export/:type', requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { type } = req.params;
+    let csv = '';
+    if (type === 'performance') {
+      const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { usn: 'asc' } });
+      const attempts = await prisma.testAttempt.findMany({ where: { isCompleted: true } });
+      csv = 'USN,Name,Semester,Section,CGPA,Tests Taken,Avg Score\n';
+      for (const s of students) {
+        const sa = attempts.filter(a => a.userId === s.id);
+        const avg = sa.length > 0 ? (sa.reduce((sum, a) => sum + a.score, 0) / sa.length).toFixed(1) : '0';
+        csv += `${s.usn},"${s.fullName}",${s.semester},${s.section},${s.cgpa},${sa.length},${avg}\n`;
+      }
+    } else if (type === 'engagement') {
+      const students = await prisma.user.findMany({ where: { role: 'student' } });
+      const sessions = await prisma.studySession.findMany();
+      csv = 'USN,Name,Total Hours,Sessions\n';
+      for (const s of students) {
+        const ss = sessions.filter(sess => sess.userId === s.id);
+        const hours = (ss.reduce((sum, sess) => sum + sess.durationMinutes, 0) / 60).toFixed(1);
+        csv += `${s.usn},"${s.fullName}",${hours},${ss.length}\n`;
+      }
+    } else if (type === 'tests') {
+      const tests = await prisma.test.findMany();
+      const attempts = await prisma.testAttempt.findMany({ where: { isCompleted: true } });
+      csv = 'ID,Title,Total Marks,Passing Marks,Attempts,Avg Score,Pass Rate\n';
+      for (const t of tests) {
+        const ta = attempts.filter(a => a.testId === t.id);
+        const avg = ta.length > 0 ? (ta.reduce((sum, a) => sum + a.score, 0) / ta.length).toFixed(1) : '0';
+        const passRate = ta.length > 0 ? ((ta.filter(a => a.score >= (t.passingMarks / t.totalMarks * 100)).length / ta.length) * 100).toFixed(1) : '0';
+        csv += `${t.id},"${t.title}",${t.totalMarks},${t.passingMarks},${ta.length},${avg},${passRate}\n`;
+      }
+    } else {
+      return res.status(400).json({ detail: 'Invalid export type. Use: performance, engagement, tests' });
+    }
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${type}-report.csv"`);
+    return res.send(csv);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }

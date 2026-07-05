@@ -1,18 +1,22 @@
 import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
+import { getCached, setCache } from '../cache';
 
 const router = Router();
 
 // GET /api/tests/
 router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
   try {
+    const cached = getCached('tests:list');
+    if (cached) return res.json(cached);
+
     const tests = await prisma.test.findMany({
       where: { isActive: true },
       include: { subject: true, _count: { select: { questions: true, attempts: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    return res.json(tests.map(t => ({
+    const result = tests.map(t => ({
       id: t.id, title: t.title, description: t.description, type: t.type,
       difficulty: t.difficulty, duration_minutes: t.durationMinutes,
       total_marks: t.totalMarks, passing_marks: t.passingMarks,
@@ -20,7 +24,9 @@ router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
       question_count: t._count.questions, attempt_count: t._count.attempts,
       is_active: t.isActive, anti_cheat_enabled: t.antiCheatEnabled,
       starts_at: t.startsAt, ends_at: t.endsAt, created_at: t.createdAt,
-    })));
+    }));
+    setCache('tests:list', result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -55,6 +61,7 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
       }
     }
 
+    setCache('tests:list', null, 0);
     return res.json({ id: test.id, title: test.title, message: 'Test created' });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -67,6 +74,28 @@ router.post('/:id/start', authenticate, async (req: AuthRequest, res: Response) 
     const testId = parseInt(String(req.params.id));
     const test = await prisma.test.findUnique({ where: { id: testId }, include: { questions: true } });
     if (!test) return res.status(404).json({ detail: 'Test not found' });
+
+    // Check time window
+    const now = new Date();
+    if (test.startsAt && now < test.startsAt) return res.status(400).json({ detail: 'Test has not started yet' });
+    if (test.endsAt && now > test.endsAt) return res.status(400).json({ detail: 'Test has ended' });
+
+    // Check for existing incomplete attempt
+    const existingAttempt = await prisma.testAttempt.findFirst({
+      where: { userId: req.user!.id, testId, isCompleted: false },
+    });
+    if (existingAttempt) {
+      // Resume existing attempt
+      const questions = test.questions.map(q => ({
+        id: q.id, question_text: q.questionText, question_type: q.questionType,
+        options: JSON.parse(q.options || '[]'), marks: q.marks, difficulty: q.difficulty,
+      }));
+      return res.json({
+        attempt_id: existingAttempt.id, resume: true,
+        test: { id: test.id, title: test.title, duration_minutes: test.durationMinutes, total_marks: test.totalMarks },
+        questions,
+      });
+    }
 
     const attempt = await prisma.testAttempt.create({
       data: { userId: req.user!.id, testId },
@@ -96,6 +125,7 @@ router.post('/:attemptId/submit', authenticate, async (req: AuthRequest, res: Re
     const attempt = await prisma.testAttempt.findUnique({ where: { id: attemptId }, include: { test: { include: { questions: true } } } });
     if (!attempt) return res.status(404).json({ detail: 'Attempt not found' });
     if (attempt.userId !== req.user!.id) return res.status(403).json({ detail: 'Not your attempt' });
+    if (attempt.isCompleted) return res.status(400).json({ detail: 'Attempt already submitted' });
 
     // Grade
     let score = 0;
@@ -119,6 +149,57 @@ router.post('/:attemptId/submit', authenticate, async (req: AuthRequest, res: Re
     });
 
     return res.json({ score: updated.score, total_marks: totalMarks, percentage: Math.round(percentage * 10) / 10, passed: percentage >= (attempt.test.passingMarks / attempt.test.totalMarks * 100) });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
+// GET /api/tests/:id
+router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const testId = parseInt(String(req.params.id));
+    const test = await prisma.test.findUnique({
+      where: { id: testId },
+      include: { subject: true, questions: true, _count: { select: { attempts: true } } },
+    });
+    if (!test) return res.status(404).json({ detail: 'Test not found' });
+    return res.json({
+      id: test.id, title: test.title, description: test.description, type: test.type,
+      difficulty: test.difficulty, duration_minutes: test.durationMinutes,
+      total_marks: test.totalMarks, passing_marks: test.passingMarks,
+      subject: test.subject ? { code: test.subject.code, name: test.subject.name } : null,
+      question_count: test.questions.length, attempt_count: test._count.attempts,
+      is_active: test.isActive, anti_cheat_enabled: test.antiCheatEnabled,
+      starts_at: test.startsAt, ends_at: test.endsAt, created_at: test.createdAt,
+      questions: test.questions.map(q => ({
+        id: q.id, question_text: q.questionText, question_type: q.questionType,
+        options: JSON.parse(q.options || '[]'), correct_answer: q.correctAnswer,
+        marks: q.marks, difficulty: q.difficulty,
+      })),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
+// POST /api/tests/:attemptId/violation
+router.post('/:attemptId/violation', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const attemptId = parseInt(String(req.params.attemptId));
+    const { severity, violation } = req.body;
+    const attempt = await prisma.testAttempt.findUnique({ where: { id: attemptId } });
+    if (!attempt) return res.status(404).json({ detail: 'Attempt not found' });
+
+    const flag = await prisma.antiCheatFlag.create({
+      data: {
+        userId: req.user!.id,
+        testAttemptId: attemptId,
+        severity: severity || 'low',
+        violation: violation || 'unknown',
+        count: 1,
+      },
+    });
+    return res.json({ id: flag.id, message: 'Violation recorded' });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }

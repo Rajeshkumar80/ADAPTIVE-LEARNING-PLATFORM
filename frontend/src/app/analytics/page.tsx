@@ -31,6 +31,7 @@ export default function AnalyticsPage() {
   const [progress, setProgress] = useState<Record<string, Record<string, boolean[]>>>({});
   const [stats, setStats] = useState({ hours: 0, bestScore: 0, goalsCompleted: 0, totalGoals: 0, streak: 0, focus: 0 });
   const [insights, setInsights] = useState<{ label: string; text: string; variant: string }[]>([]);
+  const [chartData, setChartData] = useState<any>({});
 
   useEffect(() => {
     loadAll();
@@ -38,16 +39,18 @@ export default function AnalyticsPage() {
 
   const loadAll = async () => {
     try {
-      const [semester, dashData, progressData, masteryData] = await Promise.allSettled([
+      const [semester, dashData, progressData, masteryData, activityData] = await Promise.allSettled([
         Promise.resolve(user?.semester || 6),
         api.getStudentDashboard(),
         api.getStudentProgress(),
         api.getMastery(),
+        api.getActivityHistory(),
       ]);
 
       const d = dashData.status === 'fulfilled' ? dashData.value : null;
       const p = progressData.status === 'fulfilled' ? progressData.value : [];
       const m = masteryData.status === 'fulfilled' ? masteryData.value : [];
+      const a = activityData.status === 'fulfilled' ? activityData.value : null;
 
       setStats({
         hours: d?.hours_this_week ? Math.round(d.hours_this_week) : 0,
@@ -97,6 +100,16 @@ export default function AnalyticsPage() {
         });
       });
       setProgress(progressMap);
+
+      // Set chart data from activity history
+      if (a) {
+        setChartData({
+          weekly_activity: a.weekly_activity || [],
+          subject_performance: a.subject_performance || [],
+          test_trends: a.test_trends || [],
+          subject_distribution: a.subject_distribution || [],
+        });
+      }
     } catch {
       // fallback
     } finally {
@@ -163,28 +176,28 @@ export default function AnalyticsPage() {
                 <CardTitle>Study Activity</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">Daily engagement over time</p>
               </CardHeader>
-              <CardContent><ActivityChart /></CardContent>
+              <CardContent><ActivityChart data={chartData.weekly_activity} /></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Subject Performance</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">Average scores by subject</p>
               </CardHeader>
-              <CardContent><PerformanceChart /></CardContent>
+              <CardContent><PerformanceChart data={chartData.subject_performance} /></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Test Trends</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">6-month progression</p>
               </CardHeader>
-              <CardContent><TestTrendsChart /></CardContent>
+              <CardContent><TestTrendsChart data={chartData.test_trends} /></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Time Distribution</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">Hours per subject</p>
               </CardHeader>
-              <CardContent><SubjectDistribution /></CardContent>
+              <CardContent><SubjectDistribution data={chartData.subject_distribution} /></CardContent>
             </Card>
           </div>
 

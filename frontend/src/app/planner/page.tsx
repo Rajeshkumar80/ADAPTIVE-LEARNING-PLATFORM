@@ -34,14 +34,16 @@ export default function PlannerPage() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [upcomingTests, setUpcomingTests] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
     const loadPlan = async () => {
       try {
-        const [planData, goalsData] = await Promise.all([
+        const [planData, goalsData, testsData] = await Promise.all([
           api.getTodayPlan().catch(() => ({ items: [] })),
           api.getGoals().catch(() => []),
+          api.getUpcomingTests().catch(() => []),
         ]);
         const items = (planData.items || planData.today_plan || []).map((item: any, i: number) => ({
           id: i + 1,
@@ -58,6 +60,7 @@ export default function PlannerPage() {
         setGoals((goalsData || []).map((g: any, i: number) => ({
           id: g.id || i + 1, title: g.title, progress: g.progress || 0, deadline: g.deadline || '',
         })));
+        setUpcomingTests(testsData || []);
       } catch { /* use defaults */ }
       setLoadingData(false);
     };
@@ -292,9 +295,21 @@ export default function PlannerPage() {
                   ))}
                 </div>
 
-                {/* Event cards for selected day */}
+                {/* Event cards for selected day — show upcoming tests or placeholder */}
                 <div className="space-y-2 mt-4">
-                  {selectedEvents.length === 0 ? (
+                  {upcomingTests.length > 0 ? (
+                    upcomingTests.slice(0, 4).map((test: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 transition-all hover:scale-[1.01]">
+                        <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{test.title}</p>
+                          <p className="text-xs text-muted-foreground">{test.subject || ''} · {test.duration_minutes || 60} min</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : selectedEvents.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No events for this day</p>
                   ) : (
                     selectedEvents.map((event, i) => (
