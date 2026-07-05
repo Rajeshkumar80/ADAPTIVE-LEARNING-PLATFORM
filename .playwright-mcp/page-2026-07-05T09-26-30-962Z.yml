@@ -1,0 +1,30 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "A AdaptLearn" [ref=e6] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e7]: A
+      - text: AdaptLearn
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - heading "Welcome back" [level=1] [ref=e11]
+        - paragraph [ref=e12]: Choose your role to continue
+      - generic [ref=e13]:
+        - button "Student Access courses, take tests, and earn certificates. Continue" [ref=e14]:
+          - img [ref=e16]
+          - heading "Student" [level=3] [ref=e19]
+          - paragraph [ref=e20]: Access courses, take tests, and earn certificates.
+          - generic [ref=e21]:
+            - text: Continue
+            - img [ref=e22]
+        - button "Teacher Manage classes, create tests, and track student progress. Continue" [ref=e24]:
+          - img [ref=e26]
+          - heading "Teacher" [level=3] [ref=e28]
+          - paragraph [ref=e29]: Manage classes, create tests, and track student progress.
+          - generic [ref=e30]:
+            - text: Continue
+            - img [ref=e31]
+      - paragraph [ref=e33]:
+        - text: New here?
+        - link "Create account" [ref=e34] [cursor=pointer]:
+          - /url: /register

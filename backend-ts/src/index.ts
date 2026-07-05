@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
+dotenv.config({ path: resolve(__dirname, '../.env') });
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
