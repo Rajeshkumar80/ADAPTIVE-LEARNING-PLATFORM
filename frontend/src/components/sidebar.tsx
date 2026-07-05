@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   BookOpen,
@@ -22,6 +23,8 @@ import {
   ChevronsUpDown,
   Medal,
   PenLine,
+  Menu,
+  X,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,6 +34,11 @@ interface SidebarProps {
 export function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const studentMenu = [
     {
@@ -112,7 +120,26 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
   const menuSections = isAdmin ? adminMenu : studentMenu;
 
   return (
-    <aside className="w-60 h-screen border-r border-border bg-background flex flex-col sticky top-0 shrink-0" suppressHydrationWarning>
+    <>
+      {/* Mobile hamburger - only visible on small screens */}
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="fixed top-3 left-3 z-50 md:hidden p-2 bg-background border border-border rounded-md shadow-sm"
+        suppressHydrationWarning
+      >
+        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
+      <aside className={cn(
+        "w-60 h-screen border-r border-border bg-background flex flex-col shrink-0 transition-transform duration-200",
+        "fixed md:sticky md:top-0 z-40",
+        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )} suppressHydrationWarning>
       {/* Brand */}
       <div className="px-5 h-14 flex items-center border-b border-border">
         <Link href={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-2.5 group">
@@ -189,5 +216,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         </div>
       </div>
     </aside>
+    </>
   );
 }

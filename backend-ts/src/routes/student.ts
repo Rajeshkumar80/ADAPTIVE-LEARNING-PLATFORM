@@ -13,6 +13,7 @@ router.get('/dashboard', requireStudent, async (req: AuthRequest, res: Response)
     const sessions = await prisma.studySession.findMany({ where: { userId } });
     const achievements = await prisma.achievement.findMany({ where: { userId } });
 
+    const certificates = await prisma.certificate.findMany({ where: { userId } });
     const totalHours = sessions.reduce((sum, s) => sum + s.durationMinutes, 0) / 60;
     const avgScore = attempts.length > 0 ? attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length : 0;
 
@@ -35,6 +36,7 @@ router.get('/dashboard', requireStudent, async (req: AuthRequest, res: Response)
       topics_mastered: mastery.filter(m => m.mastery >= 90).length,
       total_topics: mastery.length,
       achievements_count: achievements.length,
+      certificates_count: certificates.length,
     });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });

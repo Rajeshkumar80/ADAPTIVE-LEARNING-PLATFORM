@@ -16,7 +16,7 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
-      <div className="flex items-center justify-between h-14 px-6">
+      <div className="flex items-center justify-between h-14 pl-12 pr-6 md:px-6">
         {/* Left: Title or breadcrumb */}
         <div className="flex items-center">
           {title && (

@@ -167,4 +167,116 @@ router.get('/anti-cheat-flags', requireAdmin, async (_req: AuthRequest, res: Res
   }
 });
 
+// GET /api/admin/reports/performance
+router.get('/reports/performance', requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { usn: 'asc' } });
+    const attempts = await prisma.testAttempt.findMany({ where: { isCompleted: true } });
+    const mastery = await prisma.topicMastery.findMany();
+
+    const studentStats = students.map(s => {
+      const studentAttempts = attempts.filter(a => a.userId === s.id);
+      const studentMastery = mastery.filter(m => m.userId === s.id);
+      const avgScore = studentAttempts.length > 0
+        ? studentAttempts.reduce((sum, a) => sum + a.score, 0) / studentAttempts.length
+        : 0;
+      const avgMastery = studentMastery.length > 0
+        ? studentMastery.reduce((sum, m) => sum + m.mastery, 0) / studentMastery.length
+        : 0;
+      return {
+        usn: s.usn, name: s.fullName, cgpa: s.cgpa,
+        tests_taken: studentAttempts.length,
+        avg_score: Math.round(avgScore * 10) / 10,
+        avg_mastery: Math.round(avgMastery * 10) / 10,
+      };
+    });
+
+    const overallAvg = studentStats.length > 0
+      ? studentStats.reduce((sum, s) => sum + s.avg_score, 0) / studentStats.length
+      : 0;
+    const passRate = attempts.length > 0
+      ? (attempts.filter(a => a.score >= 50).length / attempts.length) * 100
+      : 0;
+
+    return res.json({
+      total_students: students.length,
+      overall_avg_score: Math.round(overallAvg * 10) / 10,
+      pass_rate: Math.round(passRate * 10) / 10,
+      total_attempts: attempts.length,
+      students: studentStats,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
+// GET /api/admin/reports/tests
+router.get('/reports/tests', requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const tests = await prisma.test.findMany({ orderBy: { createdAt: 'desc' } });
+    const attempts = await prisma.testAttempt.findMany({ where: { isCompleted: true } });
+
+    const testStats = tests.map(t => {
+      const testAttempts = attempts.filter(a => a.testId === t.id);
+      const avgScore = testAttempts.length > 0
+        ? testAttempts.reduce((sum, a) => sum + a.score, 0) / testAttempts.length
+        : 0;
+      const passRate = testAttempts.length > 0
+        ? (testAttempts.filter(a => a.score >= (t.passingMarks / t.totalMarks * 100)).length / testAttempts.length) * 100
+        : 0;
+      return {
+        id: t.id, title: t.title, subject: t.subject,
+        total_marks: t.totalMarks, passing_marks: t.passingMarks,
+        attempts: testAttempts.length,
+        avg_score: Math.round(avgScore * 10) / 10,
+        pass_rate: Math.round(passRate * 10) / 10,
+      };
+    });
+
+    return res.json({ tests: testStats, total_tests: tests.length });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
+// GET /api/admin/reports/engagement
+router.get('/reports/engagement', requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const students = await prisma.user.findMany({ where: { role: 'student' } });
+    const sessions = await prisma.studySession.findMany();
+    const events = await prisma.learningEvent.findMany();
+    const achievements = await prisma.achievement.findMany();
+
+    const engagementStats = students.map(s => {
+      const studentSessions = sessions.filter(sess => sess.userId === s.id);
+      const studentEvents = events.filter(e => e.userId === s.id);
+      const studentAchievements = achievements.filter(a => a.userId === s.id);
+      const totalMinutes = studentSessions.reduce((sum, sess) => sum + sess.durationMinutes, 0);
+      return {
+        usn: s.usn, name: s.fullName,
+        total_hours: Math.round(totalMinutes / 60 * 10) / 10,
+        sessions: studentSessions.length,
+        events: studentEvents.length,
+        achievements: studentAchievements.length,
+      };
+    });
+
+    const activeStudents = engagementStats.filter(s => s.total_hours > 0).length;
+    const avgHours = engagementStats.length > 0
+      ? engagementStats.reduce((sum, s) => sum + s.total_hours, 0) / engagementStats.length
+      : 0;
+
+    return res.json({
+      total_students: students.length,
+      active_students: activeStudents,
+      avg_hours_per_student: Math.round(avgHours * 10) / 10,
+      total_sessions: sessions.length,
+      total_events: events.length,
+      students: engagementStats,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ detail: err.message });
+  }
+});
+
 export default router;

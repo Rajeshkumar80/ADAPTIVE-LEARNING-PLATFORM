@@ -84,7 +84,7 @@ function TakeTestInner() {
     setSubmitting(true);
     try {
       const res = await api.submitTest(attemptId, answers);
-      setResult({ score: res.score, total: res.total, percentage: res.percentage, passed: res.passed });
+      setResult({ score: res.score, total: res.total_marks, percentage: res.percentage, passed: res.passed });
       setSubmitted(true);
     } catch {}
     setSubmitting(false);

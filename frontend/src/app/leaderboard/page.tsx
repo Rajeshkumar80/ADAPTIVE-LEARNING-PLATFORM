@@ -75,7 +75,7 @@ export default function LeaderboardPage() {
         <Header title="Leaderboard" subtitle="See how you rank among peers" />
         <main className="flex-1 p-6 max-w-4xl w-full mx-auto space-y-6">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
                 <Crown className="w-5 h-5 mx-auto text-yellow-500 mb-1" />

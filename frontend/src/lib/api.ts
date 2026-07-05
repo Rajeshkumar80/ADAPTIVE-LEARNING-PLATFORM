@@ -425,6 +425,18 @@ class APIClient {
     const id = userId || 'me';
     return this.request(`/api/ingestion/performance/${id}`);
   }
+
+  async getReportPerformance() {
+    return this.request('/api/admin/reports/performance');
+  }
+
+  async getReportTests() {
+    return this.request('/api/admin/reports/tests');
+  }
+
+  async getReportEngagement() {
+    return this.request('/api/admin/reports/engagement');
+  }
 }
 
 export const api = new APIClient(API_URL);

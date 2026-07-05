@@ -118,7 +118,7 @@ router.post('/:attemptId/submit', authenticate, async (req: AuthRequest, res: Re
       },
     });
 
-    return res.json({ score: updated.score, total_marks: totalMarks, percentage: Math.round(percentage * 10) / 10 });
+    return res.json({ score: updated.score, total_marks: totalMarks, percentage: Math.round(percentage * 10) / 10, passed: percentage >= (attempt.test.passingMarks / attempt.test.totalMarks * 100) });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
