@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { getCached, setCache } from '../cache';
 
 const router = Router();
 
@@ -8,6 +9,9 @@ const router = Router();
 router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
+    const cached = getCached(`planner:today:${userId}`);
+    if (cached) return res.json(cached);
+
     const dueCards = await prisma.spacedRepetitionCard.findMany({
       where: { userId, nextReview: { lte: new Date() } },
       include: { topic: { include: { subject: true } } },
@@ -24,7 +28,9 @@ router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
       status: 'pending' as const,
     }));
 
-    return res.json({ items, date: new Date().toISOString().split('T')[0] });
+    const result = { items, date: new Date().toISOString().split('T')[0] };
+    setCache(`planner:today:${userId}`, result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }

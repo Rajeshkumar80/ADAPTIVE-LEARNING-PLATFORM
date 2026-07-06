@@ -148,6 +148,11 @@ router.post('/:attemptId/submit', authenticate, async (req: AuthRequest, res: Re
       },
     });
 
+    // Invalidate caches
+    setCache('leaderboard:all', null, 0);
+    setCache('admin:dashboard', null, 0);
+    setCache(`dashboard:${attempt.userId}`, null, 0);
+
     return res.json({ score: updated.score, total_marks: totalMarks, percentage: Math.round(percentage * 10) / 10, passed: percentage >= (attempt.test.passingMarks / attempt.test.totalMarks * 100) });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });

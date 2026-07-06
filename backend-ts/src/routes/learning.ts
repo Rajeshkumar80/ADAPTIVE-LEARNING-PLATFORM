@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { getCached, setCache } from '../cache';
 
 const router = Router();
 
@@ -85,6 +86,11 @@ router.post('/update', authenticate, async (req: AuthRequest, res: Response) => 
     await prisma.learningEvent.create({
       data: { userId, eventType: 'mastery_update', topicId: topic_id, payload: JSON.stringify({ score: score_percent, quality }) },
     });
+
+    // Invalidate caches
+    setCache(`dashboard:${userId}`, null, 0);
+    setCache(`progress:${userId}`, null, 0);
+    setCache(`activity:${userId}`, null, 0);
 
     return res.json({ topic_id, mastery: Math.round(newMastery * 10) / 10, quality, new_interval_days: newInterval, new_ease_factor: Math.round(newEF * 100) / 100, next_review: nextReview.toISOString() });
   } catch (err: any) {
