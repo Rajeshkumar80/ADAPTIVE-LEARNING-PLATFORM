@@ -20,10 +20,26 @@ import studyPlanRoutes from './routes/study-plan';
 const app = express();
 const PORT = process.env.PORT || 8001;
 
+// Response timing middleware
+app.use((_req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    res.setHeader('X-Response-Time', `${ms}ms`);
+    if (ms > 100) console.warn(`SLOW ${_req.method} ${_req.originalUrl} ${ms}ms`);
+  });
+  next();
+});
+
 // Middleware
 app.use(cors({ origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'] }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Cache-Control headers for static-ish data
+app.use('/api/student/subjects', (_req, res, next) => { res.setHeader('Cache-Control', 'public, max-age=300'); next(); });
+app.use('/api/vtu', (_req, res, next) => { res.setHeader('Cache-Control', 'public, max-age=600'); next(); });
+app.use('/api/student/leaderboard', (_req, res, next) => { res.setHeader('Cache-Control', 'public, max-age=120'); next(); });
 
 // Routes
 app.use('/api/auth', authRoutes);
