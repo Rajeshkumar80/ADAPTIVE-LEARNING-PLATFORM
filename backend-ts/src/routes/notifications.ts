@@ -1,20 +1,25 @@
 import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
+import { getCached, setCache } from '../cache';
 
 const router = Router();
 
 // GET /api/notifications/
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    const userId = req.user!.id;
+    const cached = getCached(`notif:${userId}`);
+    if (cached) return res.json(cached);
+
     const notifications = await prisma.userNotification.findMany({
-      where: { userId: req.user!.id },
+      where: { userId },
       include: { notification: true },
       orderBy: { notification: { createdAt: 'desc' } },
+      take: 50,
     });
 
-    return res.json({
+    const result = {
       notifications: notifications.map(n => ({
         id: n.notification.id, title: n.notification.title, message: n.notification.message,
         type: n.notification.type, category: n.notification.category,
@@ -22,7 +27,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       })),
       total: notifications.length,
       unread_count: notifications.filter(n => !n.read).length,
-    });
+    };
+    setCache(`notif:${userId}`, result, 15_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -85,6 +92,13 @@ router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Invalidate notification cache for all affected users
+    if (target_users && target_users.length > 0) {
+      for (const uid of target_users) setCache(`notif:${uid}`, null, 0);
+    } else {
+      setCache('notif:', null, 0); // prefix invalidate handled by simple approach
+    }
+
     return res.json({ id: notification.id, message: 'Notification sent', recipient_count: users.length });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -94,9 +108,16 @@ router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
 // GET /api/notifications/stats
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const total = await prisma.userNotification.count({ where: { userId: req.user!.id } });
-    const unread = await prisma.userNotification.count({ where: { userId: req.user!.id, read: false } });
-    return res.json({ total, unread });
+    const userId = req.user!.id;
+    const cached = getCached(`notif:stats:${userId}`);
+    if (cached) return res.json(cached);
+    const [total, unread] = await Promise.all([
+      prisma.userNotification.count({ where: { userId } }),
+      prisma.userNotification.count({ where: { userId, read: false } }),
+    ]);
+    const result = { total, unread };
+    setCache(`notif:stats:${userId}`, result, 15_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
