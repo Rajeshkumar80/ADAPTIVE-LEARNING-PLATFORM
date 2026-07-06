@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { authenticate, requireStudent, AuthRequest } from '../middleware/auth';
+import { getCached, setCache } from '../cache';
 import { z } from 'zod';
 
 const router = Router();
@@ -64,6 +65,11 @@ router.post('/quiz-attempt', requireStudent, async (req: AuthRequest, res: Respo
       });
     }
 
+    // Invalidate caches
+    setCache(`dashboard:${req.user!.id}`, null, 0);
+    setCache(`progress:${req.user!.id}`, null, 0);
+    setCache(`activity:${req.user!.id}`, null, 0);
+
     return res.json({
       event_id: event.id,
       mastery: mastery.mastery,
@@ -125,6 +131,9 @@ router.get('/performance/:userId', authenticate, async (req: AuthRequest, res: R
       }
     }
 
+    const cached = getCached(`perf:${userId}`);
+    if (cached) return res.json(cached);
+
     const events = await prisma.learningEvent.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -147,7 +156,7 @@ router.get('/performance/:userId', authenticate, async (req: AuthRequest, res: R
       return sum + (p.duration_minutes || 0);
     }, 0);
 
-    return res.json({
+    const result = {
       total_events: events.length,
       quiz_attempts: totalQuizzes,
       avg_score: Math.round(avgScore * 10) / 10,
@@ -159,7 +168,9 @@ router.get('/performance/:userId', authenticate, async (req: AuthRequest, res: R
         created_at: e.createdAt,
         payload: JSON.parse(e.payload),
       })),
-    });
+    };
+    setCache(`perf:${userId}`, result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
