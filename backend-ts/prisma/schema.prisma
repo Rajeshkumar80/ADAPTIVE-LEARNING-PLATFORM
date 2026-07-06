@@ -32,6 +32,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   journalEntries  JournalEntry[]
+
+  @@index([role])
   testAttempts    TestAttempt[]
   antiCheatFlags  AntiCheatFlag[]
   certificates    Certificate[]
@@ -59,6 +61,8 @@ model Subject {
   sessions StudySession[]
 
   createdAt DateTime @default(now())
+
+  @@index([semester])
 }
 
 model Topic {
@@ -143,6 +147,7 @@ model TestAttempt {
   @@index([userId])
   @@index([testId])
   @@index([isCompleted])
+  @@index([userId, isCompleted])
 }
 
 model AntiCheatFlag {
@@ -200,6 +205,7 @@ model StudySession {
   notes           String   @default("")
 
   @@index([userId])
+  @@index([userId, startedAt])
 }
 
 // ============= Learning Events (Data Ingestion) =============
@@ -218,6 +224,7 @@ model LearningEvent {
   @@index([userId])
   @@index([eventType])
   @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 // ============= Spaced Repetition =============
