@@ -95,9 +95,13 @@ router.put('/profile', requireStudent, async (req: AuthRequest, res: Response) =
 // GET /api/student/subjects
 router.get('/subjects', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
+    const cached = getCached('subjects:list');
+    if (cached) return res.json(cached);
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     const subjects = await prisma.subject.findMany({ where: { semester: user?.semester || 6 } });
-    return res.json(subjects.map(s => ({ id: s.id, code: s.code, name: s.name, credits: s.credits, type: s.type })));
+    const result = subjects.map(s => ({ id: s.id, code: s.code, name: s.name, credits: s.credits, type: s.type }));
+    setCache('subjects:list', result, 300_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -106,17 +110,22 @@ router.get('/subjects', requireStudent, async (req: AuthRequest, res: Response) 
 // GET /api/student/progress
 router.get('/progress', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user!.id;
+    const cached = getCached(`progress:${userId}`);
+    if (cached) return res.json(cached);
     const mastery = await prisma.topicMastery.findMany({
       where: { userId: req.user!.id },
       include: { topic: { include: { subject: true } } },
     });
-    return res.json(mastery.map(m => ({
+    const result = mastery.map(m => ({
       topic: m.topic.name,
       subject: m.topic.subject.name,
       mastery: m.mastery,
       forgetting_risk: m.forgettingRisk,
       last_reviewed: m.lastReviewed,
-    })));
+    }));
+    setCache(`progress:${userId}`, result, 60_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -126,9 +135,17 @@ router.get('/progress', requireStudent, async (req: AuthRequest, res: Response) 
 router.get('/activity-history', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const sessions = await prisma.studySession.findMany({ where: { userId }, orderBy: { startedAt: 'asc' } });
-    const attempts = await prisma.testAttempt.findMany({ where: { userId, isCompleted: true }, orderBy: { startedAt: 'asc' } });
-    const events = await prisma.learningEvent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
+
+    const cached = getCached(`activity:${userId}`);
+    if (cached) return res.json(cached);
+
+    // Batch all queries in parallel
+    const [sessions, attempts, events, mastery] = await Promise.all([
+      prisma.studySession.findMany({ where: { userId }, orderBy: { startedAt: 'asc' } }),
+      prisma.testAttempt.findMany({ where: { userId, isCompleted: true }, orderBy: { startedAt: 'asc' } }),
+      prisma.learningEvent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      prisma.topicMastery.findMany({ where: { userId }, include: { topic: { include: { subject: true } } } }),
+    ]);
 
     // Group by week for last 12 weeks
     const now = new Date();
@@ -191,7 +208,9 @@ router.get('/activity-history', requireStudent, async (req: AuthRequest, res: Re
       hours: `${data.count * 8}h`,
     }));
 
-    return res.json({ weekly_activity: weeks, subject_performance: subjectPerf, test_trends: trends, subject_distribution: distData });
+    const result = { weekly_activity: weeks, subject_performance: subjectPerf, test_trends: trends, subject_distribution: distData };
+    setCache(`activity:${userId}`, result, 60_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -203,19 +222,30 @@ router.get('/leaderboard', authenticate, async (_req: AuthRequest, res: Response
     const cached = getCached('leaderboard:all');
     if (cached) return res.json(cached);
 
-    const students = await prisma.user.findMany({ where: { role: 'student' } });
-    const byCgpa = students.sort((a, b) => b.cgpa - a.cgpa).slice(0, 20).map(s => ({
+    // Batch query: get all students + aggregate scores in ONE query
+    const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { cgpa: 'desc' }, take: 20 });
+    const studentIds = students.map(s => s.id);
+
+    const scoreAgg = await prisma.testAttempt.groupBy({
+      by: ['userId'],
+      where: { userId: { in: studentIds }, isCompleted: true },
+      _avg: { score: true },
+      _count: { id: true },
+    });
+
+    const scoreMap = new Map<number, { avg: number; count: number }>();
+    for (const agg of scoreAgg) {
+      scoreMap.set(agg.userId, { avg: Math.round((agg._avg.score || 0) * 10) / 10, count: agg._count.id });
+    }
+
+    const byCgpa = students.map(s => ({
       usn: s.usn, name: s.fullName, cgpa: s.cgpa, section: s.section,
     }));
 
-    const withScores = await Promise.all(
-      students.slice(0, 20).map(async (s) => {
-        const attempts = await prisma.testAttempt.findMany({ where: { userId: s.id, isCompleted: true } });
-        const avg = attempts.length > 0 ? attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length : 0;
-        return { usn: s.usn, name: s.fullName, avg_score: Math.round(avg * 10) / 10, section: s.section };
-      })
-    );
-    const byTestScore = withScores.sort((a, b) => b.avg_score - a.avg_score);
+    const byTestScore = students.map(s => {
+      const scores = scoreMap.get(s.id);
+      return { usn: s.usn, name: s.fullName, avg_score: scores?.avg || 0, section: s.section };
+    }).sort((a, b) => b.avg_score - a.avg_score);
 
     const result = { by_cgpa: byCgpa, by_test_score: byTestScore };
     setCache('leaderboard:all', result, 120_000);
@@ -228,8 +258,13 @@ router.get('/leaderboard', authenticate, async (_req: AuthRequest, res: Response
 // GET /api/student/achievements
 router.get('/achievements', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
-    const achievements = await prisma.achievement.findMany({ where: { userId: req.user!.id } });
-    return res.json(achievements.map(a => ({ id: a.id, title: a.title, description: a.description, icon: a.icon, earned_date: a.earnedDate, rarity: a.rarity })));
+    const userId = req.user!.id;
+    const cached = getCached(`achievements:${userId}`);
+    if (cached) return res.json(cached);
+    const achievements = await prisma.achievement.findMany({ where: { userId } });
+    const result = achievements.map(a => ({ id: a.id, title: a.title, description: a.description, icon: a.icon, earned_date: a.earnedDate, rarity: a.rarity }));
+    setCache(`achievements:${userId}`, result, 60_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -238,8 +273,13 @@ router.get('/achievements', requireStudent, async (req: AuthRequest, res: Respon
 // GET /api/student/certificates
 router.get('/certificates', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
-    const certs = await prisma.certificate.findMany({ where: { userId: req.user!.id } });
-    return res.json(certs.map(c => ({ id: c.id, title: c.title, subject: c.subject, issued_date: c.issuedDate, score: c.score, type: c.type })));
+    const userId = req.user!.id;
+    const cached = getCached(`certs:${userId}`);
+    if (cached) return res.json(cached);
+    const certs = await prisma.certificate.findMany({ where: { userId } });
+    const result = certs.map(c => ({ id: c.id, title: c.title, subject: c.subject, issued_date: c.issuedDate, score: c.score, type: c.type }));
+    setCache(`certs:${userId}`, result, 60_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
