@@ -2,27 +2,31 @@ import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { requireAdmin, AuthRequest } from '../middleware/auth';
 import { hashPassword } from '../utils/auth';
+import { getCached, setCache } from '../cache';
 
 const router = Router();
 
 // GET /api/admin/dashboard
 router.get('/dashboard', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const totalStudents = await prisma.user.count({ where: { role: 'student' } });
-    const activeTests = await prisma.test.count({ where: { isActive: true } });
-    const flagsCount = await prisma.antiCheatFlag.count();
+    const cached = getCached('admin:dashboard');
+    if (cached) return res.json(cached);
 
-    const avgResult = await prisma.testAttempt.aggregate({
-      where: { isCompleted: true },
-      _avg: { score: true },
-    });
+    const [totalStudents, activeTests, flagsCount, avgResult] = await Promise.all([
+      prisma.user.count({ where: { role: 'student' } }),
+      prisma.test.count({ where: { isActive: true } }),
+      prisma.antiCheatFlag.count(),
+      prisma.testAttempt.aggregate({ where: { isCompleted: true }, _avg: { score: true } }),
+    ]);
 
-    return res.json({
+    const result = {
       total_students: totalStudents,
       active_tests: activeTests,
       flags_count: flagsCount,
       avg_performance: avgResult._avg.score ? Math.round(avgResult._avg.score * 10) / 10 : 0,
-    });
+    };
+    setCache('admin:dashboard', result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -169,17 +173,24 @@ router.post('/students/import', requireAdmin, async (req: AuthRequest, res: Resp
 // GET /api/admin/analytics
 router.get('/analytics', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const totalStudents = await prisma.user.count({ where: { role: 'student' } });
-    const totalTests = await prisma.test.count();
-    const avgResult = await prisma.testAttempt.aggregate({ where: { isCompleted: true }, _avg: { score: true } });
-    const topStudents = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { cgpa: 'desc' }, take: 5 });
+    const cached = getCached('admin:analytics');
+    if (cached) return res.json(cached);
 
-    return res.json({
+    const [totalStudents, totalTests, avgResult, topStudents] = await Promise.all([
+      prisma.user.count({ where: { role: 'student' } }),
+      prisma.test.count(),
+      prisma.testAttempt.aggregate({ where: { isCompleted: true }, _avg: { score: true } }),
+      prisma.user.findMany({ where: { role: 'student' }, orderBy: { cgpa: 'desc' }, take: 5 }),
+    ]);
+
+    const result = {
       total_students: totalStudents,
       total_tests: totalTests,
       avg_score: avgResult._avg.score ? Math.round(avgResult._avg.score * 10) / 10 : 0,
       top_performers: topStudents.map(s => ({ usn: s.usn, name: s.fullName, cgpa: s.cgpa })),
-    });
+    };
+    setCache('admin:analytics', result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
@@ -211,41 +222,50 @@ router.get('/anti-cheat-flags', requireAdmin, async (_req: AuthRequest, res: Res
 // GET /api/admin/reports/performance
 router.get('/reports/performance', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { usn: 'asc' } });
-    const attempts = await prisma.testAttempt.findMany({ where: { isCompleted: true } });
-    const mastery = await prisma.topicMastery.findMany();
+    const cached = getCached('admin:report:perf');
+    if (cached) return res.json(cached);
 
-    const studentStats = students.map(s => {
-      const studentAttempts = attempts.filter(a => a.userId === s.id);
-      const studentMastery = mastery.filter(m => m.userId === s.id);
-      const avgScore = studentAttempts.length > 0
-        ? studentAttempts.reduce((sum, a) => sum + a.score, 0) / studentAttempts.length
-        : 0;
-      const avgMastery = studentMastery.length > 0
-        ? studentMastery.reduce((sum, m) => sum + m.mastery, 0) / studentMastery.length
-        : 0;
-      return {
-        usn: s.usn, name: s.fullName, cgpa: s.cgpa,
-        tests_taken: studentAttempts.length,
-        avg_score: Math.round(avgScore * 10) / 10,
-        avg_mastery: Math.round(avgMastery * 10) / 10,
-      };
-    });
+    const [students, scoreAgg, masteryAgg] = await Promise.all([
+      prisma.user.findMany({ where: { role: 'student' }, orderBy: { usn: 'asc' } }),
+      prisma.testAttempt.groupBy({
+        by: ['userId'], where: { isCompleted: true },
+        _avg: { score: true }, _count: { id: true },
+      }),
+      prisma.topicMastery.groupBy({
+        by: ['userId'],
+        _avg: { mastery: true }, _count: { id: true },
+      }),
+    ]);
 
+    const scoreMap = new Map<number, { avg: number; count: number }>();
+    for (const a of scoreAgg) scoreMap.set(a.userId, { avg: Math.round((a._avg.score || 0) * 10) / 10, count: a._count.id });
+    const masteryMap = new Map<number, number>();
+    for (const m of masteryAgg) masteryMap.set(m.userId, Math.round((m._avg.mastery || 0) * 10) / 10);
+
+    const studentStats = students.map(s => ({
+      usn: s.usn, name: s.fullName, cgpa: s.cgpa,
+      tests_taken: scoreMap.get(s.id)?.count || 0,
+      avg_score: scoreMap.get(s.id)?.avg || 0,
+      avg_mastery: masteryMap.get(s.id) || 0,
+    }));
+
+    const totalAttempts = studentStats.reduce((sum, s) => sum + s.tests_taken, 0);
     const overallAvg = studentStats.length > 0
       ? studentStats.reduce((sum, s) => sum + s.avg_score, 0) / studentStats.length
       : 0;
-    const passRate = attempts.length > 0
-      ? (attempts.filter(a => a.score >= 50).length / attempts.length) * 100
+    const passRate = totalAttempts > 0
+      ? (studentStats.filter(s => s.avg_score >= 50).length / studentStats.length) * 100
       : 0;
 
-    return res.json({
+    const result = {
       total_students: students.length,
       overall_avg_score: Math.round(overallAvg * 10) / 10,
       pass_rate: Math.round(passRate * 10) / 10,
-      total_attempts: attempts.length,
+      total_attempts: totalAttempts,
       students: studentStats,
-    });
+    };
+    setCache('admin:report:perf', result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }

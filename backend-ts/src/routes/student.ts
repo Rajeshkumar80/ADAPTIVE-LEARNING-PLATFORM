@@ -167,14 +167,10 @@ router.get('/activity-history', requireStudent, async (req: AuthRequest, res: Re
       });
     }
 
-    // Subject performance from mastery
-    const mastery = await prisma.topicMastery.findMany({
-      where: { userId },
-      include: { topic: { include: { subject: true } } },
-    });
+    // Subject performance from mastery (already fetched in batch above)
     const subjectMap = new Map<string, { total: number; count: number }>();
     for (const m of mastery) {
-      const name = m.topic.subject.name;
+      const name = m.topic?.subject?.name || 'Unknown';
       if (!subjectMap.has(name)) subjectMap.set(name, { total: 0, count: 0 });
       const entry = subjectMap.get(name)!;
       entry.total += m.mastery;
