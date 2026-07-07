@@ -17,6 +17,7 @@ import aiRoutes from './routes/ai';
 import ingestionRoutes from './routes/ingestion';
 import learningStateRoutes from './routes/learning-state';
 import studyPlanRoutes from './routes/study-plan';
+import { prisma } from './prisma';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -60,7 +61,23 @@ app.use('/api/study-plan', studyPlanRoutes);
 
 // Health
 app.get('/', (_req, res) => res.json({ name: 'AdaptLearn API', version: '2.0.0', stack: 'Node.js/TypeScript' }));
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/health', async (_req, res) => {
+  try {
+    const [users, tests, events, subjects] = await Promise.all([
+      prisma.user.count(),
+      prisma.test.count(),
+      prisma.learningEvent.count(),
+      prisma.subject.count(),
+    ]);
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      db: { users, tests, learning_events: events, subjects },
+    });
+  } catch {
+    res.status(503).json({ status: 'error', timestamp: new Date().toISOString() });
+  }
+});
 
 // 404
 app.use((_req, res) => res.status(404).json({ detail: 'Not found' }));
