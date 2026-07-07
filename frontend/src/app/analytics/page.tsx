@@ -79,17 +79,15 @@ export default function AnalyticsPage() {
       const data = await api.getVTUSubjects(semesterVal);
       const subjectList = data.subjects || [];
 
-      const withModules: SubjectWithModules[] = [];
-      for (const s of subjectList) {
-        if (s.type === 'theory') {
-          try {
-            const detail = await api.getVTUSubjectDetails(s.code);
-            withModules.push({ code: s.code, name: s.name, credits: s.credits, modules: detail.modules || {} });
-          } catch {
-            withModules.push({ code: s.code, name: s.name, credits: s.credits, modules: {} });
-          }
-        }
-      }
+      const theorySubjects = subjectList.filter((s: any) => s.type === 'theory');
+      const detailResults = await Promise.allSettled(
+        theorySubjects.map((s: any) => api.getVTUSubjectDetails(s.code))
+      );
+
+      const withModules: SubjectWithModules[] = theorySubjects.map((s: any, i: number) => {
+        const detail = detailResults[i].status === 'fulfilled' ? detailResults[i].value : {};
+        return { code: s.code, name: s.name, credits: s.credits, modules: detail.modules || {} };
+      });
       setSubjects(withModules);
 
       const progressMap: Record<string, Record<string, boolean[]>> = {};
