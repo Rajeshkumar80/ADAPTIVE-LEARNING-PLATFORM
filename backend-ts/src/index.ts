@@ -3,6 +3,7 @@ import { resolve } from 'path';
 dotenv.config({ path: resolve(__dirname, '../.env') });
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import authRoutes from './routes/auth';
 import studentRoutes from './routes/student';
 import adminRoutes from './routes/admin';
@@ -33,6 +34,7 @@ app.use((_req, res, next) => {
 
 // Middleware
 app.use(cors({ origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'] }));
+app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
