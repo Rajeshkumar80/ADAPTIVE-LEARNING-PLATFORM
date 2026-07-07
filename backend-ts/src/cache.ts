@@ -22,6 +22,15 @@ export function invalidateCache(prefix: string): void {
   }
 }
 
+export function getCacheStats() {
+  let valid = 0, expired = 0;
+  const now = Date.now();
+  for (const [, entry] of cache) {
+    if (now > entry.expiry) expired++; else valid++;
+  }
+  return { total: cache.size, valid, expired };
+}
+
 // Auto-cleanup every 60s
 setInterval(() => {
   const now = Date.now();

@@ -18,6 +18,7 @@ import ingestionRoutes from './routes/ingestion';
 import learningStateRoutes from './routes/learning-state';
 import studyPlanRoutes from './routes/study-plan';
 import { prisma } from './prisma';
+import { getCacheStats } from './cache';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -73,6 +74,7 @@ app.get('/api/health', async (_req, res) => {
       status: 'ok',
       timestamp: new Date().toISOString(),
       db: { users, tests, learning_events: events, subjects },
+      cache: getCacheStats(),
     });
   } catch {
     res.status(503).json({ status: 'error', timestamp: new Date().toISOString() });
