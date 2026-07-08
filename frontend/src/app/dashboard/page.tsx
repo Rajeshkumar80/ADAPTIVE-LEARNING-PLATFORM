@@ -395,7 +395,7 @@ export default function StudentDashboard() {
           {/* Quick links */}
           <ScrollReveal delay={400}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Link href="/vtu-subjects" className="border border-border rounded-md p-4 hover:bg-muted/40 transition-colors">
+            <Link href="/courses" className="border border-border rounded-md p-4 hover:bg-muted/40 transition-colors">
               <BookOpen className="w-4 h-4 mb-2 text-muted-foreground" />
               <p className="text-sm font-medium">VTU Subjects</p>
               <p className="text-xs text-muted-foreground">Browse syllabus</p>

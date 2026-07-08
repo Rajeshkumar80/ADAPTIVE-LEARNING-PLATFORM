@@ -36,6 +36,7 @@ function TakeTestInner() {
   const [testInfo, setTestInfo] = useState({ title: '', subject: '', duration: 90, totalMarks: 100 });
   const [questions, setQuestions] = useState<Question[]>([]);
   const [attemptId, setAttemptId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (testId) loadTest();
@@ -54,7 +55,7 @@ function TakeTestInner() {
         totalMarks: data.questions?.reduce((s: number, q: Question) => s + (q.marks || 1), 0) || 100,
       });
       setTimeLeft((data.duration_minutes || 90) * 60);
-    } catch {}
+    } catch (err: any) { setError(err?.message || 'Failed to load test'); }
     setLoading(false);
   }
 
@@ -86,7 +87,7 @@ function TakeTestInner() {
       const res = await api.submitTest(attemptId, answers);
       setResult({ score: res.score, total: res.total_marks, percentage: res.percentage, passed: res.passed });
       setSubmitted(true);
-    } catch {}
+    } catch (err: any) { setError(err?.message || 'Failed to submit test'); }
     setSubmitting(false);
   }
 
@@ -96,6 +97,21 @@ function TakeTestInner() {
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <AlertTriangle className="w-8 h-8 text-red-500 mx-auto" />
+            <p className="text-sm text-red-500">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => router.push('/tests')}>Back to Tests</Button>
+          </div>
         </div>
       </div>
     );

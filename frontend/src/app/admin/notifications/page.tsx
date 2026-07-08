@@ -6,11 +6,23 @@ import { Header } from '@/components/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  AppNotification, getAllNotifications, sendNotification,
-  NOTIFICATION_CATEGORIES, getCategoryMeta,
-} from '@/lib/notifications-store';
+import { api } from '@/lib/api';
 import { Send, Users, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+
+const NOTIFICATION_CATEGORIES = [
+  { key: 'announcement', emoji: '📢', label: 'Announcement', type: 'info' as const },
+  { key: 'test', emoji: '📝', label: 'Test / Exam', type: 'info' as const },
+  { key: 'assignment', emoji: '📚', label: 'Assignment', type: 'warning' as const },
+  { key: 'result', emoji: '🎯', label: 'Result', type: 'success' as const },
+  { key: 'event', emoji: '🎉', label: 'Event', type: 'info' as const },
+  { key: 'reminder', emoji: '⏰', label: 'Reminder', type: 'warning' as const },
+  { key: 'holiday', emoji: '🏖️', label: 'Holiday', type: 'success' as const },
+  { key: 'urgent', emoji: '🚨', label: 'Urgent', type: 'error' as const },
+];
+
+function getCategoryMeta(key: string) {
+  return NOTIFICATION_CATEGORIES.find(c => c.key === key) || NOTIFICATION_CATEGORIES[0];
+}
 
 export default function AdminNotificationsPage() {
   const { user } = useAuth();
@@ -18,29 +30,45 @@ export default function AdminNotificationsPage() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [target, setTarget] = useState<'all' | 'A' | 'B'>('all');
-  const [sent, setSent] = useState<AppNotification[]>([]);
+  const [sent, setSent] = useState<any[]>([]);
   const [result, setResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadSent(); }, []);
 
-  const loadSent = () => setSent(getAllNotifications());
+  const loadSent = async () => {
+    try {
+      const data = await api.getNotifications();
+      setSent(Array.isArray(data) ? data : data.notifications || []);
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+      setSent([]);
+    }
+  };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
-    const cat = getCategoryMeta(category);
-    sendNotification({
-      category,
-      title: title.trim(),
-      message: message.trim(),
-      type: cat.type,
-      target,
-      sentBy: user?.full_name || 'Admin',
-    });
-    setResult(`Sent to ${target === 'all' ? 'all students' : `Section ${target}`}`);
-    setTitle('');
-    setMessage('');
-    loadSent();
-    setTimeout(() => setResult(null), 3000);
+    setLoading(true);
+    try {
+      const cat = getCategoryMeta(category);
+      await api.sendNotification({
+        title: title.trim(),
+        message: message.trim(),
+        type: cat.type,
+        target_section: target === 'all' ? undefined : target,
+      });
+      setResult(`Sent to ${target === 'all' ? 'all students' : `Section ${target}`}`);
+      setTitle('');
+      setMessage('');
+      await loadSent();
+      setTimeout(() => setResult(null), 3000);
+    } catch (err) {
+      console.error('Failed to send notification:', err);
+      setResult('Failed to send notification');
+      setTimeout(() => setResult(null), 3000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const timeAgo = (date: string) => {
