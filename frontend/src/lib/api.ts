@@ -2,7 +2,7 @@
  * API Client — communicates with Express/TypeScript backend
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 class APIClient {
   private baseURL: string;

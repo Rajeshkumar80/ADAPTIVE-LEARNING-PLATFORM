@@ -28,7 +28,6 @@ app.use((_req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const ms = Date.now() - start;
-    res.setHeader('X-Response-Time', `${ms}ms`);
     if (ms > 100) console.warn(`SLOW ${_req.method} ${_req.originalUrl} ${ms}ms`);
   });
   next();
