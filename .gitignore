@@ -77,3 +77,6 @@ backend/uploads/*
 
 # Playwright MCP (session logs)
 .playwright-mcp/
+
+# Local helper scripts
+frontend/start.cjs
