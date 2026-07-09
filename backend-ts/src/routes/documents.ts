@@ -17,15 +17,19 @@ interface StoredDocument {
 const documents = new Map<string, StoredDocument>();
 let docCounter = 0;
 
-router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
+router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ detail: 'Not authenticated' });
   const userDocs = Array.from(documents.values())
-    .filter(d => d.uploadedBy === _req.userId)
+    .filter(d => d.uploadedBy === userId)
     .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   return res.json(userDocs);
 });
 
 router.post('/upload', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ detail: 'Not authenticated' });
     const { subject, description } = req.body || {};
     const file = (req as any).file;
     if (!file) {
@@ -37,7 +41,7 @@ router.post('/upload', authenticate, async (req: AuthRequest, res: Response) => 
       filename: file.originalname || 'unnamed',
       subject: subject || 'General',
       description: description || '',
-      uploadedBy: _req.userId!,
+      uploadedBy: userId,
       uploadedAt: new Date().toISOString(),
       size: file.size || 0,
       mimeType: file.mimetype || 'application/octet-stream',
@@ -50,9 +54,11 @@ router.post('/upload', authenticate, async (req: AuthRequest, res: Response) => 
 });
 
 router.delete('/:docId', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ detail: 'Not authenticated' });
   const { docId } = req.params;
   const doc = documents.get(docId);
-  if (!doc || doc.uploadedBy !== _req.userId) {
+  if (!doc || doc.uploadedBy !== userId) {
     return res.status(404).json({ detail: 'Document not found' });
   }
   documents.delete(docId);
