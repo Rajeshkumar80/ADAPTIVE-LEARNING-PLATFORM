@@ -56,7 +56,7 @@ router.post('/upload', authenticate, async (req: AuthRequest, res: Response) => 
 router.delete('/:docId', authenticate, async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ detail: 'Not authenticated' });
-  const { docId } = req.params;
+  const docId = String(req.params.docId);
   const doc = documents.get(docId);
   if (!doc || doc.uploadedBy !== userId) {
     return res.status(404).json({ detail: 'Document not found' });
