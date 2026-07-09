@@ -17,6 +17,7 @@ import aiRoutes from './routes/ai';
 import ingestionRoutes from './routes/ingestion';
 import learningStateRoutes from './routes/learning-state';
 import studyPlanRoutes from './routes/study-plan';
+import documentRoutes from './routes/documents';
 import { prisma } from './prisma';
 import { getCacheStats } from './cache';
 
@@ -58,6 +59,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/ingestion', ingestionRoutes);
 app.use('/api/learning-state', learningStateRoutes);
 app.use('/api/study-plan', studyPlanRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Health
 app.get('/', (_req, res) => res.json({ name: 'AdaptLearn API', version: '2.0.0', stack: 'Node.js/TypeScript' }));
