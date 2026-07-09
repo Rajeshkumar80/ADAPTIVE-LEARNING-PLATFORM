@@ -7,19 +7,13 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-const FALLBACK_MODELS = [
-  'google/gemma-4-31b-it:free',
-  'google/gemma-4-26b-a4b-it:free',
-  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
-];
-
 const SYSTEM_PROMPT = `You are AdaptLearn AI Tutor, a helpful assistant for VTU CSE students. 
 You help with DSA, DBMS, OS, Networks, and Programming (Java, Python, C++, JavaScript).
 Rules: Be concise, use examples, format with bullet points, be encouraging.`;
 
-async function callOpenRouterWithRetry(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('No API key');
+async function callGLMWithRetry(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
+  const apiKey = process.env.GLM_API_KEY;
+  if (!apiKey) throw new Error('No GLM API key');
 
   const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
   if (history && history.length > 0) {
@@ -29,54 +23,54 @@ async function callOpenRouterWithRetry(message: string, history?: { role: string
   }
   messages.push({ role: 'user', content: message });
 
-  const models = [process.env.OPENROUTER_MODEL, ...FALLBACK_MODELS].filter(Boolean);
+  const model = process.env.GLM_MODEL || 'glm-5.2';
+  const baseURL = process.env.GLM_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4';
 
-  for (const model of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:3000',
-            'X-OpenRouter-Title': 'AdaptLearn',
-          },
-          body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.7 }),
-        });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const resp = await fetch(`${baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.7 }),
+      });
 
-        if (resp.status === 429) {
-          console.log(`[AI] Rate limited on ${model}, attempt ${attempt + 1}`);
-          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
-          continue;
-        }
-
-        if (!resp.ok) {
-          console.log(`[AI] ${model} returned ${resp.status}`);
-          break;
-        }
-
-        const data: any = await resp.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) return { text, source: 'openrouter' };
-      } catch (err: any) {
-        console.error(`[AI] ${model} error:`, err.message);
+      if (resp.status === 429) {
+        console.log(`[AI] Rate limited on GLM, attempt ${attempt + 1}`);
+        await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
       }
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        console.log(`[AI] GLM returned ${resp.status}: ${errText.slice(0, 200)}`);
+        if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+        break;
+      }
+
+      const data: any = await resp.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (text) return { text, source: 'glm' };
+    } catch (err: any) {
+      console.error(`[AI] GLM attempt ${attempt + 1} error:`, err.message);
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
     }
   }
 
-  throw new Error('All models failed');
+  throw new Error('GLM API failed after retries');
 }
 
 async function callAI(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.GLM_API_KEY) {
     return { text: getBuiltinResponse(message), source: 'builtin' };
   }
 
   try {
-    return await callOpenRouterWithRetry(message, history);
+    return await callGLMWithRetry(message, history);
   } catch (err: any) {
-    console.error('[AI] All attempts failed:', err.message);
+    console.error('[AI] GLM failed, falling back to builtin:', err.message);
     return { text: getBuiltinResponse(message), source: 'builtin' };
   }
 }
@@ -94,9 +88,9 @@ function getBuiltinResponse(query: string): string {
 router.get('/status', authenticate, async (_req: AuthRequest, res: Response) => {
   return res.json({
     available: true,
-    openrouter: !!process.env.OPENROUTER_API_KEY,
-    mode: process.env.OPENROUTER_API_KEY ? 'api' : 'builtin',
-    model: process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free',
+    glm: !!process.env.GLM_API_KEY,
+    mode: process.env.GLM_API_KEY ? 'api' : 'builtin',
+    model: process.env.GLM_MODEL || 'glm-5.2',
   });
 });
 
