@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,8 +37,15 @@ export default function JournalPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ title: '', content: '', mood: 'neutral', tags: '' as string });
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => { loadEntries(); }, [searchQuery, filterStarred]);
+  useEffect(() => { loadEntries(); }, [filterStarred]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { loadEntries(); }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
 
   const loadEntries = async () => {
     try {
