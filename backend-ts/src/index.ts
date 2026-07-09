@@ -20,9 +20,16 @@ import studyPlanRoutes from './routes/study-plan';
 import documentRoutes from './routes/documents';
 import { prisma } from './prisma';
 import { getCacheStats } from './cache';
+import { globalLimiter, authLimiter, aiLimiter } from './middleware/rate-limit';
+import { securityHeaders, sanitizeInput } from './middleware/security';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
+
+// Security
+app.use(securityHeaders);
+app.use(globalLimiter);
+app.use(sanitizeInput);
 
 // Response timing middleware
 app.use((_req, res, next) => {
@@ -45,8 +52,9 @@ app.use('/api/student/subjects', (_req, res, next) => { res.setHeader('Cache-Con
 app.use('/api/vtu', (_req, res, next) => { res.setHeader('Cache-Control', 'public, max-age=600'); next(); });
 app.use('/api/student/leaderboard', (_req, res, next) => { res.setHeader('Cache-Control', 'public, max-age=120'); next(); });
 
-// Routes
-app.use('/api/auth', authRoutes);
+// Routes with rate limiting
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/ai', aiLimiter, aiRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/tests', testRoutes);
@@ -55,7 +63,6 @@ app.use('/api/vtu', vtuRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/planner', plannerRoutes);
 app.use('/api/journal', journalRoutes);
-app.use('/api/ai', aiRoutes);
 app.use('/api/ingestion', ingestionRoutes);
 app.use('/api/learning-state', learningStateRoutes);
 app.use('/api/study-plan', studyPlanRoutes);
