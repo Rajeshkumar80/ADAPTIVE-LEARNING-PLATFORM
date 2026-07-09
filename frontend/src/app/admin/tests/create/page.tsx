@@ -22,6 +22,7 @@ export default function CreateTestPage() {
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [antiCheat, setAntiCheat] = useState({ tabSwitch: true, copyPaste: true, randomOrder: true });
 
   useEffect(() => {
     api.getAdminSubjects().then(setSubjects).catch(() => {});
@@ -34,6 +35,7 @@ export default function CreateTestPage() {
       await api.createTest({
         title, description, subject_id: subjectId,
         duration_minutes: duration, total_marks: totalMarks, passing_marks: passingMarks,
+        anti_cheat_enabled: antiCheat.tabSwitch || antiCheat.copyPaste || antiCheat.randomOrder,
         questions: questions.map(q => ({
           question_text: q.question,
           question_type: 'mcq',
@@ -98,8 +100,12 @@ export default function CreateTestPage() {
               </Card>
             </div>
             <div><Card><CardHeader><CardTitle>Anti-Cheat</CardTitle></CardHeader><CardContent className="space-y-3">
-              {['Detect tab switching', 'Block copy-paste', 'Random question order'].map(l => (
-                <label key={l} className="flex items-center justify-between cursor-pointer"><span className="text-sm">{l}</span><input type="checkbox" defaultChecked className="rounded" /></label>
+              {([
+                ['tabSwitch', 'Detect tab switching'],
+                ['copyPaste', 'Block copy-paste'],
+                ['randomOrder', 'Random question order'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center justify-between cursor-pointer"><span className="text-sm">{label}</span><input type="checkbox" checked={antiCheat[key]} onChange={e => setAntiCheat(prev => ({ ...prev, [key]: e.target.checked }))} className="rounded" /></label>
               ))}
             </CardContent></Card></div>
           </div>

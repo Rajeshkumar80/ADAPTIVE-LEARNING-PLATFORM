@@ -35,7 +35,7 @@ router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
 // POST /api/tests/
 router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, subject_id, type, difficulty, duration_minutes, total_marks, passing_marks, questions } = req.body;
+    const { title, description, subject_id, type, difficulty, duration_minutes, total_marks, passing_marks, anti_cheat_enabled, questions } = req.body;
     const test = await prisma.test.create({
       data: {
         title, description: description || '',
@@ -44,6 +44,7 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
         durationMinutes: duration_minutes || 60,
         totalMarks: total_marks || 100,
         passingMarks: passing_marks || 40,
+        antiCheatEnabled: anti_cheat_enabled !== undefined ? anti_cheat_enabled : true,
       },
     });
 
