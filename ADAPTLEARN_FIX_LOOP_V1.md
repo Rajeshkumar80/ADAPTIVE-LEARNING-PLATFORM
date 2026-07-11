@@ -114,6 +114,8 @@ The audit report was useful but incomplete: it didn't follow the requested inlin
 | 8 | Added pagination to admin students list (page/limit params, max 100). Frontend handles both formats. | 73/73 pass | `353991c` |
 | 9 | Added Zod validation to auth (register/login) and test creation routes. Proper error messages on invalid input. | 73/73 pass | `23ac6b6` |
 | 10 | Fixed 4 npm audit vulns (form-data, js-yaml, ws, dompurify partial). 9 remain (dev deps, need major bumps). Backend: 0 vulns. | N/A | `1165c2e` |
+| 11 | Added GitHub Actions CI: install deps, run tests, build backend on push/PR to main. | N/A | `c574563` |
+| 12 | SKIPPED — Refresh token flow blocked. Task 6 used memory-only tokens (not httpOnly cookies). Refresh tokens require persistent auth storage. | N/A | N/A |
 
 ---
 
