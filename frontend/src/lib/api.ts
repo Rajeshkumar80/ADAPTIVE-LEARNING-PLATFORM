@@ -10,23 +10,16 @@ class APIClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('adaptlearn_token');
-    }
+    // ponytail: token in memory only — no localStorage, reduces XSS theft risk
+    // tradeoff: user logged out on page refresh; add httpOnly cookie if persistence needed
   }
 
   setToken(token: string) {
     this.token = token;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('adaptlearn_token', token);
-    }
   }
 
   clearToken() {
     this.token = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('adaptlearn_token');
-    }
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
