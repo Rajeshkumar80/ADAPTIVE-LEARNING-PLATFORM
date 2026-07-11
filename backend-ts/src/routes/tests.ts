@@ -1,9 +1,30 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getCached, setCache } from '../cache';
 
 const router = Router();
+
+const createTestSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters'),
+  description: z.string().optional(),
+  subject_id: z.number().optional(),
+  type: z.enum(['quiz', 'exam', 'assignment']).optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  duration_minutes: z.number().min(1).optional(),
+  total_marks: z.number().min(1).optional(),
+  passing_marks: z.number().min(1).optional(),
+  anti_cheat_enabled: z.boolean().optional(),
+  questions: z.array(z.object({
+    question_text: z.string(),
+    question_type: z.string().optional(),
+    options: z.array(z.string()).optional(),
+    correct_answer: z.string(),
+    marks: z.number().optional(),
+    difficulty: z.string().optional(),
+  })).optional(),
+});
 
 // GET /api/tests/
 router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
@@ -35,7 +56,11 @@ router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
 // POST /api/tests/
 router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, subject_id, type, difficulty, duration_minutes, total_marks, passing_marks, anti_cheat_enabled, questions } = req.body;
+    const parsed = createTestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ detail: 'Validation failed', errors: parsed.error.issues.map(i => i.message) });
+    }
+    const { title, description, subject_id, type, difficulty, duration_minutes, total_marks, passing_marks, anti_cheat_enabled, questions } = parsed.data;
     const test = await prisma.test.create({
       data: {
         title, description: description || '',
