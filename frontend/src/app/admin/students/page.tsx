@@ -10,11 +10,8 @@ import {
   Search, Download, Plus, MoreHorizontal, Users, X,
   GraduationCap, CheckCircle2, AlertCircle, Upload
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { mockDB } from '@/lib/mockdb';
 import {
-  ALL_STUDENTS,
   BRANCHES,
   SECTIONS,
   SEMESTERS,
@@ -29,7 +26,6 @@ import AddStudentModal from '@/components/admin/add-student-modal';
 import StudentListDialog from '@/components/admin/student-list-dialog';
 
 export default function AdminStudentsPage() {
-  const { isOnline } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // States
@@ -50,27 +46,18 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     loadStudents();
-  }, [isOnline]);
+  }, []);
 
   const loadStudents = async () => {
     setLoading(true);
     try {
-      if (isOnline) {
-        const data = await api.getAdminStudents();
-        const mapped = data.map((u: any) => mapBackendUserToStudentRecord(u));
-        setStudents(mapped);
-      } else {
-        mockDB.init();
-        const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
-        const mapped = localUsers
-          .filter((u: any) => u.role === 'student')
-          .map((u: any) => mapBackendUserToStudentRecord(u));
-        setStudents(mapped);
-      }
+      const data = await api.getAdminStudents();
+      const mapped = data.map((u: any) => mapBackendUserToStudentRecord(u));
+      setStudents(mapped);
     } catch (err) {
       console.error('Failed to load students:', err);
-      // Fallback to static seed data
-      setStudents(ALL_STUDENTS);
+      showToast('Failed to load students from server', 'error');
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -157,57 +144,30 @@ export default function AdminStudentsPage() {
     try {
       if (studentToEdit) {
         // Edit Mode
-        if (isOnline) {
-          await api.updateStudent(studentToEdit.usn, {
-            email: formData.email,
-            username: formData.username,
-            full_name: formData.name,
-            branch: formData.branch,
-            section: formData.section,
-            semester: formData.semester,
-            cgpa: formData.cgpa,
-            is_active: formData.status === 'active',
-          });
-        } else {
-          const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
-          const updated = localUsers.map((u: any) => {
-            if (u.usn === studentToEdit.usn) {
-              return { ...u, full_name: formData.name, email: formData.email, branch: formData.branch, section: formData.section, semester: formData.semester, cgpa: formData.cgpa, status: formData.status };
-            }
-            return u;
-          });
-          localStorage.setItem('adaptlearn_users', JSON.stringify(updated));
-        }
+        await api.updateStudent(studentToEdit.usn, {
+          email: formData.email,
+          username: formData.username,
+          full_name: formData.name,
+          branch: formData.branch,
+          section: formData.section,
+          semester: formData.semester,
+          cgpa: formData.cgpa,
+          is_active: formData.status === 'active',
+        });
         showToast(`Saved changes for ${formData.name}`, 'success');
       } else {
         // Create Mode
-        if (isOnline) {
-          await api.createStudent({
-            email: formData.email,
-            username: formData.username,
-            full_name: formData.name,
-            usn: formData.usn,
-            branch: formData.branch,
-            section: formData.section,
-            semester: formData.semester,
-            cgpa: formData.cgpa,
-            password: formData.password || undefined,
-          });
-        } else {
-          mockDB.init();
-          const response = mockDB.register({
-            email: formData.email,
-            username: formData.username,
-            password: formData.password || formData.usn.toLowerCase(),
-            full_name: formData.name,
-            usn: formData.usn,
-            semester: formData.semester,
-            branch: formData.branch,
-            section: formData.section,
-            cgpa: formData.cgpa,
-          }, 'student');
-          if (!response) throw new Error('Duplicate username or USN in local database.');
-        }
+        await api.createStudent({
+          email: formData.email,
+          username: formData.username,
+          full_name: formData.name,
+          usn: formData.usn,
+          branch: formData.branch,
+          section: formData.section,
+          semester: formData.semester,
+          cgpa: formData.cgpa,
+          password: formData.password || undefined,
+        });
         showToast(`${formData.name} added successfully`, 'success');
       }
       setStudentToEdit(null);
@@ -220,13 +180,7 @@ export default function AdminStudentsPage() {
 
   const handleDeleteStudent = async (usn: string) => {
     try {
-      if (isOnline) {
-        await api.deleteStudent(usn);
-      } else {
-        const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
-        const updated = localUsers.filter((u: any) => u.usn !== usn);
-        localStorage.setItem('adaptlearn_users', JSON.stringify(updated));
-      }
+      await api.deleteStudent(usn);
       setSelectedStudent(null);
       showToast('Student deleted successfully', 'success');
       loadStudents();
@@ -308,35 +262,8 @@ export default function AdminStudentsPage() {
           return;
         }
 
-        if (isOnline) {
-          const res = await api.importStudents(parsedStudents);
-          showToast(`Successfully imported ${res.imported} students.`, 'success');
-        } else {
-          mockDB.init();
-          const localUsers = JSON.parse(localStorage.getItem('adaptlearn_users') || '[]');
-          let count = 0;
-          parsedStudents.forEach(s => {
-            if (!localUsers.some((u: any) => u.usn === s.usn)) {
-              localUsers.push({
-                id: `std_csv_${Date.now()}_${count}`,
-                email: s.email,
-                username: s.username,
-                password: s.password,
-                full_name: s.full_name,
-                role: 'student',
-                usn: s.usn,
-                semester: s.semester,
-                branch: s.branch,
-                section: s.section,
-                cgpa: s.cgpa,
-                created_at: new Date().toISOString()
-              });
-              count++;
-            }
-          });
-          localStorage.setItem('adaptlearn_users', JSON.stringify(localUsers));
-          showToast(`Imported ${count} students to local mockDB`, 'success');
-        }
+        const res = await api.importStudents(parsedStudents);
+        showToast(`Successfully imported ${res.imported} students.`, 'success');
         loadStudents();
       } catch (err: any) {
         showToast(err.message || 'CSV Import failed', 'error');
