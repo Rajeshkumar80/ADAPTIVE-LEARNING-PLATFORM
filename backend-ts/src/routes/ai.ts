@@ -19,12 +19,16 @@ async function callGemini(message: string, history?: { role: string; content: st
   }
   contents.push({ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + message }] });
   for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
     try {
       const resp = await fetch(GEMINI_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 2048, temperature: 0.7, topP: 0.9 } }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       if (resp.status === 429) { await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); continue; }
       if (!resp.ok) {
         const errText = await resp.text().catch(() => '');
@@ -36,6 +40,7 @@ async function callGemini(message: string, history?: { role: string; content: st
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) return { text, source: 'gemini' };
     } catch (err: any) {
+      clearTimeout(timeout);
       console.error('[AI] Gemini attempt ' + (attempt + 1) + ' error:', err.message);
       if (attempt < 2) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
     }
