@@ -104,7 +104,7 @@ App runs at `http://localhost:3000`
 cd backend-ts
 npm test
 ```
-59 tests covering BKT, SM-2, auth, cache, and validation.
+71 tests covering BKT, SM-2, auth, cache, validation, and document security.
 
 ## Project Structure
 
@@ -115,7 +115,7 @@ npm test
 │   │   ├── services/        # BKT, SM-2 algorithms
 │   │   ├── middleware/       # Auth, rate-limit, security, validation
 │   │   ├── utils/           # Password hashing, JWT
-│   │   └── __tests__/       # Jest test suite (59 tests)
+│   │   └── __tests__/       # Jest test suite (71 tests)
 │   ├── prisma/              # Database schema (17 models)
 │   └── seed.ts              # Database seeder
 ├── frontend/                # Next.js 15 frontend
