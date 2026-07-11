@@ -35,17 +35,28 @@ router.get('/dashboard', requireAdmin, async (_req: AuthRequest, res: Response) 
 // GET /api/admin/students
 router.get('/students', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { section, semester } = req.query as { section?: string; semester?: string };
+    const { section, semester, page, limit } = req.query as { section?: string; semester?: string; page?: string; limit?: string };
     const where: any = { role: 'student' };
     if (section) where.section = section;
     if (semester) where.semester = parseInt(semester);
 
-    const students = await prisma.user.findMany({ where, orderBy: { usn: 'asc' } });
-    return res.json(students.map(s => ({
-      id: s.id, email: s.email, username: s.username, full_name: s.fullName,
-      role: s.role, usn: s.usn, semester: s.semester, branch: s.branch,
-      section: s.section, cgpa: s.cgpa, is_active: s.isActive, created_at: s.createdAt,
-    })));
+    const pageNum = Math.max(1, parseInt(page || '1'));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit || '50')));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [students, total] = await Promise.all([
+      prisma.user.findMany({ where, orderBy: { usn: 'asc' }, skip, take: limitNum }),
+      prisma.user.count({ where }),
+    ]);
+
+    return res.json({
+      data: students.map(s => ({
+        id: s.id, email: s.email, username: s.username, full_name: s.fullName,
+        role: s.role, usn: s.usn, semester: s.semester, branch: s.branch,
+        section: s.section, cgpa: s.cgpa, is_active: s.isActive, created_at: s.createdAt,
+      })),
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+    });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }

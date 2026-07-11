@@ -51,7 +51,8 @@ export default function AdminStudentsPage() {
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const data = await api.getAdminStudents();
+      const response = await api.getAdminStudents();
+      const data = response.data || response; // Handle both paginated and legacy formats
       const mapped = data.map((u: any) => mapBackendUserToStudentRecord(u));
       setStudents(mapped);
     } catch (err) {
