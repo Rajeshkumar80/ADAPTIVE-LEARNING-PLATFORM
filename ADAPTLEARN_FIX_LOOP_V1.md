@@ -109,6 +109,11 @@ The audit report was useful but incomplete: it didn't follow the requested inlin
 | 3 | Verified IDOR protection: student JWT → 403 on /api/admin/students, /api/admin/analytics, POST /api/tests; admin JWT → 200 OK. Evidence in docs/security-tests.md | N/A (manual) | `4d77106` |
 | 4 | Resolved test count contradiction: actual count is 71 (6 suites), updated README.md | 71/71 pass | `5f2500c` |
 | 5 | Replaced mockDB in admin/students with real Prisma queries: removed all localStorage fallbacks, all CRUD now uses real API endpoints. Frontend compiles clean. | 71/71 pass | `f265d24` |
+| 6 | Moved JWT out of localStorage to memory-only in APIClient. Tradeoff: user logged out on page refresh. Token theft via XSS significantly reduced. | 71/71 pass | `bbb43ad` |
+| 7 | Added 15s AbortController timeout, kept 3 retries with backoff, builtin fallback on Gemini failure. Added 2 AI tests. | 73/73 pass | `66008b0` |
+| 8 | Added pagination to admin students list (page/limit params, max 100). Frontend handles both formats. | 73/73 pass | `353991c` |
+| 9 | Added Zod validation to auth (register/login) and test creation routes. Proper error messages on invalid input. | 73/73 pass | `23ac6b6` |
+| 10 | Fixed 4 npm audit vulns (form-data, js-yaml, ws, dompurify partial). 9 remain (dev deps, need major bumps). Backend: 0 vulns. | N/A | `1165c2e` |
 
 ---
 
