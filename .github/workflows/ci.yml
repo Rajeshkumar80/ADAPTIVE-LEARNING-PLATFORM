@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install backend dependencies
+        working-directory: backend-ts
+        run: npm ci
+        
+      - name: Run backend tests
+        working-directory: backend-ts
+        run: npm test
+        
+      - name: Build backend
+        working-directory: backend-ts
+        run: npm run build
