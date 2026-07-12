@@ -1,9 +1,15 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getCached, setCache } from '../cache';
 
 const router = Router();
+
+const updateSchema = z.object({
+  topic_id: z.number().int().positive(),
+  score_percent: z.number().min(0).max(100),
+});
 
 // GET /api/learning/due-today
 router.get('/due-today', authenticate, async (req: AuthRequest, res: Response) => {
@@ -30,10 +36,9 @@ router.get('/due-today', authenticate, async (req: AuthRequest, res: Response) =
 // POST /api/learning/update
 router.post('/update', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { topic_id, score_percent } = req.body;
-    if (!topic_id || score_percent === undefined) {
-      return res.status(400).json({ detail: 'topic_id and score_percent required' });
-    }
+    const parsed = updateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ detail: parsed.error.issues[0].message });
+    const { topic_id, score_percent } = parsed.data;
 
     const userId = req.user!.id;
 

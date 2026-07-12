@@ -1,10 +1,26 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../prisma';
 import { requireAdmin, AuthRequest } from '../middleware/auth';
 import { hashPassword } from '../utils/auth';
 import { getCached, setCache } from '../cache';
 
 const router = Router();
+
+const createStudentSchema = z.object({
+  email: z.string().email(), username: z.string().min(3), password: z.string().min(6).optional(),
+  full_name: z.string().max(100).optional(), usn: z.string().optional(),
+  semester: z.number().int().min(1).max(8).optional(), branch: z.string().max(50).optional(),
+  section: z.string().max(5).optional(), cgpa: z.number().min(0).max(10).optional(),
+});
+
+const updateStudentSchema = z.object({
+  email: z.string().email().optional(), username: z.string().min(3).optional(),
+  full_name: z.string().max(100).optional(), semester: z.number().int().min(1).max(8).optional(),
+  branch: z.string().max(50).optional(), section: z.string().max(5).optional(),
+  cgpa: z.number().min(0).max(10).optional(), is_active: z.boolean().optional(),
+  password: z.string().min(6).optional(),
+});
 
 // GET /api/admin/dashboard
 router.get('/dashboard', requireAdmin, async (_req: AuthRequest, res: Response) => {
@@ -81,7 +97,9 @@ router.get('/students/:usn', requireAdmin, async (req: AuthRequest, res: Respons
 // POST /api/admin/students
 router.post('/students', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { email, username, password, full_name, usn, semester, branch, section, cgpa } = req.body;
+    const parsed = createStudentSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ detail: parsed.error.issues[0].message });
+    const { email, username, password, full_name, usn, semester, branch, section, cgpa } = parsed.data;
     const existing = await prisma.user.findFirst({ where: { OR: [{ email }, { username }, ...(usn ? [{ usn }] : [])] } });
     if (existing) return res.status(400).json({ detail: 'Student already exists' });
 
@@ -106,7 +124,9 @@ router.put('/students/:usn', requireAdmin, async (req: AuthRequest, res: Respons
     const student = await prisma.user.findFirst({ where: { usn, role: 'student' } });
     if (!student) return res.status(404).json({ detail: 'Student not found' });
 
-    const { email, username, full_name, semester, branch, section, cgpa, is_active, password } = req.body;
+    const parsed = updateStudentSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ detail: parsed.error.issues[0].message });
+    const { email, username, full_name, semester, branch, section, cgpa, is_active, password } = parsed.data;
     const updated = await prisma.user.update({
       where: { id: student.id },
       data: {

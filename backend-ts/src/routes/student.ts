@@ -1,9 +1,17 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authenticate, requireStudent, AuthRequest } from '../middleware/auth';
 import { getCached, setCache } from '../cache';
 
 const router = Router();
+
+const profileSchema = z.object({
+  semester: z.number().int().min(1).max(8).optional(),
+  section: z.string().max(5).optional(),
+  branch: z.string().max(50).optional(),
+  full_name: z.string().max(100).optional(),
+});
 
 // GET /api/student/dashboard
 router.get('/dashboard', requireStudent, async (req: AuthRequest, res: Response) => {
@@ -76,7 +84,9 @@ router.get('/profile', requireStudent, async (req: AuthRequest, res: Response) =
 // PUT /api/student/profile
 router.put('/profile', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
-    const { semester, section, branch, full_name } = req.body;
+    const parsed = profileSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ detail: parsed.error.issues[0].message });
+    const { semester, section, branch, full_name } = parsed.data;
     const user = await prisma.user.update({
       where: { id: req.user!.id },
       data: {
