@@ -334,22 +334,39 @@ router.get('/reports/tests', requireAdmin, async (_req: AuthRequest, res: Respon
 // GET /api/admin/reports/engagement
 router.get('/reports/engagement', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const students = await prisma.user.findMany({ where: { role: 'student' } });
-    const sessions = await prisma.studySession.findMany();
-    const events = await prisma.learningEvent.findMany();
-    const achievements = await prisma.achievement.findMany();
+    const cached = getCached('admin:report:engagement');
+    if (cached) return res.json(cached);
+
+    const [students, sessionAgg, eventAgg, achievementAgg] = await Promise.all([
+      prisma.user.findMany({ where: { role: 'student' }, orderBy: { usn: 'asc' } }),
+      prisma.studySession.groupBy({
+        by: ['userId'],
+        _sum: { durationMinutes: true }, _count: { id: true },
+      }),
+      prisma.learningEvent.groupBy({
+        by: ['userId'], _count: { id: true },
+      }),
+      prisma.achievement.groupBy({
+        by: ['userId'], _count: { id: true },
+      }),
+    ]);
+
+    const sessionMap = new Map<number, { mins: number; count: number }>();
+    for (const s of sessionAgg) sessionMap.set(s.userId, { mins: s._sum.durationMinutes || 0, count: s._count.id });
+    const eventMap = new Map<number, number>();
+    for (const e of eventAgg) eventMap.set(e.userId, e._count.id);
+    const achMap = new Map<number, number>();
+    for (const a of achievementAgg) achMap.set(a.userId, a._count.id);
 
     const engagementStats = students.map(s => {
-      const studentSessions = sessions.filter(sess => sess.userId === s.id);
-      const studentEvents = events.filter(e => e.userId === s.id);
-      const studentAchievements = achievements.filter(a => a.userId === s.id);
-      const totalMinutes = studentSessions.reduce((sum, sess) => sum + sess.durationMinutes, 0);
+      const sess = sessionMap.get(s.id);
+      const totalMinutes = sess?.mins || 0;
       return {
         usn: s.usn, name: s.fullName,
         total_hours: Math.round(totalMinutes / 60 * 10) / 10,
-        sessions: studentSessions.length,
-        events: studentEvents.length,
-        achievements: studentAchievements.length,
+        sessions: sess?.count || 0,
+        events: eventMap.get(s.id) || 0,
+        achievements: achMap.get(s.id) || 0,
       };
     });
 
@@ -358,14 +375,19 @@ router.get('/reports/engagement', requireAdmin, async (_req: AuthRequest, res: R
       ? engagementStats.reduce((sum, s) => sum + s.total_hours, 0) / engagementStats.length
       : 0;
 
-    return res.json({
+    const totalSessions = sessionAgg.reduce((sum, s) => sum + s._count.id, 0);
+    const totalEvents = eventAgg.reduce((sum, e) => sum + e._count.id, 0);
+
+    const result = {
       total_students: students.length,
       active_students: activeStudents,
       avg_hours_per_student: Math.round(avgHours * 10) / 10,
-      total_sessions: sessions.length,
-      total_events: events.length,
+      total_sessions: totalSessions,
+      total_events: totalEvents,
       students: engagementStats,
-    });
+    };
+    setCache('admin:report:engagement', result, 30_000);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }

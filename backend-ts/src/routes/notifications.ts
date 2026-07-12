@@ -1,23 +1,40 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getCached, setCache } from '../cache';
 
 const router = Router();
 
-// GET /api/notifications/
+const sendNotificationSchema = z.object({
+  title: z.string().min(1).max(200),
+  message: z.string().min(1).max(2000),
+  type: z.enum(['info', 'warning', 'success', 'error']).optional(),
+  target_section: z.string().max(5).optional(),
+  target_users: z.array(z.number().int().positive()).max(500).optional(),
+});
+
+// GET /api/notifications?page=1&limit=20
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`notif:${userId}`);
+    const page = Math.max(1, parseInt(String(req.query.page)) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit)) || 20));
+    const offset = (page - 1) * limit;
+    const cacheKey = `notif:${userId}:${page}:${limit}`;
+    const cached = getCached(cacheKey);
     if (cached) return res.json(cached);
 
-    const notifications = await prisma.userNotification.findMany({
-      where: { userId },
-      include: { notification: true },
-      orderBy: { notification: { createdAt: 'desc' } },
-      take: 50,
-    });
+    const [notifications, total, unreadCount] = await Promise.all([
+      prisma.userNotification.findMany({
+        where: { userId },
+        include: { notification: true },
+        orderBy: { notification: { createdAt: 'desc' } },
+        skip: offset, take: limit,
+      }),
+      prisma.userNotification.count({ where: { userId } }),
+      prisma.userNotification.count({ where: { userId, read: false } }),
+    ]);
 
     const result = {
       notifications: notifications.map(n => ({
@@ -25,10 +42,10 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
         type: n.notification.type, category: n.notification.category,
         target: n.notification.target, read: n.read, created_at: n.notification.createdAt,
       })),
-      total: notifications.length,
-      unread_count: notifications.filter(n => !n.read).length,
+      total, unread_count: unreadCount,
+      pagination: { page, limit, pages: Math.ceil(total / limit) },
     };
-    setCache(`notif:${userId}`, result, 15_000);
+    setCache(cacheKey, result, 15_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -64,8 +81,9 @@ router.put('/read-all', authenticate, async (req: AuthRequest, res: Response) =>
 // POST /api/notifications/send (admin only)
 router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, message, type, target_section, target_users } = req.body;
-    if (!title || !message) return res.status(400).json({ detail: 'Title and message required' });
+    const parsed = sendNotificationSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ detail: parsed.error.issues[0].message });
+    const { title, message, type, target_section, target_users } = parsed.data;
 
     const notification = await prisma.notification.create({
       data: { title, message, type: type || 'info', sentBy: req.user!.id, target: target_section || 'all' },
