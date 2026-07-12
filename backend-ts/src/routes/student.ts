@@ -236,12 +236,12 @@ router.get('/leaderboard', authenticate, async (_req: AuthRequest, res: Response
 
     const byCgpa = students.map(s => ({
       usn: s.usn, name: s.fullName, cgpa: s.cgpa, section: s.section,
-    })).sort((a, b) => b.cgpa - a.cgpa || a.usn.localeCompare(b.usn));
+    })).sort((a, b) => b.cgpa - a.cgpa || (a.usn || '').localeCompare(b.usn || ''));
 
     const byTestScore = students.map(s => {
       const scores = scoreMap.get(s.id);
       return { usn: s.usn, name: s.fullName, avg_score: scores?.avg || 0, section: s.section };
-    }).sort((a, b) => b.avg_score - a.avg_score || a.usn.localeCompare(b.usn));
+    }).sort((a, b) => b.avg_score - a.avg_score || (a.usn || '').localeCompare(b.usn || ''));
 
     const result = { by_cgpa: byCgpa, by_test_score: byTestScore };
     setCache('leaderboard:all', result, 120_000);

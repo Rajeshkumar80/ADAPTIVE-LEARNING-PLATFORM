@@ -29,19 +29,18 @@ export async function checkAndAwardAchievements(userId: number): Promise<string[
   const [testAttempts, quizCount, masteryCount] = await Promise.all([
     prisma.testAttempt.findMany({ where: { userId, isCompleted: true }, select: { score: true } }),
     prisma.testAttempt.count({ where: { userId, isCompleted: true } }),
-    prisma.userTopicProgress.count({ where: { userId, mastery: { gte: 0.8 } } }),
+    prisma.topicMastery.count({ where: { userId, mastery: { gte: 80 } } }),
   ]);
 
   const maxScore = testAttempts.length > 0 ? Math.max(...testAttempts.map(a => a.score || 0)) : 0;
 
-  // Calculate streak (simplified: count consecutive days with activity)
   const activities = await prisma.learningEvent.findMany({
     where: { userId },
-    select: { timestamp: true },
-    orderBy: { timestamp: 'desc' },
+    select: { createdAt: true },
+    orderBy: { createdAt: 'desc' },
     take: 30,
   });
-  const streakDays = calculateStreak(activities.map(a => a.timestamp));
+  const streakDays = calculateStreak(activities.map(a => a.createdAt));
 
   const stats: UserStats = {
     totalTests: testAttempts.length,
@@ -51,7 +50,6 @@ export async function checkAndAwardAchievements(userId: number): Promise<string[
     masteryCount,
   };
 
-  // Get existing achievements
   const existing = await prisma.achievement.findMany({ where: { userId }, select: { title: true } });
   const existingTitles = new Set(existing.map(a => a.title));
 
