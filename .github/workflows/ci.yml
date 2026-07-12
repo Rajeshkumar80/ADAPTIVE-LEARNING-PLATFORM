@@ -10,6 +10,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: adaptive_learning
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:password@localhost:5432/adaptive_learning
+      JWT_SECRET: ci-test-secret-do-not-use-in-production
+    
     steps:
       - uses: actions/checkout@v4
       
@@ -21,6 +40,14 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend-ts
         run: npm ci
+        
+      - name: Generate Prisma client
+        working-directory: backend-ts
+        run: npx prisma generate
+        
+      - name: Push Prisma schema to DB
+        working-directory: backend-ts
+        run: npx prisma db push --skip-generate
         
       - name: Run backend tests
         working-directory: backend-ts
