@@ -212,14 +212,16 @@ router.get('/activity-history', requireStudent, async (req: AuthRequest, res: Re
   }
 });
 
-// GET /api/student/leaderboard
-router.get('/leaderboard', authenticate, async (_req: AuthRequest, res: Response) => {
+// GET /api/student/leaderboard?page=1&limit=20
+router.get('/leaderboard', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('leaderboard:all');
+    const page = Math.max(1, parseInt(String(req.query.page)) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit)) || 20));
+    const cacheKey = `leaderboard:${page}:${limit}`;
+    const cached = getCached(cacheKey);
     if (cached) return res.json(cached);
 
-    // Batch query: get all students + aggregate scores in ONE query
-    const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { cgpa: 'desc' }, take: 20 });
+    const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { cgpa: 'desc' } });
     const studentIds = students.map(s => s.id);
 
     const scoreAgg = await prisma.testAttempt.groupBy({
@@ -243,8 +245,14 @@ router.get('/leaderboard', authenticate, async (_req: AuthRequest, res: Response
       return { usn: s.usn, name: s.fullName, avg_score: scores?.avg || 0, section: s.section };
     }).sort((a, b) => b.avg_score - a.avg_score || (a.usn || '').localeCompare(b.usn || ''));
 
-    const result = { by_cgpa: byCgpa, by_test_score: byTestScore };
-    setCache('leaderboard:all', result, 120_000);
+    const total = byCgpa.length;
+    const offset = (page - 1) * limit;
+    const result = {
+      by_cgpa: byCgpa.slice(offset, offset + limit),
+      by_test_score: byTestScore.slice(offset, offset + limit),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
+    setCache(cacheKey, result, 120_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
