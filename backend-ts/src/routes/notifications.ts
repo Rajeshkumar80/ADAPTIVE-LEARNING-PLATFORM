@@ -81,16 +81,11 @@ router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
       users = await prisma.user.findMany({ where: { role: 'student' } });
     }
 
-    for (const u of users) {
-      const exists = await prisma.userNotification.findUnique({
-        where: { notificationId_userId: { notificationId: notification.id, userId: u.id } },
-      });
-      if (!exists) {
-        await prisma.userNotification.create({
-          data: { notificationId: notification.id, userId: u.id },
-        });
-      }
-    }
+    // Batch assign to users — skip duplicates via unique constraint
+    await prisma.userNotification.createMany({
+      data: users.map(u => ({ notificationId: notification.id, userId: u.id })),
+      skipDuplicates: true,
+    });
 
     // Invalidate notification cache for all affected users
     if (target_users && target_users.length > 0) {
