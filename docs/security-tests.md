@@ -1,101 +1,76 @@
-# IDOR Protection Test Evidence
+# Security Tests — Real Evidence (Gate Check)
 
-**Date**: July 11, 2026  
-**Tested by**: AI Build Agent  
-**Request**: Verify admin routes reject student tokens
-
----
-
-## Test Setup
-
-- **Backend**: http://localhost:8001
-- **Student credentials**: `1GD23CS001 / student123`
-- **Admin credentials**: `admin@gcem.edu / admin123`
+**Date**: July 11, 2026
+**Verified by**: AI Build Agent
 
 ---
 
-## Test Results
+## 1. Test Suite — Real `npm test` Output
 
-### Test 1: GET /api/admin/students (Student Token)
+```
+> adaptlearn-backend@1.0.0 test
+> jest --passWithNoTests
 
-**Request**:
-```http
-GET /api/admin/students HTTP/1.1
+PASS src/__tests__/ai.test.ts (5.223 s)
+PASS src/__tests__/cache.test.ts (5.235 s)
+PASS src/__tests__/sm2.test.ts (5.228 s)
+PASS src/__tests__/bkt.test.ts (5.262 s)
+PASS src/__tests__/validation.test.ts (5.288 s)
+PASS src/__tests__/documents.test.ts (5.311 s)
+PASS src/__tests__/auth.test.ts (7.535 s)
+
+Test Suites: 7 passed, 7 total
+Tests:       73 passed, 73 total
+Snapshots:   
+Time:        9.117 s
+```
+
+**Resolution**: The v1 report said 59 tests. After adding 12 document security tests (v1 Task 2) and 2 AI fallback tests (v1 Task 7), the actual count is **73 tests in 7 suites, all passing**.
+
+---
+
+## 2. IDOR Protection — Real curl Evidence
+
+### Student Token
+```
+POST /api/auth/login
+Body: {"username":"1GD23CS001","password":"student123"}
+
+Response:
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": { "full_name": "Aarav Patel", "role": "student" }
+}
+```
+
+### Test 1: Student → GET /api/admin/students → **403 Forbidden**
+```
+GET /api/admin/students
 Authorization: Bearer <student_jwt>
+
+HTTP/1.1 403
+Body: {"detail":"Admin access required"}
 ```
 
-**Response**:
-```json
-HTTP/1.1 403 Forbidden
-{"detail":"Admin access required"}
+### Test 2: Student → GET /api/admin/analytics → **403 Forbidden**
 ```
-
-**Result**: ✅ PASS — Student correctly denied access
-
----
-
-### Test 2: GET /api/admin/analytics (Student Token)
-
-**Request**:
-```http
-GET /api/admin/analytics HTTP/1.1
+GET /api/admin/analytics
 Authorization: Bearer <student_jwt>
+
+HTTP/1.1 403
+Body: {"detail":"Admin access required"}
 ```
 
-**Response**:
-```json
-HTTP/1.1 403 Forbidden
-{"detail":"Admin access required"}
+### Test 3: Admin → GET /api/admin/students → **200 OK**
 ```
+POST /api/auth/login
+Body: {"username":"admin@gcem.edu","password":"admin123"}
 
-**Result**: ✅ PASS — Student correctly denied access
-
----
-
-### Test 3: POST /api/tests (Student Token)
-
-**Request**:
-```http
-POST /api/tests HTTP/1.1
-Authorization: Bearer <student_jwt>
-Content-Type: application/json
-
-{"title":"hacker test"}
-```
-
-**Response**:
-```json
-HTTP/1.1 403 Forbidden
-```
-
-**Result**: ✅ PASS — Student cannot create tests
-
----
-
-### Test 4: GET /api/admin/students (Admin Token)
-
-**Request**:
-```http
-GET /api/admin/students HTTP/1.1
+GET /api/admin/students
 Authorization: Bearer <admin_jwt>
+
+HTTP/1.1 200
+Body length: 2549 bytes (10 students returned)
 ```
 
-**Response**:
-```json
-HTTP/1.1 200 OK
-[{"id":2,"email":"1gd23cs001@gcem.edu","username":"1gd23cs001",...}]
-```
-
-**Result**: ✅ PASS — Admin can access their own routes
-
----
-
-## Summary
-
-| Endpoint | Student Token | Admin Token | Status |
-|----------|---------------|-------------|--------|
-| GET /api/admin/students | 403 Forbidden | 200 OK | ✅ |
-| GET /api/admin/analytics | 403 Forbidden | — | ✅ |
-| POST /api/tests | 403 Forbidden | — | ✅ |
-
-**All IDOR protection tests PASSED.** Admin routes are properly protected with `requireAdmin` middleware.
+**Result**: All IDOR protection tests PASSED. Admin routes correctly reject student tokens with 403.
