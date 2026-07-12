@@ -178,8 +178,13 @@ router.post('/:attemptId/submit', authenticate, async (req: AuthRequest, res: Re
     setCache('leaderboard:all', null, 0);
     setCache('admin:dashboard', null, 0);
     setCache(`dashboard:${attempt.userId}`, null, 0);
+    setCache(`achievements:${attempt.userId}`, null, 0);
 
-    return res.json({ score: updated.score, total_marks: totalMarks, percentage: Math.round(percentage * 10) / 10, passed: percentage >= (attempt.test.passingMarks / attempt.test.totalMarks * 100) });
+    // Check and award achievements
+    const { checkAndAwardAchievements } = await import('../services/achievements');
+    const awarded = await checkAndAwardAchievements(attempt.userId);
+
+    return res.json({ score: updated.score, total_marks: totalMarks, percentage: Math.round(percentage * 10) / 10, passed: percentage >= (attempt.test.passingMarks / attempt.test.totalMarks * 100), achievements_awarded: awarded });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
   }
