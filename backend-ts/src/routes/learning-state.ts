@@ -1,9 +1,16 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authenticate, requireStudent, AuthRequest } from '../middleware/auth';
 import { bktUpdate, masteryLevel, confidence, isTopicUnlocked, DEFAULT_BKT } from '../services/bkt';
 
 const router = Router();
+
+const bktUpdateSchema = z.object({
+  topic_id: z.number().int().positive(),
+  correct: z.number().int().min(0),
+  total: z.number().int().min(1),
+});
 
 // GET /api/learning-state/:userId
 router.get('/:userId', authenticate, async (req: AuthRequest, res: Response) => {
@@ -112,10 +119,9 @@ router.get('/:userId', authenticate, async (req: AuthRequest, res: Response) => 
 // POST /api/learning-state/bkt-update (manual BKT update after quiz)
 router.post('/bkt-update', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
-    const { topic_id, correct, total } = req.body;
-    if (!topic_id || correct === undefined || !total) {
-      return res.status(400).json({ detail: 'topic_id, correct, total required' });
-    }
+    const parsed = bktUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ detail: parsed.error.issues[0].message });
+    const { topic_id, correct, total } = parsed.data;
 
     const userId = req.user!.id;
 
