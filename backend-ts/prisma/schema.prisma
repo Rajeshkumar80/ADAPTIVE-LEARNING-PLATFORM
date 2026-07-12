@@ -131,7 +131,7 @@ model Question {
 model TestAttempt {
   id              Int     @id @default(autoincrement())
   userId          Int
-  user            User    @relation(fields: [userId], references: [id])
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   testId          Int
   test            Test    @relation(fields: [testId], references: [id])
   startedAt       DateTime @default(now())
@@ -155,7 +155,7 @@ model AntiCheatFlag {
   testAttemptId Int
   testAttempt   TestAttempt @relation(fields: [testAttemptId], references: [id])
   userId        Int
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   severity      String   @default("info") // critical | warning | info
   violation     String
   count         Int      @default(1)
@@ -170,7 +170,7 @@ model AntiCheatFlag {
 model TopicMastery {
   id             Int      @id @default(autoincrement())
   userId         Int
-  user           User     @relation(fields: [userId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   topicId        Int
   topic          Topic    @relation(fields: [topicId], references: [id])
   mastery        Float    @default(0) // 0-100
@@ -193,7 +193,7 @@ model TopicMastery {
 model StudySession {
   id              Int      @id @default(autoincrement())
   userId          Int
-  user            User     @relation(fields: [userId], references: [id])
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjectId       Int?
   subject         Subject? @relation(fields: [subjectId], references: [id])
   topicId         Int?
@@ -212,7 +212,7 @@ model StudySession {
 model LearningEvent {
   id           Int      @id @default(autoincrement())
   userId       Int
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   eventType    String   // quiz_attempt | study_session | time_spent | mastery_update
   topicId      Int?
   subjectId    Int?
@@ -231,7 +231,7 @@ model LearningEvent {
 model SpacedRepetitionCard {
   id          Int      @id @default(autoincrement())
   userId      Int
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   topicId     Int
   topic       Topic    @relation(fields: [topicId], references: [id])
   easeFactor  Float    @default(2.5)
@@ -250,7 +250,7 @@ model SpacedRepetitionCard {
 model JournalEntry {
   id        Int      @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   content   String   @default("")
   mood      String   @default("neutral")
@@ -266,7 +266,7 @@ model JournalEntry {
 model Certificate {
   id          Int      @id @default(autoincrement())
   userId      Int
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   subject     String
   issuedDate  DateTime @default(now())
@@ -279,7 +279,7 @@ model Certificate {
 model Achievement {
   id          Int      @id @default(autoincrement())
   userId      Int
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String   @default("")
   icon        String   @default("🏆")
@@ -308,7 +308,7 @@ model UserNotification {
   notificationId Int
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   userId         Int
-  user           User     @relation(fields: [userId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   read           Boolean  @default(false)
   readAt         DateTime?
 
