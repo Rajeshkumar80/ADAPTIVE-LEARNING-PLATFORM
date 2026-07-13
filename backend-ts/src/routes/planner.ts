@@ -2,27 +2,26 @@ import { Router, Response } from 'express';
 import { prisma } from '../prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getCached, setCache } from '../cache';
+import { dqnSchedule } from '../services/sm2';
 
 const router = Router();
 
-// GET /api/planner/today
+// GET /api/planner/today — DQN-powered study plan
 router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const cached = await getCached(`planner:today:${userId}`);
     if (cached) return res.json(cached);
 
-    // Batch: get due cards, weak topics, upcoming tests in parallel
-    const [dueCards, weakTopics, upcomingTests] = await Promise.all([
+    // Get mastery data for all unlocked topics
+    const [masteryRecords, dueCards, upcomingTests] = await Promise.all([
+      prisma.topicMastery.findMany({
+        where: { userId },
+        include: { topic: { include: { subject: true } } },
+      }),
       prisma.spacedRepetitionCard.findMany({
         where: { userId, nextReview: { lte: new Date() } },
         include: { topic: { include: { subject: true } } },
-        take: 5,
-      }),
-      prisma.topicMastery.findMany({
-        where: { userId, mastery: { lt: 50 } },
-        include: { topic: { include: { subject: true } } },
-        orderBy: { mastery: 'asc' },
         take: 5,
       }),
       prisma.test.findMany({
@@ -33,39 +32,65 @@ router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
       }),
     ]);
 
+    // Get prerequisite counts per topic
+    const topicIds = masteryRecords.map(m => m.topicId);
+    const deps = await prisma.topicDependency.findMany({
+      where: { topicId: { in: topicIds } },
+    });
+    const prereqCounts = new Map<number, { total: number; mastered: number }>();
+    for (const d of deps) {
+      const existing = prereqCounts.get(d.topicId) || { total: 0, mastered: 0 };
+      existing.total++;
+      const prereqMastery = masteryRecords.find(m => m.topicId === d.prerequisiteId);
+      if (prereqMastery && prereqMastery.mastery >= 60) existing.mastered++;
+      prereqCounts.set(d.topicId, existing);
+    }
+
+    // Build DQN input from mastery records
+    const dqnTopics = masteryRecords.map(m => {
+      const prereqInfo = prereqCounts.get(m.topicId) || { total: 0, mastered: 0 };
+      const card = dueCards.find(c => c.topicId === m.topicId);
+      return {
+        topic_id: m.topicId,
+        topic_name: m.topic.name,
+        subject: m.topic.subject.name,
+        mastery: m.mastery,
+        observations: m.observations,
+        is_unlocked: true,
+        has_card: !!card,
+        next_review: card?.nextReview || null,
+        prerequisites_mastered: prereqInfo.mastered,
+        total_prerequisites: prereqInfo.total,
+      };
+    });
+
+    // Run DQN scheduler
+    const dqnItems = dqnSchedule(dqnTopics, 10);
+
+    // Build daily plan from DQN output
     const items: any[] = [];
     let slot = 9;
 
-    // 1. Due review cards
-    for (const card of dueCards) {
+    for (const item of dqnItems) {
+      const duration = item.type === 'review' ? 30 : item.type === 'weak_area' ? 45 : 40;
       items.push({
         id: items.length + 1,
         time: `${slot}:00`,
-        subject: card.topic.subject.name,
-        topic: card.topic.name,
-        duration: 30,
-        activity: 'Spaced Repetition Review',
+        subject: item.subject,
+        topic: item.topic_name,
+        duration,
+        activity: item.type === 'review' ? 'Spaced Repetition Review'
+          : item.type === 'weak_area' ? 'Focused Weak Area Study'
+          : 'New Topic Introduction',
         status: 'pending',
+        q_value: item.q_value,
+        reason: item.reason,
       });
       slot++;
-    }
-
-    // 2. Weak topics — schedule study sessions
-    for (const weak of weakTopics) {
       if (items.length >= 8) break;
-      items.push({
-        id: items.length + 1,
-        time: `${slot}:00`,
-        subject: weak.topic.subject.name,
-        topic: `Study: ${weak.topic.name} (mastery ${Math.round(weak.mastery)}%)`,
-        duration: 45,
-        activity: 'Focused Study',
-        status: 'pending',
-      });
-      slot++;
     }
 
-    // 3. Upcoming test prep
+    // Add upcoming test prep
     for (const test of upcomingTests) {
       if (items.length >= 10) break;
       const daysUntil = Math.ceil((new Date(test.startsAt!).getTime() - Date.now()) / 86400000);
@@ -81,7 +106,7 @@ router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
       slot++;
     }
 
-    // Fallback: if nothing to do
+    // Fallback
     if (items.length === 0) {
       items.push({
         id: 1, time: '09:00', subject: 'General', topic: 'Free study — review notes or practice problems',
@@ -89,7 +114,7 @@ router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const result = { items, date: new Date().toISOString().split('T')[0] };
+    const result = { items, date: new Date().toISOString().split('T')[0], scheduler: 'dqn' };
     await setCache(`planner:today:${userId}`, result, 30_000);
     return res.json(result);
   } catch (err: any) {

@@ -143,3 +143,68 @@ describe('Forgetting risk classification', () => {
     expect(classifyRisk(40, 2)).toBe('low');
   });
 });
+
+describe('DQN Scheduler vs Rule-Based', () => {
+  const { generateStudyPlan, dqnSchedule } = require('../services/sm2');
+
+  // Rule-based uses { id, name, ... }, DQN uses { topic_id, topic_name, ... }
+  const ruleBasedTopics = [
+    { id: 1, name: 'Arrays', subject: 'DSA', mastery: 85, is_unlocked: true, has_card: true, next_review: new Date(Date.now() - 86400000), observations: 5 },
+    { id: 2, name: 'Linked Lists', subject: 'DSA', mastery: 30, is_unlocked: true, has_card: true, next_review: new Date(Date.now() - 86400000 * 3), observations: 2 },
+    { id: 3, name: 'Trees', subject: 'DSA', mastery: 10, is_unlocked: true, has_card: false, next_review: null, observations: 0 },
+    { id: 4, name: 'Graphs', subject: 'DSA', mastery: 55, is_unlocked: true, has_card: true, next_review: new Date(Date.now() - 86400000 * 10), observations: 3 },
+    { id: 5, name: 'DP', subject: 'DSA', mastery: 45, is_unlocked: true, has_card: true, next_review: new Date(Date.now() + 86400000), observations: 4 },
+  ];
+
+  const dqnTopics = ruleBasedTopics.map(t => ({
+    topic_id: t.id, topic_name: t.name, subject: t.subject,
+    mastery: t.mastery, is_unlocked: t.is_unlocked, has_card: t.has_card,
+    next_review: t.next_review, observations: t.observations,
+    prerequisites_mastered: t.id === 1 ? 0 : t.id - 1,
+    total_prerequisites: t.id === 1 ? 0 : Math.min(t.id - 1, 3),
+  }));
+
+  it('DQN produces different ordering than rule-based for same input', () => {
+    const ruleBased = generateStudyPlan(ruleBasedTopics, 5);
+    const dqn = dqnSchedule(dqnTopics, 5);
+
+    expect(ruleBased.length).toBeGreaterThan(0);
+    expect(dqn.length).toBeGreaterThan(0);
+
+    const ruleIds = ruleBased.map((t: any) => t.topic_id);
+    const dqnIds = dqn.map((t: any) => t.topic_id);
+    expect(ruleIds).not.toEqual(dqnIds);
+  });
+
+  it('DQN boosts overdue topics with high mastery potential', () => {
+    const result = dqnSchedule(dqnTopics, 5);
+    const graphsItem = result.find((t: any) => t.topic_id === 4);
+    expect(graphsItem).toBeDefined();
+    expect(graphsItem.q_value).toBeGreaterThan(0);
+  });
+
+  it('DQN explores new topics (Trees with 0 observations)', () => {
+    const result = dqnSchedule(dqnTopics, 5);
+    const treeItem = result.find((t: any) => t.topic_id === 3);
+    expect(treeItem).toBeDefined();
+    expect(treeItem!.type).toBe('new_topic');
+  });
+
+  it('DQN assigns low priority to high-mastery topics', () => {
+    const result = dqnSchedule(dqnTopics, 5);
+    const arraysItem = result.find((t: any) => t.topic_id === 1);
+    // Arrays at 85% — included (overdue review) but with low Q-value
+    expect(arraysItem).toBeDefined();
+    expect(arraysItem.q_value).toBeLessThan(0.2);
+    expect(arraysItem.priority).toBeGreaterThan(80); // Low priority (high number)
+  });
+
+  it('DQN includes q_value in output', () => {
+    const result = dqnSchedule(dqnTopics, 3);
+    for (const item of result) {
+      expect(item.q_value).toBeGreaterThanOrEqual(0);
+      expect(item.q_value).toBeLessThanOrEqual(1);
+      expect(typeof item.reason).toBe('string');
+    }
+  });
+});

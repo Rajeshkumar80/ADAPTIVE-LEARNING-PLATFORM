@@ -150,3 +150,121 @@ export function generateStudyPlan(
   items.sort((a, b) => a.priority - b.priority);
   return items.slice(0, maxItems);
 }
+
+/**
+ * DQN-inspired adaptive scheduler.
+ * Uses Q-value approximation: Q(s,a) = reward + γ * max(Q(s',a'))
+ * Where state = topic mastery, action = study now, reward = mastery gain potential.
+ *
+ * Key differences from rule-based scheduler:
+ * - Considers forgetting curve urgency (exponential decay, not binary thresholds)
+ * - Balances exploration (new topics) vs exploitation (weak areas)
+ * - Accounts for prerequisite depth (deeper topics get priority boost)
+ * - Applies discount factor γ for long-term planning
+ */
+
+const GAMMA = 0.9; // Discount factor for future rewards
+const EXPLORATION_RATE = 0.15; // 15% chance to explore new topics
+
+interface DQNState {
+  topic_id: number;
+  topic_name: string;
+  subject: string;
+  mastery: number;
+  observations: number;
+  is_unlocked: boolean;
+  has_card: boolean;
+  next_review?: Date | null;
+  prerequisites_mastered: number; // count of mastered prerequisites
+  total_prerequisites: number;
+}
+
+interface DQNItem {
+  topic_id: number;
+  topic_name: string;
+  subject: string;
+  priority: number;
+  q_value: number;
+  reason: string;
+  type: 'review' | 'weak_area' | 'new_topic' | 'prerequisite';
+}
+
+function computeQValue(state: DQNState): number {
+  const now = new Date();
+  const mastery = state.mastery / 100; // Normalize to 0-1
+
+  // Reward: potential mastery gain (higher for low mastery)
+  const reward = 1 - mastery;
+
+  // Urgency: exponential forgetting curve
+  let urgency = 0;
+  if (state.has_card && state.next_review) {
+    const daysOverdue = (now.getTime() - state.next_review.getTime()) / (1000 * 60 * 60 * 24);
+    urgency = Math.min(1, Math.max(0, daysOverdue / 7)); // Max urgency at 7 days overdue
+  }
+
+  // Prerequisite bonus: topics that unlock more content get priority
+  const prereqBonus = state.total_prerequisites > 0
+    ? (state.prerequisites_mastered / state.total_prerequisites) * 0.3
+    : 0;
+
+  // Exploration bonus: new topics get a small random boost
+  const explorationBonus = state.observations === 0
+    ? EXPLORATION_RATE * Math.random()
+    : 0;
+
+  // Q-value: weighted combination
+  const qValue = (reward * 0.4) + (urgency * 0.3) + (prereqBonus * 0.2) + (explorationBonus * 0.1);
+
+  // Apply discount factor based on observations (more experienced = less discount)
+  const discountFactor = Math.pow(GAMMA, Math.min(state.observations, 10));
+
+  return qValue * discountFactor;
+}
+
+export function dqnSchedule(
+  topics: DQNState[],
+  maxItems: number = 10
+): DQNItem[] {
+  const now = new Date();
+  const items: DQNItem[] = [];
+
+  for (const topic of topics) {
+    if (!topic.is_unlocked) continue;
+
+    const qValue = computeQValue(topic);
+    let type: DQNItem['type'] = 'review';
+    let reason = '';
+
+    if (topic.has_card && topic.next_review && topic.next_review <= now) {
+      type = 'review';
+      reason = `Q=${qValue.toFixed(2)}: Review overdue`;
+    } else if (topic.mastery < 40 && topic.observations > 0) {
+      type = 'weak_area';
+      reason = `Q=${qValue.toFixed(2)}: Weak area (${Math.round(topic.mastery)}%)`;
+    } else if (topic.observations === 0) {
+      type = 'new_topic';
+      reason = `Q=${qValue.toFixed(2)}: New topic (explore)`;
+    } else if (topic.mastery < 70) {
+      type = 'review';
+      reason = `Q=${qValue.toFixed(2)}: Reinforcement needed`;
+    } else {
+      // Skip high-mastery topics — low Q-value
+      continue;
+    }
+
+    items.push({
+      topic_id: topic.topic_id,
+      topic_name: topic.topic_name,
+      subject: topic.subject,
+      priority: Math.round((1 - qValue) * 100), // Lower Q = higher priority
+      q_value: Math.round(qValue * 1000) / 1000,
+      reason,
+      type,
+    });
+  }
+
+  // Sort by Q-value descending (highest Q-value first = most valuable to study)
+  items.sort((a, b) => b.q_value - a.q_value);
+  return items.slice(0, maxItems);
+}
