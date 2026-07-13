@@ -81,9 +81,12 @@ export default function MasteryPage() {
       <div className="flex-1 flex flex-col">
         <Header />
         <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Topic Mastery</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Track your knowledge across all topics</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Topic Mastery</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">Track your knowledge across all topics</p>
+            </div>
+            <a href="/mastery/graph" className="text-sm text-primary hover:underline">View Dependency Graph →</a>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
