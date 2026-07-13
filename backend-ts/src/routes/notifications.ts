@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../prisma';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { getCached, setCache } from '../cache';
+import { emitToUser, emitToStudents } from '../websocket';
 
 const router = Router();
 
@@ -109,7 +110,19 @@ router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
     if (target_users && target_users.length > 0) {
       for (const uid of target_users) await setCache(`notif:${uid}`, null, 0);
     } else {
-      await setCache('notif:', null, 0); // prefix invalidate handled by simple approach
+      await setCache('notif:', null, 0);
+    }
+
+    // Emit real-time notification via WebSocket
+    const notificationPayload = {
+      id: notification.id, title, message, type: type || 'info',
+      category: notification.category, target: notification.target,
+      created_at: notification.createdAt,
+    };
+    if (target_users && target_users.length > 0) {
+      for (const uid of target_users) emitToUser(uid, 'notification', notificationPayload);
+    } else {
+      emitToStudents('notification', notificationPayload);
     }
 
     return res.json({ id: notification.id, message: 'Notification sent', recipient_count: users.length });

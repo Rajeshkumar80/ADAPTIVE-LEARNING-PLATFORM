@@ -4,6 +4,7 @@ dotenv.config({ path: resolve(__dirname, '../.env') });
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import { createServer } from 'http';
 import authRoutes from './routes/auth';
 import studentRoutes from './routes/student';
 import adminRoutes from './routes/admin';
@@ -22,6 +23,7 @@ import { prisma } from './prisma';
 import { getCacheStats } from './cache';
 import { globalLimiter, authLimiter, aiLimiter } from './middleware/rate-limit';
 import { securityHeaders, sanitizeInput } from './middleware/security';
+import { initWebSocket } from './websocket';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -98,9 +100,13 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ detail: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+const server = createServer(app);
+initWebSocket(server);
+
+server.listen(PORT, () => {
   console.log(`AdaptLearn TS backend running on http://localhost:${PORT}`);
   console.log(`API docs at http://localhost:${PORT}/docs`);
+  console.log(`WebSocket ready on ws://localhost:${PORT}`);
 });
 
 export default app;
