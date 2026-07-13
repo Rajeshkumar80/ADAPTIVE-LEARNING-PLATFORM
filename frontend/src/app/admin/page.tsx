@@ -34,7 +34,7 @@ export default function AdminDashboard() {
       <Sidebar isAdmin />
       <div className="flex-1 flex flex-col">
         <Header isAdmin />
-        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
+        <main id="main-content" className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-fade-in">
           <div className="flex items-end justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Hi, {user.full_name}</h1>

@@ -118,7 +118,7 @@ export default function StudentDashboard() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-page-enter">
+        <main id="main-content" className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 animate-page-enter">
 
           {/* Show skeleton while loading, real content when ready */}
           {!dashboardData ? (

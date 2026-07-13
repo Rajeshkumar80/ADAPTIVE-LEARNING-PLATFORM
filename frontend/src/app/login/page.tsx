@@ -53,7 +53,7 @@ export default function LoginPage() {
           </div>
         </header>
 
-        <main className="flex-1 flex items-center justify-center px-6 py-12">
+        <main id="main-content" className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-2xl animate-fade-in">
             <div className="text-center mb-10">
               <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
@@ -128,8 +128,8 @@ export default function LoginPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm animate-slide-up">
+        <main id="main-content" className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-sm animate-slide-up">
           <div className="mb-8">
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 mb-4 bg-muted rounded text-[11px] text-muted-foreground">
               {isStudent ? <GraduationCap className="w-3 h-3" /> : <Shield className="w-3 h-3" />}

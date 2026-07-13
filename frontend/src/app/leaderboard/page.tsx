@@ -73,7 +73,7 @@ export default function LeaderboardPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-auto">
         <Header title="Leaderboard" subtitle="See how you rank among peers" />
-        <main className="flex-1 p-6 max-w-4xl w-full mx-auto space-y-6">
+        <main id="main-content" className="flex-1 p-6 max-w-4xl w-full mx-auto space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>

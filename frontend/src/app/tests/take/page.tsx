@@ -184,7 +184,7 @@ function TakeTestInner() {
           </div>
         </div>
 
-        <main className="flex-1 p-6 max-w-3xl w-full mx-auto">
+        <main id="main-content" className="flex-1 p-6 max-w-3xl w-full mx-auto">
           <Card>
             <CardContent className="p-6 space-y-5">
               <div className="flex items-start justify-between">

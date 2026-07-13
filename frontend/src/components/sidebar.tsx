@@ -126,6 +126,8 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         onClick={() => setMobileOpen(!mobileOpen)}
         className="fixed top-3 left-3 z-50 md:hidden p-2 bg-background border border-border rounded-md shadow-sm"
         suppressHydrationWarning
+        aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={mobileOpen}
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -156,7 +158,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Main navigation">
         {menuSections.map((section) => (
           <div key={section.section}>
             <p className="px-2 mb-1.5 text-[10px] font-medium tracking-wider uppercase text-muted-foreground">
@@ -209,6 +211,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
             onClick={logout}
             className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground"
             title="Sign out"
+            aria-label="Sign out"
             suppressHydrationWarning
           >
             <LogOut className="w-3.5 h-3.5" />
