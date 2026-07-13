@@ -29,7 +29,7 @@ const createTestSchema = z.object({
 // GET /api/tests/
 router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('tests:list');
+    const cached = await getCached('tests:list');
     if (cached) return res.json(cached);
 
     const tests = await prisma.test.findMany({
@@ -46,7 +46,7 @@ router.get('/', authenticate, async (_req: AuthRequest, res: Response) => {
       is_active: t.isActive, anti_cheat_enabled: t.antiCheatEnabled,
       starts_at: t.startsAt, ends_at: t.endsAt, created_at: t.createdAt,
     }));
-    setCache('tests:list', result, 30_000);
+    await setCache('tests:list', result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -87,7 +87,7 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
       }
     }
 
-    setCache('tests:list', null, 0);
+    await setCache('tests:list', null, 0);
     return res.json({ id: test.id, title: test.title, message: 'Test created' });
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -175,10 +175,10 @@ router.post('/:attemptId/submit', authenticate, async (req: AuthRequest, res: Re
     });
 
     // Invalidate caches
-    setCache('leaderboard:all', null, 0);
-    setCache('admin:dashboard', null, 0);
-    setCache(`dashboard:${attempt.userId}`, null, 0);
-    setCache(`achievements:${attempt.userId}`, null, 0);
+    await setCache('leaderboard:all', null, 0);
+    await setCache('admin:dashboard', null, 0);
+    await setCache(`dashboard:${attempt.userId}`, null, 0);
+    await setCache(`achievements:${attempt.userId}`, null, 0);
 
     // Check and award achievements
     const { checkAndAwardAchievements } = await import('../services/achievements');

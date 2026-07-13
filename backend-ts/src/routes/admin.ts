@@ -25,7 +25,7 @@ const updateStudentSchema = z.object({
 // GET /api/admin/dashboard
 router.get('/dashboard', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('admin:dashboard');
+    const cached = await getCached('admin:dashboard');
     if (cached) return res.json(cached);
 
     const [totalStudents, activeTests, flagsCount, avgResult] = await Promise.all([
@@ -41,7 +41,7 @@ router.get('/dashboard', requireAdmin, async (_req: AuthRequest, res: Response) 
       flags_count: flagsCount,
       avg_performance: avgResult._avg.score ? Math.round(avgResult._avg.score * 10) / 10 : 0,
     };
-    setCache('admin:dashboard', result, 30_000);
+    await setCache('admin:dashboard', result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -204,7 +204,7 @@ router.post('/students/import', requireAdmin, async (req: AuthRequest, res: Resp
 // GET /api/admin/analytics
 router.get('/analytics', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('admin:analytics');
+    const cached = await getCached('admin:analytics');
     if (cached) return res.json(cached);
 
     const [totalStudents, totalTests, avgResult, topStudents] = await Promise.all([
@@ -220,7 +220,7 @@ router.get('/analytics', requireAdmin, async (_req: AuthRequest, res: Response) 
       avg_score: avgResult._avg.score ? Math.round(avgResult._avg.score * 10) / 10 : 0,
       top_performers: topStudents.map(s => ({ usn: s.usn, name: s.fullName, cgpa: s.cgpa })),
     };
-    setCache('admin:analytics', result, 30_000);
+    await setCache('admin:analytics', result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -253,7 +253,7 @@ router.get('/anti-cheat-flags', requireAdmin, async (_req: AuthRequest, res: Res
 // GET /api/admin/reports/performance
 router.get('/reports/performance', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('admin:report:perf');
+    const cached = await getCached('admin:report:perf');
     if (cached) return res.json(cached);
 
     const [students, scoreAgg, masteryAgg] = await Promise.all([
@@ -295,7 +295,7 @@ router.get('/reports/performance', requireAdmin, async (_req: AuthRequest, res: 
       total_attempts: totalAttempts,
       students: studentStats,
     };
-    setCache('admin:report:perf', result, 30_000);
+    await setCache('admin:report:perf', result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -334,7 +334,7 @@ router.get('/reports/tests', requireAdmin, async (_req: AuthRequest, res: Respon
 // GET /api/admin/reports/engagement
 router.get('/reports/engagement', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('admin:report:engagement');
+    const cached = await getCached('admin:report:engagement');
     if (cached) return res.json(cached);
 
     const [students, sessionAgg, eventAgg, achievementAgg] = await Promise.all([
@@ -386,7 +386,7 @@ router.get('/reports/engagement', requireAdmin, async (_req: AuthRequest, res: R
       total_events: totalEvents,
       students: engagementStats,
     };
-    setCache('admin:report:engagement', result, 30_000);
+    await setCache('admin:report:engagement', result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });

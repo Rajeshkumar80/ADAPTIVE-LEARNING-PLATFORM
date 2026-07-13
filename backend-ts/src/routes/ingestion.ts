@@ -66,9 +66,9 @@ router.post('/quiz-attempt', requireStudent, async (req: AuthRequest, res: Respo
     }
 
     // Invalidate caches
-    setCache(`dashboard:${req.user!.id}`, null, 0);
-    setCache(`progress:${req.user!.id}`, null, 0);
-    setCache(`activity:${req.user!.id}`, null, 0);
+    await setCache(`dashboard:${req.user!.id}`, null, 0);
+    await setCache(`progress:${req.user!.id}`, null, 0);
+    await setCache(`activity:${req.user!.id}`, null, 0);
 
     return res.json({
       event_id: event.id,
@@ -131,7 +131,7 @@ router.get('/performance/:userId', authenticate, async (req: AuthRequest, res: R
       }
     }
 
-    const cached = getCached(`perf:${userId}`);
+    const cached = await getCached(`perf:${userId}`);
     if (cached) return res.json(cached);
 
     const events = await prisma.learningEvent.findMany({
@@ -169,7 +169,7 @@ router.get('/performance/:userId', authenticate, async (req: AuthRequest, res: R
         payload: JSON.parse(e.payload),
       })),
     };
-    setCache(`perf:${userId}`, result, 30_000);
+    await setCache(`perf:${userId}`, result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });

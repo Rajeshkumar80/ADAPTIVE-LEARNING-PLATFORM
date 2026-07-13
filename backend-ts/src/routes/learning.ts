@@ -93,9 +93,9 @@ router.post('/update', authenticate, async (req: AuthRequest, res: Response) => 
     });
 
     // Invalidate caches
-    setCache(`dashboard:${userId}`, null, 0);
-    setCache(`progress:${userId}`, null, 0);
-    setCache(`activity:${userId}`, null, 0);
+    await setCache(`dashboard:${userId}`, null, 0);
+    await setCache(`progress:${userId}`, null, 0);
+    await setCache(`activity:${userId}`, null, 0);
 
     return res.json({ topic_id, mastery: Math.round(newMastery * 10) / 10, quality, new_interval_days: newInterval, new_ease_factor: Math.round(newEF * 100) / 100, next_review: nextReview.toISOString() });
   } catch (err: any) {

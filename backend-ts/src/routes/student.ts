@@ -17,7 +17,7 @@ const profileSchema = z.object({
 router.get('/dashboard', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`dashboard:${userId}`);
+    const cached = await getCached(`dashboard:${userId}`);
     if (cached) return res.json(cached);
 
     const attempts = await prisma.testAttempt.findMany({ where: { userId, isCompleted: true } });
@@ -58,7 +58,7 @@ router.get('/dashboard', requireStudent, async (req: AuthRequest, res: Response)
       achievements_count: achievements.length,
       certificates_count: certificates.length,
     };
-    setCache(`dashboard:${userId}`, result, 60_000);
+    await setCache(`dashboard:${userId}`, result, 60_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -105,12 +105,12 @@ router.put('/profile', requireStudent, async (req: AuthRequest, res: Response) =
 // GET /api/student/subjects
 router.get('/subjects', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
-    const cached = getCached('subjects:list');
+    const cached = await getCached('subjects:list');
     if (cached) return res.json(cached);
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     const subjects = await prisma.subject.findMany({ where: { semester: user?.semester || 6 } });
     const result = subjects.map(s => ({ id: s.id, code: s.code, name: s.name, credits: s.credits, type: s.type }));
-    setCache('subjects:list', result, 300_000);
+    await setCache('subjects:list', result, 300_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -121,7 +121,7 @@ router.get('/subjects', requireStudent, async (req: AuthRequest, res: Response) 
 router.get('/progress', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`progress:${userId}`);
+    const cached = await getCached(`progress:${userId}`);
     if (cached) return res.json(cached);
     const mastery = await prisma.topicMastery.findMany({
       where: { userId: req.user!.id },
@@ -134,7 +134,7 @@ router.get('/progress', requireStudent, async (req: AuthRequest, res: Response) 
       forgetting_risk: m.forgettingRisk,
       last_reviewed: m.lastReviewed,
     }));
-    setCache(`progress:${userId}`, result, 60_000);
+    await setCache(`progress:${userId}`, result, 60_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -146,7 +146,7 @@ router.get('/activity-history', requireStudent, async (req: AuthRequest, res: Re
   try {
     const userId = req.user!.id;
 
-    const cached = getCached(`activity:${userId}`);
+    const cached = await getCached(`activity:${userId}`);
     if (cached) return res.json(cached);
 
     // Batch all queries in parallel
@@ -215,7 +215,7 @@ router.get('/activity-history', requireStudent, async (req: AuthRequest, res: Re
     }));
 
     const result = { weekly_activity: weeks, subject_performance: subjectPerf, test_trends: trends, subject_distribution: distData };
-    setCache(`activity:${userId}`, result, 60_000);
+    await setCache(`activity:${userId}`, result, 60_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -228,7 +228,7 @@ router.get('/leaderboard', authenticate, async (req: AuthRequest, res: Response)
     const page = Math.max(1, parseInt(String(req.query.page)) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit)) || 20));
     const cacheKey = `leaderboard:${page}:${limit}`;
-    const cached = getCached(cacheKey);
+    const cached = await getCached(cacheKey);
     if (cached) return res.json(cached);
 
     const students = await prisma.user.findMany({ where: { role: 'student' }, orderBy: { cgpa: 'desc' } });
@@ -262,7 +262,7 @@ router.get('/leaderboard', authenticate, async (req: AuthRequest, res: Response)
       by_test_score: byTestScore.slice(offset, offset + limit),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
-    setCache(cacheKey, result, 120_000);
+    await setCache(cacheKey, result, 120_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -273,11 +273,11 @@ router.get('/leaderboard', authenticate, async (req: AuthRequest, res: Response)
 router.get('/achievements', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`achievements:${userId}`);
+    const cached = await getCached(`achievements:${userId}`);
     if (cached) return res.json(cached);
     const achievements = await prisma.achievement.findMany({ where: { userId } });
     const result = achievements.map(a => ({ id: a.id, title: a.title, description: a.description, icon: a.icon, earned_date: a.earnedDate, rarity: a.rarity }));
-    setCache(`achievements:${userId}`, result, 60_000);
+    await setCache(`achievements:${userId}`, result, 60_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -288,11 +288,11 @@ router.get('/achievements', requireStudent, async (req: AuthRequest, res: Respon
 router.get('/certificates', requireStudent, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`certs:${userId}`);
+    const cached = await getCached(`certs:${userId}`);
     if (cached) return res.json(cached);
     const certs = await prisma.certificate.findMany({ where: { userId } });
     const result = certs.map(c => ({ id: c.id, title: c.title, subject: c.subject, issued_date: c.issuedDate, score: c.score, type: c.type }));
-    setCache(`certs:${userId}`, result, 60_000);
+    await setCache(`certs:${userId}`, result, 60_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });

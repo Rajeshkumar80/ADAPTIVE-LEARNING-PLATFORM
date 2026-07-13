@@ -9,7 +9,7 @@ const router = Router();
 router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`planner:today:${userId}`);
+    const cached = await getCached(`planner:today:${userId}`);
     if (cached) return res.json(cached);
 
     // Batch: get due cards, weak topics, upcoming tests in parallel
@@ -90,7 +90,7 @@ router.get('/today', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     const result = { items, date: new Date().toISOString().split('T')[0] };
-    setCache(`planner:today:${userId}`, result, 30_000);
+    await setCache(`planner:today:${userId}`, result, 30_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });

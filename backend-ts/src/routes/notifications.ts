@@ -22,7 +22,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit)) || 20));
     const offset = (page - 1) * limit;
     const cacheKey = `notif:${userId}:${page}:${limit}`;
-    const cached = getCached(cacheKey);
+    const cached = await getCached(cacheKey);
     if (cached) return res.json(cached);
 
     const [notifications, total, unreadCount] = await Promise.all([
@@ -45,7 +45,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       total, unread_count: unreadCount,
       pagination: { page, limit, pages: Math.ceil(total / limit) },
     };
-    setCache(cacheKey, result, 15_000);
+    await setCache(cacheKey, result, 15_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
@@ -107,9 +107,9 @@ router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
 
     // Invalidate notification cache for all affected users
     if (target_users && target_users.length > 0) {
-      for (const uid of target_users) setCache(`notif:${uid}`, null, 0);
+      for (const uid of target_users) await setCache(`notif:${uid}`, null, 0);
     } else {
-      setCache('notif:', null, 0); // prefix invalidate handled by simple approach
+      await setCache('notif:', null, 0); // prefix invalidate handled by simple approach
     }
 
     return res.json({ id: notification.id, message: 'Notification sent', recipient_count: users.length });
@@ -122,14 +122,14 @@ router.post('/send', requireAdmin, async (req: AuthRequest, res: Response) => {
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const cached = getCached(`notif:stats:${userId}`);
+    const cached = await getCached(`notif:stats:${userId}`);
     if (cached) return res.json(cached);
     const [total, unread] = await Promise.all([
       prisma.userNotification.count({ where: { userId } }),
       prisma.userNotification.count({ where: { userId, read: false } }),
     ]);
     const result = { total, unread };
-    setCache(`notif:stats:${userId}`, result, 15_000);
+    await setCache(`notif:stats:${userId}`, result, 15_000);
     return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ detail: err.message });
