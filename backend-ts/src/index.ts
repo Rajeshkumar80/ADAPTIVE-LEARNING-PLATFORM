@@ -24,6 +24,7 @@ import { getCacheStats } from './cache';
 import { globalLimiter, authLimiter, aiLimiter } from './middleware/rate-limit';
 import { securityHeaders, sanitizeInput } from './middleware/security';
 import { initWebSocket } from './websocket';
+import { captureError } from './error-tracking';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -96,7 +97,7 @@ app.use((_req, res) => res.status(404).json({ detail: 'Not found' }));
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+  captureError(err, { url: _req.originalUrl, method: _req.method });
   res.status(500).json({ detail: 'Internal server error' });
 });
 
