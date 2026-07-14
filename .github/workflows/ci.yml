@@ -51,15 +51,7 @@ jobs:
         
       - name: Run backend tests
         working-directory: backend-ts
-        run: |
-          set +e
-          npx jest --passWithNoTests --forceExit --verbose 2>&1 | tee /tmp/test-output.txt
-          EXIT=${PIPESTATUS[0]}
-          echo "### Test Output (exit code: $EXIT)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat /tmp/test-output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          exit $EXIT
+        run: npm test
         
       - name: Build backend
         working-directory: backend-ts

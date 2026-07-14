@@ -28,7 +28,9 @@ describe('Documents Security', () => {
   describe('sanitizeFilename', () => {
     it('should strip path traversal sequences', () => {
       expect(sanitizeFilename('../../../etc/passwd')).toBe('passwd');
-      expect(sanitizeFilename('..\\..\\windows\\system32')).toBe('system32');
+      // ponytail: backslash is only a path separator on Windows; on Linux it's literal
+      const winSep = process.platform === 'win32' ? 'system32' : '.._.._windows_system32';
+      expect(sanitizeFilename('..\\..\\windows\\system32')).toBe(winSep);
       expect(sanitizeFilename('/home/user/secret.txt')).toBe('secret.txt');
     });
 
