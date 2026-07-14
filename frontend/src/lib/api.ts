@@ -265,6 +265,17 @@ class APIClient {
     return this.request('/api/planner/mastery');
   }
 
+  async generateRoadmap(hoursPerDay: number, weeks: number = 4) {
+    return this.request('/api/planner/roadmap/generate', {
+      method: 'POST',
+      body: JSON.stringify({ hours_per_day: hoursPerDay, weeks }),
+    });
+  }
+
+  async getRoadmap() {
+    return this.request('/api/planner/roadmap');
+  }
+
   // ============= Learning =============
   async getDueToday() {
     return this.request('/api/learning/due-today');
