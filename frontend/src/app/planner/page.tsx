@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import {
   CheckCircle2, Circle, Play, Clock, Target,
-  Calendar, Sparkles, BookOpen, Brain,
+  Calendar, Sparkles, BookOpen, Brain, Map, Route,
 } from 'lucide-react';
 
 interface ScheduleItem {
@@ -134,9 +134,15 @@ export default function PlannerPage() {
           {/* Stat cards row */}
           <div className="flex items-center justify-between">
             <div />
-            <Button onClick={async () => { setLoadingData(true); try { const plan = await api.getTodayPlan(); const items = (plan.items || []).map((item: any, i: number) => ({ id: i + 1, time: item.time || `${9 + i}:00`, subject: item.subject || '', topic: item.topic || '', duration: item.duration || 45, activity: item.activity || 'study', status: 'pending' as 'completed' | 'active' | 'pending' })); setSchedule(items); } catch { /* keep current */ } setLoadingData(false); }} size="sm">
-              <Sparkles className="w-3.5 h-3.5 mr-1" /> Generate AI Plan
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => window.location.href = '/planner/roadmap'}>
+                <Route className="w-3.5 h-3.5 mr-1" />
+                AI Roadmap
+              </Button>
+              <Button onClick={async () => { setLoadingData(true); try { const plan = await api.getTodayPlan(); const items = (plan.items || []).map((item: any, i: number) => ({ id: i + 1, time: item.time || `${9 + i}:00`, subject: item.subject || '', topic: item.topic || '', duration: item.duration || 45, activity: item.activity || 'study', status: 'pending' as 'completed' | 'active' | 'pending' })); setSchedule(items); } catch { /* keep current */ } setLoadingData(false); }} size="sm">
+                <Sparkles className="w-3.5 h-3.5 mr-1" /> Generate AI Plan
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="stat-card" style={{ borderLeft: '3px solid #5c7f63' }}>

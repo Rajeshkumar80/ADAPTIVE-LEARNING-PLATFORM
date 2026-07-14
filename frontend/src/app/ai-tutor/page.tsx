@@ -6,31 +6,36 @@ import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { Send, Sparkles, Bot, User, Loader2, RotateCcw } from 'lucide-react';
+import { Send, Sparkles, Bot, User, Loader2, RotateCcw, Zap, AlertTriangle, Info } from 'lucide-react';
 
 interface Message {
   id: number;
   role: 'user' | 'assistant';
   content: string;
+  source?: string;
   timestamp: number;
+}
+
+interface AIStatus {
+  groq: { configured: boolean; status: string; model: string };
+  gemini: { configured: boolean; status: string; model: string };
 }
 
 function formatTime(ts: number): string {
   const date = new Date(ts);
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 }
 
 export default function AITutorPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: string; content: string }[]>([]);
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       role: 'assistant',
-      content: "Hi! I'm your AI tutor. Ask me anything about your subjects — DSA, DBMS, OS, Networks, or any programming topic. I'm here to help you learn!",
+      content: "Hi! I'm your AI tutor. Ask me anything about DSA, DBMS, OS, Networks, or programming. I'm here to help!",
       timestamp: Date.now(),
     },
   ]);
@@ -52,6 +57,7 @@ export default function AITutorPage() {
 
   useEffect(() => {
     inputRef.current?.focus();
+    api.request('/api/ai/status').then(setAiStatus).catch(() => {});
   }, []);
 
   const handleSend = async (text?: string) => {
@@ -72,22 +78,16 @@ export default function AITutorPage() {
     setChatHistory(newHistory);
 
     try {
-      let response: string;
-
-      try {
-        const data = await api.chatAI(query, newHistory);
-        response = data.response || data.answer || 'I could not generate a response. Please try again.';
-      } catch {
-        const data = await api.askAI(query);
-        response = data.response || data.answer || 'I could not generate a response. Please try again.';
-      }
+      const data = await api.chatAI(query, newHistory);
+      const response = data.response || 'I could not generate a response. Please try again.';
+      const source = data.source || 'unknown';
 
       setChatHistory(prev => [...prev, { role: 'assistant', content: response }]);
-
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
         content: response,
+        source,
         timestamp: Date.now(),
       }]);
     } catch (err) {
@@ -114,6 +114,9 @@ export default function AITutorPage() {
     setChatHistory([]);
   };
 
+  const groqOk = aiStatus?.groq.status === 'connected';
+  const builtinMode = !groqOk;
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -123,8 +126,32 @@ export default function AITutorPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full max-w-7xl mx-auto">
             {/* Sidebar */}
             <div className="space-y-3 hidden lg:block">
+              {/* Provider Status */}
+              <Card className="p-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">AI Provider</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <div className={`w-2 h-2 rounded-full ${groqOk ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    <span className="text-xs font-medium">{groqOk ? 'Groq AI' : 'Builtin Mode'}</span>
+                  </div>
+                  {groqOk ? (
+                    <p className="text-[10px] text-muted-foreground px-1">Connected to Groq ({aiStatus?.groq.model})</p>
+                  ) : (
+                    <div className="text-[10px] text-amber-600 px-1 space-y-1">
+                      <p>Groq not available. Using smart builtin responses.</p>
+                      {aiStatus?.groq.status && aiStatus.groq.status !== 'unavailable' && (
+                        <p className="text-muted-foreground">Status: {aiStatus.groq.status}</p>
+                      )}
+                      {!aiStatus?.groq.configured && (
+                        <p>Add GROQ_API_KEY to .env to enable AI responses.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Start</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Quick Start</p>
                 <div className="space-y-1">
                   {suggestions.map((s, i) => (
                     <button
@@ -153,15 +180,24 @@ export default function AITutorPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">AI Tutor</p>
-                    <p className="text-xs text-muted-foreground">Always here to help</p>
+                    <p className="text-xs text-muted-foreground">
+                      {groqOk ? 'Powered by Groq' : 'Smart builtin responses'}
+                    </p>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={handleClear} disabled={loading} className="lg:hidden">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {!groqOk && (
+                    <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                      Builtin
+                    </span>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={handleClear} disabled={loading} className="lg:hidden">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              {/* Mobile suggestions - shown on small screens */}
+              {/* Mobile suggestions */}
               <div className="lg:hidden border-b border-border px-4 py-2 flex gap-2 overflow-x-auto">
                 {suggestions.slice(0, 3).map((s, i) => (
                   <button
@@ -189,9 +225,20 @@ export default function AITutorPage() {
                       }`}>
                         {msg.content}
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-1 px-1">
-                        {formatTime(msg.timestamp)}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 px-1">
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatTime(msg.timestamp)}
+                        </p>
+                        {msg.source && msg.role === 'assistant' && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                            msg.source === 'groq' ? 'bg-emerald-100 text-emerald-700' :
+                            msg.source === 'builtin' ? 'bg-amber-100 text-amber-700' :
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            {msg.source === 'groq' ? 'AI' : msg.source === 'builtin' ? 'builtin' : msg.source}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -216,7 +263,7 @@ export default function AITutorPage() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                    placeholder="Ask anything..."
+                    placeholder={builtinMode ? "Ask anything (builtin mode)..." : "Ask anything..."}
                     disabled={loading}
                     className="flex-1 h-9 px-3 border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors disabled:opacity-50"
                   />
