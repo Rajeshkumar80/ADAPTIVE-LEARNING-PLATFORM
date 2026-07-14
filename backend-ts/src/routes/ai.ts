@@ -90,10 +90,15 @@ router.get('/status', async (_req, res) => {
 
   if (aiProviders.gemini.available) {
     try {
-      const url = aiProviders.gemini.baseUrl + '/models?key=' + aiProviders.gemini.apiKey;
+      const url = aiProviders.gemini.baseUrl + '/' + aiProviders.gemini.model + ':generateContent?key=' + aiProviders.gemini.apiKey;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(url, { signal: controller.signal });
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } }),
+        signal: controller.signal,
+      });
       clearTimeout(timeout);
       geminiStatus = resp.ok ? 'connected' : 'error_' + resp.status;
     } catch { geminiStatus = 'unreachable'; }
