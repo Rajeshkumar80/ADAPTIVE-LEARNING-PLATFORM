@@ -1,31 +1,61 @@
 ﻿import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { aiProviders } from '../config';
 
 const router = Router();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + GEMINI_API_KEY;
-
 const SYSTEM_PROMPT = 'You are AdaptLearn AI Tutor, a helpful assistant for VTU CSE students. You help with DSA, DBMS, OS, Networks, and Programming (Java, Python, C++, JavaScript). Rules: Be concise, use examples, format with bullet points, be encouraging. Keep responses under 300 words unless asked for detail.';
 
-async function callGemini(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
-  if (!GEMINI_API_KEY) throw new Error('No Gemini API key');
-  const contents: any[] = [];
+async function callGroqChat(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
+  if (!aiProviders.groq.available) throw new Error('Groq API key not configured');
+  const messages: { role: string; content: string }[] = [];
   if (history && history.length > 0) {
     for (const msg of history.slice(-8)) {
-      contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] });
+      messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
     }
   }
-  contents.push({ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + message }] });
+  messages.push({ role: 'user', content: SYSTEM_PROMPT + '\n\n' + message });
   for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const resp = await fetch(GEMINI_URL, {
+      const resp = await fetch(aiProviders.groq.baseUrl + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiProviders.groq.apiKey },
+        body: JSON.stringify({ model: aiProviders.groq.model, messages, max_tokens: 2048, temperature: 0.7, top_p: 0.9 }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (resp.status === 429) { await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); continue; }
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        console.error('[AI] Groq ' + resp.status + ': ' + errText.slice(0, 200));
+        if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
+        break;
+      }
+      const data: any = await resp.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (text) return { text, source: 'groq' };
+    } catch (err: any) {
+      clearTimeout(timeout);
+      console.error('[AI] Groq attempt ' + (attempt + 1) + ' error:', err.message);
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+    }
+  }
+  throw new Error('Groq API failed after retries');
+}
+
+async function callGeminiRoadmap(prompt: string): Promise<{ text: string; source: string }> {
+  if (!aiProviders.gemini.available) throw new Error('Gemini API key not configured');
+  const url = aiProviders.gemini.baseUrl + '/' + aiProviders.gemini.model + ':generateContent?key=' + aiProviders.gemini.apiKey;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 2048, temperature: 0.7, topP: 0.9 } }),
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 4096, temperature: 0.5 } }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -48,11 +78,11 @@ async function callGemini(message: string, history?: { role: string; content: st
   throw new Error('Gemini API failed after retries');
 }
 
-async function callAI(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
-  if (!GEMINI_API_KEY) return { text: getBuiltinResponse(message), source: 'builtin' };
-  try { return await callGemini(message, history); }
+async function callChatAI(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
+  if (!aiProviders.groq.available) return { text: getBuiltinResponse(message), source: 'builtin' };
+  try { return await callGroqChat(message, history); }
   catch (err: any) {
-    console.error('[AI] Gemini failed, falling back to builtin:', err.message);
+    console.error('[AI] Groq failed, falling back to builtin:', err.message);
     return { text: getBuiltinResponse(message), source: 'builtin' };
   }
 }
@@ -69,14 +99,20 @@ function getBuiltinResponse(query: string): string {
 }
 
 router.get('/status', authenticate, async (_req: AuthRequest, res: Response) => {
-  return res.json({ available: true, gemini: !!GEMINI_API_KEY, mode: GEMINI_API_KEY ? 'api' : 'builtin', model: GEMINI_MODEL });
+  return res.json({
+    available: true,
+    chatProvider: aiProviders.groq.available ? 'groq' : 'builtin',
+    roadmapProvider: aiProviders.gemini.available ? 'gemini' : 'unavailable',
+    groqModel: aiProviders.groq.model,
+    geminiModel: aiProviders.gemini.model,
+  });
 });
 
 router.post('/ask', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { query } = req.body;
     if (!query) return res.status(400).json({ detail: 'Query required' });
-    const result = await callAI(query);
+    const result = await callChatAI(query);
     return res.json({ answer: result.text, source: result.source });
   } catch (err: any) { return res.status(500).json({ detail: err.message }); }
 });
@@ -85,7 +121,7 @@ router.post('/chat', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { message, history } = req.body;
     if (!message) return res.status(400).json({ detail: 'Message required' });
-    const result = await callAI(message, history);
+    const result = await callChatAI(message, history);
     return res.json({ response: result.text, source: result.source });
   } catch (err: any) { return res.status(500).json({ detail: err.message }); }
 });
@@ -94,7 +130,7 @@ router.post('/explain', authenticate, async (req: AuthRequest, res: Response) =>
   try {
     const { topic } = req.body;
     if (!topic) return res.status(400).json({ detail: 'Topic required' });
-    const result = await callAI('Explain ' + topic + ' in detail for a CS student.');
+    const result = await callChatAI('Explain ' + topic + ' in detail for a CS student.');
     return res.json({ explanation: result.text, source: result.source });
   } catch (err: any) { return res.status(500).json({ detail: err.message }); }
 });
@@ -104,7 +140,7 @@ router.post('/generate-quiz', authenticate, async (req: AuthRequest, res: Respon
     const { topic, count } = req.body;
     if (!topic) return res.status(400).json({ detail: 'Topic required' });
     const num = count || 5;
-    const result = await callAI('Generate ' + num + ' MCQs about ' + topic + ' for a CS student. Return ONLY JSON array: [{"question":"...","options":["A","B","C","D"],"correct":0}]');
+    const result = await callChatAI('Generate ' + num + ' MCQs about ' + topic + ' for a CS student. Return ONLY JSON array: [{"question":"...","options":["A","B","C","D"],"correct":0}]');
     let questions;
     try { const jsonMatch = result.text.match(/\[[\s\S]*\]/); questions = jsonMatch ? JSON.parse(jsonMatch[0]) : []; }
     catch { questions = []; }
@@ -112,4 +148,5 @@ router.post('/generate-quiz', authenticate, async (req: AuthRequest, res: Respon
   } catch (err: any) { return res.status(500).json({ detail: err.message }); }
 });
 
+export { callGeminiRoadmap };
 export default router;
