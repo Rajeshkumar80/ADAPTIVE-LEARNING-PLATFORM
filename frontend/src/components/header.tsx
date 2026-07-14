@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationDialog } from '@/components/notification-dialog';
-import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   isAdmin?: boolean;
@@ -12,28 +11,25 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur-sm">
       <div className="flex items-center justify-between h-14 pl-12 pr-6 md:px-6">
-        {/* Left: Title or breadcrumb */}
         <div className="flex items-center">
           {title && (
             <div>
-              <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
-              {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+              <h1 className="text-base font-semibold tracking-tight">{title}</h1>
+              {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
             </div>
           )}
         </div>
-
-        {/* Right: Actions */}
         <div className="flex items-center gap-1">
           <NotificationDialog />
           {!isAuthenticated && (
             <Link
               href="/login"
-              className="ml-2 h-8 px-3 inline-flex items-center text-xs font-medium rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              className="ml-2 h-8 px-3 inline-flex items-center text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
             >
               Sign In
             </Link>

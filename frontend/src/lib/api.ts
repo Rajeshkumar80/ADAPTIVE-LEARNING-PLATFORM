@@ -42,6 +42,10 @@ class APIClient {
     return response.json();
   }
 
+  async getStatus() {
+    return this.request('/api/ai/status');
+  }
+
   // ============= Auth =============
   async register(data: {
     email: string;

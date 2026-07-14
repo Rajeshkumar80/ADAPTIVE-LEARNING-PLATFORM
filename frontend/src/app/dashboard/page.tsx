@@ -154,54 +154,54 @@ export default function StudentDashboard() {
           {/* Hero stats — education focused */}
           <ScrollReveal delay={100}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-3">
+            <div className="stat-card" style={{ borderLeft: '3px solid #f97316' }}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Study Streak</p>
+                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
                   <Flame className="w-4 h-4 text-orange-500" />
-                  <p className="text-xs text-muted-foreground">Study Streak</p>
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.streak || 0} <span className="text-sm text-muted-foreground">days</span></p>
-                <p className="text-[11px] text-green-600">Active streak</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Target className="w-4 h-4" />
-                  <p className="text-xs text-muted-foreground">Topic Mastery</p>
+              </div>
+              <p className="text-2xl font-bold tracking-tight">{dashboardData?.streak || 0} <span className="text-sm text-muted-foreground font-normal">days</span></p>
+              <p className="text-[11px] text-green-600 font-medium">Active streak</p>
+            </div>
+            <div className="stat-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Topic Mastery</p>
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Target className="w-4 h-4 text-blue-500" />
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.topics_mastered || 0}<span className="text-sm text-muted-foreground">/{dashboardData?.total_topics || 0}</span></p>
-                <p className="text-[11px] text-green-600">Topics covered</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Trophy className="w-4 h-4" />
-                  <p className="text-xs text-muted-foreground">Avg Score</p>
+              </div>
+              <p className="text-2xl font-bold tracking-tight">{dashboardData?.topics_mastered || 0}<span className="text-sm text-muted-foreground font-normal">/{dashboardData?.total_topics || 0}</span></p>
+              <p className="text-[11px] text-green-600 font-medium">Topics covered</p>
+            </div>
+            <div className="stat-card" style={{ borderLeft: '3px solid #10b981' }}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Avg Score</p>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <Trophy className="w-4 h-4 text-emerald-500" />
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.avg_score || 0}<span className="text-sm text-muted-foreground">%</span></p>
-                <p className="text-[11px] text-green-600">Overall average</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Clock className="w-4 h-4" />
-                  <p className="text-xs text-muted-foreground">Study Hours</p>
+              </div>
+              <p className="text-2xl font-bold tracking-tight">{dashboardData?.avg_score || 0}<span className="text-sm text-muted-foreground font-normal">%</span></p>
+              <p className="text-[11px] text-green-600 font-medium">Overall average</p>
+            </div>
+            <div className="stat-card" style={{ borderLeft: '3px solid #8b5cf6' }}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Study Hours</p>
+                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-violet-500" />
                 </div>
-                <p className="text-2xl font-semibold tracking-tight mb-0.5">{dashboardData?.hours_this_week || 0}</p>
-                <p className="text-[11px] text-muted-foreground">This week</p>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="text-2xl font-bold tracking-tight">{dashboardData?.hours_this_week || 0}</p>
+              <p className="text-[11px] text-muted-foreground">This week</p>
+            </div>
           </div>
 
           {/* AI Recommendation */}
-          <Card className="bg-muted/30">
+          <Card className="border-primary/20 bg-primary/[0.02]">
             <CardContent className="p-5">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-foreground rounded-md flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-background" />
+                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold mb-1">Today's recommendation</p>

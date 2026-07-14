@@ -20,7 +20,6 @@ import {
   ShieldCheck,
   Target,
   LogOut,
-  ChevronsUpDown,
   Medal,
   PenLine,
   Menu,
@@ -121,10 +120,10 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile hamburger - only visible on small screens */}
+      {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-3 left-3 z-50 md:hidden p-2 bg-background border border-border rounded-md shadow-sm"
+        className="fixed top-3 left-3 z-50 md:hidden p-2 bg-white border border-border rounded-lg shadow-sm"
         suppressHydrationWarning
         aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
         aria-expanded={mobileOpen}
@@ -134,23 +133,23 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
       <aside className={cn(
-        "w-60 h-screen border-r border-border bg-background flex flex-col shrink-0 transition-transform duration-200",
+        "w-60 h-screen border-r border-border bg-white flex flex-col shrink-0 transition-transform duration-200",
         "fixed md:sticky md:top-0 z-40",
         mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )} suppressHydrationWarning>
       {/* Brand */}
-      <div className="px-5 h-14 flex items-center border-b border-border">
-        <Link href={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
-            <span className="text-background text-xs font-bold">A</span>
+      <div className="px-5 h-16 flex items-center border-b border-border">
+        <Link href={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-3 group">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-white text-sm font-bold">A</span>
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="font-semibold text-sm tracking-tight">AdaptLearn</span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="font-semibold text-sm tracking-tight text-foreground">AdaptLearn</span>
+            <span className="text-[10px] text-muted-foreground font-normal">
               {isAdmin ? '/ admin' : '/ student'}
             </span>
           </div>
@@ -161,10 +160,10 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Main navigation">
         {menuSections.map((section) => (
           <div key={section.section}>
-            <p className="px-2 mb-1.5 text-[10px] font-medium tracking-wider uppercase text-muted-foreground">
+            <p className="px-3 mb-2 text-[10px] font-semibold tracking-wider uppercase text-muted-foreground/70">
               {section.section}
             </p>
-            <div className="space-y-px">
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -174,15 +173,15 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
                     href={item.href}
                     prefetch={true}
                     className={cn(
-                      'flex items-center gap-2.5 px-2 h-8 rounded-md text-sm transition-all duration-150 press-effect',
+                      'flex items-center gap-2.5 px-3 h-9 rounded-lg text-sm transition-all duration-150 press-effect',
                       isActive
-                        ? 'bg-muted text-foreground font-medium'
+                        ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <Icon className={cn(
                       "w-4 h-4 shrink-0 transition-colors",
-                      isActive ? "text-foreground" : "text-muted-foreground"
+                      isActive ? "text-primary" : "text-muted-foreground"
                     )} />
                     <span>{item.label}</span>
                   </Link>
@@ -195,8 +194,8 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
       {/* User Profile */}
       <div className="border-t border-border p-3">
-        <div className="group flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer">
-          <div className="w-7 h-7 rounded-md bg-foreground text-background flex items-center justify-center text-[10px] font-semibold shrink-0">
+        <div className="group flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
             {user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || (isAdmin ? 'AD' : 'ST')}
           </div>
           <div className="flex-1 min-w-0">
@@ -209,7 +208,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
           </div>
           <button
             onClick={logout}
-            className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground"
+            className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"
             title="Sign out"
             aria-label="Sign out"
             suppressHydrationWarning

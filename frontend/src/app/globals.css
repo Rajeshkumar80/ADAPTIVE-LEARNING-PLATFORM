@@ -1,55 +1,56 @@
 ﻿@import "tailwindcss";
 
 /* ============================================
-   DESIGN TOKENS ΓÇö OptiFlow Warm Light Theme
-   Warm cream background + Olive/sage accents
-   Reference: OptiFlow Analytics Dashboard
+   DESIGN TOKENS — Clean Modern Dashboard
+   White background + Emerald green accent
+   Reference: Flup-style analytics dashboard
    ============================================ */
 
 :root {
-  /* Warm light palette */
-  --background: 40 20% 96%;
-  --foreground: 20 10% 10%;
-  --muted: 40 12% 91%;
-  --muted-foreground: 20 5% 45%;
-  --border: 40 10% 88%;
-  --border-strong: 40 8% 82%;
+  /* Clean white palette */
+  --background: 220 14% 96%;
+  --foreground: 220 15% 10%;
+  --muted: 220 14% 93%;
+  --muted-foreground: 220 10% 46%;
+  --border: 220 13% 91%;
+  --border-strong: 220 12% 85%;
   --card: 0 0% 100%;
-  --card-foreground: 20 10% 10%;
+  --card-foreground: 220 15% 10%;
 
-  /* Olive/sage accent */
-  --primary: 100 20% 32%;
+  /* Emerald green accent */
+  --primary: 160 84% 39%;
   --primary-foreground: 0 0% 100%;
 
   /* Semantic colors */
-  --success: 160 60% 36%;
-  --warning: 38 80% 50%;
-  --destructive: 0 65% 48%;
+  --success: 160 84% 39%;
+  --warning: 38 92% 50%;
+  --destructive: 0 84% 60%;
   --info: 210 60% 50%;
 
   /* Chart colors */
-  --chart-1: #5c6b4f;
-  --chart-2: #d4a574;
-  --chart-3: #7c8c6e;
-  --chart-4: #b8956b;
-  --chart-5: #8fa07e;
+  --chart-1: #3b82f6;
+  --chart-2: #f97316;
+  --chart-3: #10b981;
+  --chart-4: #8b5cf6;
+  --chart-5: #ec4899;
 
   /* Typography */
-  --font-display: var(--font-geist-sans);
-  --font-body: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
+  --font-body: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* Radius */
   --radius-sm: 0.5rem;
-  --radius: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
+  --radius: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.04), 0 2px 4px -2px rgb(0 0 0 / 0.03);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.03);
+  /* Shadows — subtle, modern */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
 }
 
 @theme inline {
@@ -120,8 +121,8 @@ html, body {
 
 /* Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -130,7 +131,7 @@ html, body {
 
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border-strong));
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -204,7 +205,7 @@ button, a, input, textarea, select {
 }
 .hover-lift:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 /* Press effect */
@@ -213,7 +214,7 @@ button, a, input, textarea, select {
   transition: transform 80ms ease;
 }
 
-/* Stat card ΓÇö OptiFlow style */
+/* Stat card — Clean dashboard style */
 .stat-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -223,12 +224,14 @@ button, a, input, textarea, select {
   flex-direction: column;
   gap: 0.75rem;
   transition: all 200ms ease;
+  box-shadow: var(--shadow-xs);
 }
 .stat-card:hover {
   box-shadow: var(--shadow);
+  border-color: hsl(var(--border-strong));
 }
 
-/* Timeline tracker ΓÇö OptiFlow Process Tracking style */
+/* Timeline tracker */
 .timeline-item {
   display: flex;
   gap: 1rem;
@@ -245,7 +248,7 @@ button, a, input, textarea, select {
   top: 14px;
   bottom: 0;
   width: 1px;
-  background: hsl(var(--border-strong));
+  background: hsl(var(--border));
 }
 .timeline-item:last-child::before {
   display: none;
@@ -254,7 +257,7 @@ button, a, input, textarea, select {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: hsl(var(--foreground));
+  background: hsl(var(--border-strong));
   margin-top: 4px;
   flex-shrink: 0;
   z-index: 1;
@@ -264,13 +267,13 @@ button, a, input, textarea, select {
 }
 .timeline-dot.active {
   background: hsl(var(--primary));
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
 }
 .timeline-dot.pending {
   background: hsl(var(--border-strong));
 }
 
-/* Calendar mini ΓÇö OptiFlow style */
+/* Calendar mini */
 .calendar-day {
   width: 28px;
   height: 28px;
@@ -282,12 +285,12 @@ button, a, input, textarea, select {
   color: hsl(var(--muted-foreground));
 }
 .calendar-day.today {
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+  background: hsl(var(--primary));
+  color: white;
   font-weight: 600;
 }
 
-/* Operation/event card ΓÇö OptiFlow style */
+/* Event card */
 .event-card {
   display: flex;
   align-items: center;
@@ -312,7 +315,7 @@ button, a, input, textarea, select {
   flex-shrink: 0;
 }
 
-/* Tab switcher ΓÇö Day/Week/Month style */
+/* Tab switcher */
 .tab-switcher {
   display: inline-flex;
   background: hsl(var(--muted));

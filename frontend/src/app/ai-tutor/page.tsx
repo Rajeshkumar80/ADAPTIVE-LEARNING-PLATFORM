@@ -57,7 +57,7 @@ export default function AITutorPage() {
 
   useEffect(() => {
     inputRef.current?.focus();
-    api.request('/api/ai/status').then(setAiStatus).catch(() => {});
+    api.getStatus().then(setAiStatus).catch(() => {});
   }, []);
 
   const handleSend = async (text?: string) => {
@@ -186,7 +186,7 @@ export default function AITutorPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!groqOk && (
+                  {!geminiOk && (
                     <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
                       Builtin
                     </span>
