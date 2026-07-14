@@ -52,18 +52,14 @@ jobs:
       - name: Run backend tests
         working-directory: backend-ts
         run: |
+          set +e
           npx jest --passWithNoTests --forceExit --verbose 2>&1 | tee /tmp/test-output.txt
           EXIT=${PIPESTATUS[0]}
-          echo "test-exit-code=$EXIT" >> $GITHUB_OUTPUT
+          echo "### Test Output (exit code: $EXIT)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/test-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           exit $EXIT
-        id: tests
-
-      - name: Upload test output on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: /tmp/test-output.txt
         
       - name: Build backend
         working-directory: backend-ts
