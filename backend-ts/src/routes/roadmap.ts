@@ -34,21 +34,29 @@ router.post('/generate', authenticate, async (req: AuthRequest, res: Response) =
     const startDate = parsed.data.start_date || new Date().toISOString().split('T')[0];
 
     // Gather student data
-    const [masteryRecords, subjects, tests] = await Promise.all([
-      prisma.topicMastery.findMany({
-        where: { userId },
-        include: { topic: { include: { subject: true } } },
-      }),
-      prisma.subject.findMany({
-        include: { topics: true },
-      }),
-      prisma.test.findMany({
-        where: { startsAt: { gte: new Date() } },
-        include: { subject: true },
-        orderBy: { startsAt: 'asc' },
-        take: 5,
-      }),
-    ]);
+    let masteryRecords: any[] = [];
+    let subjects: any[] = [];
+    let tests: any[] = [];
+    try {
+      [masteryRecords, subjects, tests] = await Promise.all([
+        prisma.topicMastery.findMany({
+          where: { userId },
+          include: { topic: { include: { subject: true } } },
+        }).catch((e) => { console.error('[Roadmap] topicMastery query failed:', e.message); return []; }),
+        prisma.subject.findMany({
+          include: { topics: true },
+        }),
+        prisma.test.findMany({
+          where: { startsAt: { gte: new Date() } },
+          include: { subject: true },
+          orderBy: { startsAt: 'asc' },
+          take: 5,
+        }).catch((e) => { console.error('[Roadmap] test query failed:', e.message); return []; }),
+      ]);
+    } catch (e: any) {
+      console.error('[Roadmap] DB query failed:', e.message);
+      return res.status(500).json({ detail: 'Database error: ' + e.message });
+    }
 
     // Build mastery map
     const masteryMap = new Map<number, number>();
@@ -142,7 +150,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
     await setCache(`roadmap:${userId}`, response, 3600_000);
     return res.json(response);
   } catch (err: any) {
-    console.error('[Roadmap] Generation failed:', err.message);
+    console.error('[Roadmap] Generation failed:', err.message, err.stack?.split('\n').slice(0, 3).join(' '));
     return res.status(500).json({ detail: 'Could not generate roadmap right now. Please try again later.' });
   }
 });
