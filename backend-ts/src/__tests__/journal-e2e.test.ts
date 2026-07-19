@@ -1,6 +1,8 @@
 // Journal E2E integration test (requires running backend on localhost:8001)
 // Skipped automatically if server is not running
 
+export {};
+
 const BASE = 'http://localhost:8001';
 
 async function req(method: string, path: string, token?: string, body?: any): Promise<{ status: number; data: any }> {

@@ -1,6 +1,8 @@
 // AI Features E2E integration tests (requires running backend on localhost:8001)
 // Tests roadmap generation, multi-turn chat, and rate limiting
 
+export {};
+
 const BASE = 'http://localhost:8001';
 
 async function req(method: string, path: string, token?: string, body?: any): Promise<{ status: number; data: any }> {

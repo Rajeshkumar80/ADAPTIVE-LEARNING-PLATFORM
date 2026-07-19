@@ -68,7 +68,7 @@ router.post('/generate', authenticate, async (req: AuthRequest, res: Response) =
     const syllabus = subjects.map(s => ({
       subject: s.name,
       code: s.code,
-      topics: s.topics.map(t => ({
+      topics: s.topics.map((t: any) => ({
         name: t.name,
         id: t.id,
         mastery: masteryMap.get(t.id) || 0,
