@@ -17,8 +17,7 @@ interface Message {
 }
 
 interface AIStatus {
-  groq: { configured: boolean; status: string; model: string };
-  gemini: { configured: boolean; status: string; model: string };
+  gemini: { configured: boolean; status: string; model: string; uses?: string[] };
 }
 
 function formatTime(ts: number): string {
@@ -231,11 +230,11 @@ export default function AITutorPage() {
                         </p>
                         {msg.source && msg.role === 'assistant' && (
                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                            msg.source === 'groq' ? 'bg-emerald-100 text-emerald-700' :
+                            msg.source === 'gemini' ? 'bg-emerald-100 text-emerald-700' :
                             msg.source === 'builtin' ? 'bg-amber-100 text-amber-700' :
                             'bg-muted text-muted-foreground'
                           }`}>
-                            {msg.source === 'groq' ? 'AI' : msg.source === 'builtin' ? 'builtin' : msg.source}
+                            {msg.source === 'gemini' ? 'AI' : msg.source === 'builtin' ? 'builtin' : msg.source}
                           </span>
                         )}
                       </div>
