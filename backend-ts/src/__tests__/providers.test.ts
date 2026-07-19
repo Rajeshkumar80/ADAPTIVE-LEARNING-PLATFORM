@@ -7,21 +7,23 @@ beforeEach(() => {
   mockFetch.mockReset();
 });
 
-describe('Groq Chat Provider', () => {
+describe('Gemini Chat Provider', () => {
   it('should return chat response on success', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true, status: 200,
-      json: async () => ({ choices: [{ message: { content: 'Binary search divides the array in half.' } }] }),
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Binary search divides the array in half.' }] } }],
+      }),
     });
 
-    const url = aiProviders.groq.baseUrl + '/chat/completions';
+    const url = `${aiProviders.gemini.baseUrl}/${aiProviders.gemini.model}:generateContent?key=test`;
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test' },
-      body: JSON.stringify({ model: aiProviders.groq.model, messages: [{ role: 'user', content: 'What is binary search?' }] }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'What is binary search?' }] }] }),
     });
     const data: any = await resp.json();
-    expect(data.choices[0].message.content).toContain('Binary search');
+    expect(data.candidates[0].content.parts[0].text).toContain('Binary search');
   });
 
   it('should handle 429 rate limit', async () => {
@@ -71,18 +73,12 @@ describe('Gemini Roadmap Provider', () => {
 });
 
 describe('Provider Config', () => {
-  it('should have groq config with model and baseUrl', () => {
-    expect(aiProviders.groq.model).toBeDefined();
-    expect(aiProviders.groq.baseUrl).toContain('groq.com');
-  });
-
   it('should have gemini config with model and baseUrl', () => {
     expect(aiProviders.gemini.model).toBeDefined();
     expect(aiProviders.gemini.baseUrl).toContain('googleapis.com');
   });
 
   it('should reflect API key availability', () => {
-    expect(typeof aiProviders.groq.available).toBe('boolean');
     expect(typeof aiProviders.gemini.available).toBe('boolean');
   });
 });

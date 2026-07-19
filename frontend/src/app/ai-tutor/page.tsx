@@ -114,7 +114,7 @@ export default function AITutorPage() {
     setChatHistory([]);
   };
 
-  const geminiOk = aiStatus?.groq?.status === 'connected';
+  const geminiOk = aiStatus?.gemini?.status === 'connected';
   const builtinMode = !geminiOk;
 
   return (
@@ -132,18 +132,18 @@ export default function AITutorPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 px-1">
                     <div className={`w-2 h-2 rounded-full ${geminiOk ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                    <span className="text-xs font-medium">{geminiOk ? 'Groq AI' : 'Builtin Mode'}</span>
+                    <span className="text-xs font-medium">{geminiOk ? 'Gemini AI' : 'Builtin Mode'}</span>
                   </div>
                   {geminiOk ? (
-                    <p className="text-[10px] text-muted-foreground px-1">Connected to Groq ({aiStatus?.groq.model})</p>
+                    <p className="text-[10px] text-muted-foreground px-1">Connected to Gemini ({aiStatus?.gemini.model})</p>
                   ) : (
                     <div className="text-[10px] text-amber-600 px-1 space-y-1">
-                      <p>Groq not available. Using smart builtin responses.</p>
-                      {aiStatus?.groq?.status && aiStatus.groq.status !== 'unavailable' && (
-                        <p className="text-muted-foreground">Status: {aiStatus.groq.status}</p>
+                      <p>Gemini not available. Using smart builtin responses.</p>
+                      {aiStatus?.gemini?.status && aiStatus.gemini.status !== 'unavailable' && (
+                        <p className="text-muted-foreground">Status: {aiStatus.gemini.status}</p>
                       )}
-                      {!aiStatus?.groq?.configured && (
-                        <p>Add GROQ_API_KEY to .env to enable AI responses.</p>
+                      {!aiStatus?.gemini?.configured && (
+                        <p>Add GEMINI_API_KEY to .env to enable AI responses.</p>
                       )}
                     </div>
                   )}
@@ -181,7 +181,7 @@ export default function AITutorPage() {
                   <div>
                     <p className="text-sm font-semibold">AI Tutor</p>
                     <p className="text-xs text-muted-foreground">
-                      {geminiOk ? 'Powered by Groq' : 'Smart builtin responses'}
+                      {geminiOk ? 'Powered by Gemini' : 'Smart builtin responses'}
                     </p>
                   </div>
                 </div>

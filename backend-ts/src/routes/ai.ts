@@ -6,49 +6,50 @@ const router = Router();
 
 const SYSTEM_PROMPT = 'You are AdaptLearn AI Tutor, a helpful assistant for VTU CSE students. You help with DSA, DBMS, OS, Networks, and Programming (Java, Python, C++, JavaScript). Rules: Be concise, use examples, format with bullet points, be encouraging. Keep responses under 300 words unless asked for detail.';
 
-async function callGroqChat(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
-  if (!aiProviders.groq.available) throw new Error('Groq API key not configured');
-  const messages: { role: string; content: string }[] = [];
+async function callGeminiChat(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
+  if (!aiProviders.gemini.available) throw new Error('Gemini API key not configured');
+  const url = aiProviders.gemini.baseUrl + '/' + aiProviders.gemini.model + ':generateContent?key=' + aiProviders.gemini.apiKey;
+  const contents: { role: string; parts: { text: string }[] }[] = [];
   if (history && history.length > 0) {
     for (const msg of history.slice(-8)) {
-      messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
+      contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] });
     }
   }
-  messages.push({ role: 'user', content: SYSTEM_PROMPT + '\n\n' + message });
+  contents.push({ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\n' + message }] });
   for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 20000);
     try {
-      const resp = await fetch(aiProviders.groq.baseUrl + '/chat/completions', {
+      const resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiProviders.groq.apiKey },
-        body: JSON.stringify({ model: aiProviders.groq.model, messages, max_tokens: 2048, temperature: 0.7, top_p: 0.9 }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 2048, temperature: 0.7 } }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
       if (resp.status === 429) { await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); continue; }
       if (!resp.ok) {
         const errText = await resp.text().catch(() => '');
-        console.error('[AI] Groq ' + resp.status + ': ' + errText.slice(0, 200));
+        console.error('[AI] Gemini chat ' + resp.status + ': ' + errText.slice(0, 200));
         if (attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
         break;
       }
       const data: any = await resp.json();
-      const text = data.choices?.[0]?.message?.content;
-      if (text) return { text, source: 'groq' };
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return { text, source: 'gemini' };
     } catch (err: any) {
       clearTimeout(timeout);
-      console.error('[AI] Groq attempt ' + (attempt + 1) + ' error:', err.message);
+      console.error('[AI] Gemini chat attempt ' + (attempt + 1) + ' error:', err.message);
       if (attempt < 2) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
     }
   }
-  throw new Error('Groq API failed after retries');
+  throw new Error('Gemini API failed after retries');
 }
 
 async function callChatAI(message: string, history?: { role: string; content: string }[]): Promise<{ text: string; source: string }> {
-  if (aiProviders.groq.available) {
-    try { return await callGroqChat(message, history); }
-    catch (err: any) { console.error('[AI] Groq failed, falling back:', err.message); }
+  if (aiProviders.gemini.available) {
+    try { return await callGeminiChat(message, history); }
+    catch (err: any) { console.error('[AI] Gemini failed, falling back:', err.message); }
   }
   return { text: getBuiltinResponse(message), source: 'builtin' };
 }
@@ -79,21 +80,7 @@ function getBuiltinResponse(query: string): string {
 }
 
 router.get('/status', async (_req, res) => {
-  let groqStatus: string = 'unavailable';
   let geminiStatus: string = 'unavailable';
-
-  if (aiProviders.groq.available) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(aiProviders.groq.baseUrl + '/models', {
-        headers: { 'Authorization': 'Bearer ' + aiProviders.groq.apiKey },
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      groqStatus = resp.ok ? 'connected' : 'error_' + resp.status;
-    } catch { groqStatus = 'unreachable'; }
-  }
 
   if (aiProviders.gemini.available) {
     try {
@@ -113,8 +100,7 @@ router.get('/status', async (_req, res) => {
 
   return res.json({
     available: true,
-    groq: { configured: aiProviders.groq.available, status: groqStatus, model: aiProviders.groq.model, uses: ['chat'] },
-    gemini: { configured: aiProviders.gemini.available, status: geminiStatus, model: aiProviders.gemini.model, uses: ['roadmap'] },
+    gemini: { configured: aiProviders.gemini.available, status: geminiStatus, model: aiProviders.gemini.model, uses: ['chat', 'roadmap'] },
   });
 });
 
